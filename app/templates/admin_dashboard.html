@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin: {{ event.name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        'kvk-gold': '#FBBF24', // Amber-400
+                        'kvk-blue': '#3B82F6', // Blue-500
+                        'kvk-gray': {
+                            700: '#374151',
+                            800: '#1F2937',
+                            900: '#111827',
+                        },
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .slot {
+            border: 1px solid #374151;
+            min-height: 80px;
+            position: relative;
+            font-size: 0.75rem;
+        }
+        .slot-time {
+            font-weight: bold;
+            font-size: 0.8rem;
+            text-align: center;
+            padding: 2px;
+            background-color: #1F2937;
+            position: relative;
+            z-index: 10;
+        }
+        .slot-content {
+            position: relative;
+            z-index: 10;
+            padding: 0.25rem;
+            text-align: center;
+        }
+        .slot-pending { background-color: #45331d !important; }
+        .slot-locked { background-color: #1e3a8a !important; }
+    </style>
+</head>
+<body class="bg-kvk-gray-900 text-gray-200 antialiased">
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-10">
+            <h1 class="text-4xl md:text-5xl font-bold text-kvk-gold">Admin Dashboard</h1>
+            <p class="text-lg text-gray-400 mt-2">{{ event.name }}</p>
+        </header>
+
+        <!-- Main Actions -->
+        <div class="bg-kvk-gray-800 border border-kvk-gray-700 p-4 rounded-xl shadow-md mb-6">
+            <h2 class="text-xl font-bold mb-2 text-gray-100">Global Actions</h2>
+            <form action="{{ url_for('distribute', event_uid=event.uid) }}" method="POST" class="inline">
+                <input type="hidden" name="secret" value="{{ secret }}">
+                <button type="submit" class="bg-kvk-gold text-kvk-gray-900 font-bold py-2 px-4 rounded-md hover:bg-amber-500 transition duration-300">Run/Trigger Full Redistribution</button>
+            </form>
+        </div>
+
+        <!-- Tab Buttons -->
+        <div class="mb-4 border-b border-kvk-gray-700">
+            <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                {% for day in active_days %}
+                <button class="tab-button whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-target="tab-{{day}}">
+                    {{ day|capitalize }}
+                </button>
+                {% endfor %}
+            </nav>
+        </div>
+
+        <!-- Tab Content -->
+        {% for day in active_days %}
+        <div id="tab-{{day}}" class="tab-content hidden space-y-6">
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <!-- Schedule Grid -->
+                <div class="bg-kvk-gray-800 p-6 rounded-xl shadow-md border border-kvk-gray-700">
+                    <h2 class="text-2xl font-bold mb-4 text-gray-100">Schedule Heatmap: <span class="capitalize">{{ day }}</span></h2>
+                    <div class="grid grid-cols-7 gap-1">
+                        {% for i in range(49) %}
+                            {% set current_assignment = assignments.get(day, {}).get(i) %}
+                            {% set density = (slot_density[day][i] / max_density[day]) if max_density[day] > 0 else 0 %}
+                            <div class="slot rounded {% if current_assignment %}{% if current_assignment.is_locked %}slot-locked{% else %}slot-pending{% endif %}{% endif %}" style="background-color: rgba(30, 64, 175, {{ density }});">
+                                <div class="slot-time rounded-t">{{ slot_labels[i] }}</div>
+                                {% if current_assignment %}
+                                    <div class="slot-content">
+                                        <p class="font-bold text-xs">[{{ current_assignment.alliance_name }}] {{ current_assignment.player_name }}</p>
+                                        {% if not current_assignment.is_locked %}
+                                        <form action="{{ url_for('confirm', event_uid=event.uid) }}" method="POST" class="inline">
+                                            <input type="hidden" name="secret" value="{{ secret }}">
+                                            <input type="hidden" name="day_type" value="{{ day }}">
+                                            <input type="hidden" name="slot_index" value="{{ i }}">
+                                            <button type="submit" class="text-xs bg-blue-600 text-white px-2 py-1 rounded mt-1">Lock</button>
+                                        </form>
+                                        {% else %}
+                                        <form action="{{ url_for('unlock', event_uid=event.uid) }}" method="POST" class="inline">
+                                            <input type="hidden" name="secret" value="{{ secret }}">
+                                            <input type="hidden" name="day_type" value="{{ day }}">
+                                            <input type="hidden" name="slot_index" value="{{ i }}">
+                                            <button type="submit" class="text-xs bg-yellow-600 text-white px-2 py-1 rounded mt-1">Unlock</button>
+                                        </form>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- Alliance Summary -->
+                <div class="bg-kvk-gray-800 p-6 rounded-xl shadow-md border border-kvk-gray-700">
+                    <h2 class="text-2xl font-bold mb-4 text-gray-100">Alliance Impact: <span class="capitalize">{{ day }}</span></h2>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full">
+                            <thead class="border-b border-kvk-gray-700">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Alliance</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Total Score</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Submissions</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Assignments</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for name, data in alliance_summary[day].items() %}
+                                <tr class="border-b border-kvk-gray-700">
+                                    <td class="px-4 py-3 whitespace-nowrap font-bold text-gray-200">{{ name }}</td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-gray-300">{{ "%.0f"|format(data.total_resources) }}</td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-gray-300">{{ data.submissions_count }}</td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-gray-300">{{ data.assigned_count }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submissions List -->
+            <div class="bg-kvk-gray-800 p-6 rounded-xl shadow-md border border-kvk-gray-700">
+                <h2 class="text-2xl font-bold mb-4 text-gray-100">Submissions: <span class="capitalize">{{ day }}</span></h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full">
+                        <thead class="border-b border-kvk-gray-700">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Player</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Alliance</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Score</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Status</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Assigned Slot / Manual Set</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sub in submissions_by_day[day] %}
+                                {% set assignment = assignments_by_sub_id.get((sub.day_type, sub.player_id)) %}
+                                <tr class="border-b border-kvk-gray-700">
+                                    <td class="px-4 py-3 whitespace-nowrap text-gray-200">{{ sub.player_name }} ({{ sub.player_id }})</td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-gray-300">{{ sub.alliance_name }}</td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-gray-300">{{ "%.0f"|format(sub.resources) }}</td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-gray-300">{{ sub.status }}</td>
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        {% if assignment %}
+                                            <span class="font-bold text-gray-200">{{ slot_labels[assignment.slot_index] }}</span>
+                                        {% else %}
+                                            <form action="{{ url_for('manual_assign', event_uid=event.uid) }}" method="POST" class="flex items-center">
+                                                <input type="hidden" name="secret" value="{{ secret }}">
+                                                <input type="hidden" name="submission_id" value="{{ sub.id }}">
+                                                <select name="slot_index" class="w-36 bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-sm text-gray-200 focus:border-kvk-gold focus:ring-kvk-gold">
+                                                    <option value="">Select slot...</option>
+                                                    {% for slot_index in available_slots[day] %}
+                                                        <option value="{{ slot_index }}">{{ slot_labels[slot_index] }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                                <button type="submit" class="ml-2 text-xs bg-kvk-gray-600 text-white px-2 py-1 rounded hover:bg-kvk-gray-500">Set</button>
+                                            </form>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-4 py-3 whitespace-nowrap">
+                                        <form action="{{ url_for('delete', event_uid=event.uid) }}" method="POST">
+                                            <input type="hidden" name="secret" value="{{ secret }}">
+                                            <input type="hidden" name="submission_id" value="{{ sub.id }}">
+                                            <button type="submit" class="text-red-500 hover:text-red-400">Delete</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const tabs = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const target = document.getElementById(tab.dataset.target);
+
+                tabContents.forEach(tc => {
+                    tc.classList.add('hidden');
+                });
+                target.classList.remove('hidden');
+
+                tabs.forEach(t => {
+                    t.classList.remove('border-kvk-gold', 'text-kvk-gold');
+                    t.classList.add('border-transparent', 'text-gray-400', 'hover:text-gray-200', 'hover:border-gray-300');
+                });
+                tab.classList.add('border-kvk-gold', 'text-kvk-gold');
+                tab.classList.remove('border-transparent', 'text-gray-400', 'hover:text-gray-200', 'hover:border-gray-300');
+            });
+        });
+
+        // Auto-click the first tab
+        if (tabs.length > 0) {
+            tabs[0].click();
+        }
+    });
+</script>
+</body>
+</html>

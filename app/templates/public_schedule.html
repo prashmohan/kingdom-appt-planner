@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schedule for {{ event.name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        'kvk-gold': '#FBBF24',
+                        'kvk-blue': '#3B82F6',
+                        'kvk-gray': {
+                            700: '#374151',
+                            800: '#1F2937',
+                            900: '#111827',
+                        },
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .slot {
+            border: 1px solid #374151; /* kvk-gray-700 */
+            min-height: 80px;
+            position: relative;
+            font-size: 0.75rem;
+        }
+        .slot-time {
+            font-weight: bold;
+            font-size: 0.8rem;
+            text-align: center;
+            padding: 2px;
+            background-color: #1F2937; /* kvk-gray-800 */
+        }
+        .slot-pending { background-color: #45331d; }
+        .slot-locked { background-color: #1e3a8a; } 
+    </style>
+</head>
+<body class="bg-kvk-gray-900 text-gray-200 antialiased">
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+        <header class="text-center mb-10">
+            <h1 class="text-4xl md:text-5xl font-bold text-kvk-gold">{{ event.name }}</h1>
+            <p class="text-lg text-gray-400 mt-2">Public Schedule</p>
+        </header>
+        
+        <div class="mb-6 p-4 bg-kvk-gray-800 rounded-lg shadow-md border border-kvk-gray-700">
+            <div class="flex items-center justify-center space-x-6">
+                <div class="flex items-center">
+                    <div class="w-4 h-4 mr-2 rounded" style="background-color: #1e3a8a;"></div>
+                    <span class="text-gray-300">Confirmed</span>
+                </div>
+                <div class="flex items-center">
+                    <div class="w-4 h-4 mr-2 rounded" style="background-color: #45331d;"></div>
+                    <span class="text-gray-300">Pending</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="space-y-8">
+            {% for day in active_days %}
+            <div class="bg-kvk-gray-800 p-6 rounded-xl shadow-lg border border-kvk-gray-700">
+                <h2 class="text-2xl font-bold mb-4 capitalize text-gray-100">{{ day }} Schedule</h2>
+                <div class="grid grid-cols-7 gap-1">
+                    {% for i in range(49) %}
+                    {% set day_assignments = assignments.get(day, {}) %}
+                    {% set current_assignment = day_assignments.get(i) %}
+                    <div class="slot rounded {% if current_assignment %}{% if current_assignment.is_locked %}slot-locked{% else %}slot-pending{% endif %}{% endif %}">
+                        <div class="slot-time rounded-t">{{ slot_labels[i] }}</div>
+                        {% if current_assignment %}
+                            <div class="p-1">
+                                <p class="font-bold text-center text-gray-100">{{ current_assignment.player_id }}</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="text-center mt-8">
+             <a href="{{ url_for('index') }}" class="text-kvk-gold hover:underline">Create a new event</a>
+        </div>
+    </div>
+</body>
+</html>

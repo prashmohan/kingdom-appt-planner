@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submit for {{ event.name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        'kvk-gold': '#FBBF24', // Amber-400
+                        'kvk-gray': {
+                            700: '#374151',
+                            800: '#1F2937',
+                            900: '#111827',
+                        },
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .slot {
+            border: 1px solid #374151; /* kvk-gray-700 */
+            position: relative;
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.2s;
+            border-radius: 0.25rem;
+        }
+        .slot:before {
+            content: "";
+            display: block;
+            padding-top: 100%;
+        }
+        .slot.selected {
+            background-color: #FBBF24; /* kvk-gold */
+            border-color: #FBBF24;
+        }
+        .slot.selected .slot-content {
+            color: #111827; /* kvk-gray-900 */
+        }
+        .slot-content {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            line-height: 1;
+        }
+    </style>
+</head>
+<body class="bg-kvk-gray-900 text-gray-200 antialiased">
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+        <header class="text-center mb-10">
+            <h1 class="text-4xl md:text-5xl font-bold text-kvk-gold">Submission Form</h1>
+            <p class="text-lg text-gray-400 mt-2">{{ event.name }}</p>
+        </header>
+
+        <form action="/event/{{ event.uid }}/submit" method="POST" class="bg-kvk-gray-800 p-6 rounded-xl shadow-lg border border-kvk-gray-700">
+            
+            <div class="p-4 border-b border-kvk-gray-700">
+                <h2 class="text-2xl font-bold text-gray-100 mb-4">Your Information</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <label for="player_name" class="block text-sm font-medium text-gray-300 mb-1">Player Name</label>
+                        <input type="text" name="player_name" id="player_name" required class="mt-1 block w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md shadow-sm text-gray-200 focus:border-kvk-gold focus:ring focus:ring-kvk-gold focus:ring-opacity-50">
+                    </div>
+                    <div>
+                        <label for="player_id" class="block text-sm font-medium text-gray-300 mb-1">Player ID</label>
+                        <input type="text" name="player_id" id="player_id" required class="mt-1 block w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md shadow-sm text-gray-200 focus:border-kvk-gold focus:ring focus:ring-kvk-gold focus:ring-opacity-50">
+                    </div>
+                    <div>
+                        <label for="alliance_name" class="block text-sm font-medium text-gray-300 mb-1">Alliance</label>
+                        <input type="text" name="alliance_name" id="alliance_name" class="mt-1 block w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md shadow-sm text-gray-200 focus:border-kvk-gold focus:ring focus:ring-kvk-gold focus:ring-opacity-50">
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {% if event.active_days.construction %}
+                <div class="p-4 rounded-lg bg-kvk-gray-900 border border-kvk-gray-700">
+                    <h3 class="font-bold text-xl mb-2 text-amber-400">Day 1: Construction</h3>
+                    <p class="text-sm text-gray-400 mb-4">Enter resources and select availability.</p>
+                    <div class="space-y-4 mb-4">
+                        <div>
+                            <label for="speedups-construction" class="block text-sm font-medium text-gray-300">Speedups (Minutes)</label>
+                            <input type="number" name="speedups-construction" id="speedups-construction" min="0" class="mt-1 block w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200">
+                        </div>
+                        <div>
+                            <label for="truegold" class="block text-sm font-medium text-gray-300">TrueGold</label>
+                            <input type="number" name="truegold" id="truegold" min="0" class="mt-1 block w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200">
+                        </div>
+                    </div>
+                    <div id="slot-grid-construction" class="grid grid-cols-7 gap-1 mb-4">
+                        {% for i in range(49) %}<div class="slot" data-index="{{ i }}"><div class="slot-content">{{ slot_labels[i] }}</div></div>{% endfor %}
+                    </div>
+                    <input type="hidden" name="slots-construction" id="slots-input-construction">
+                </div>
+                {% endif %}
+
+                {% if event.active_days.training %}
+                <div class="p-4 rounded-lg bg-kvk-gray-900 border border-kvk-gray-700">
+                    <h3 class="font-bold text-xl mb-2 text-red-500">Day 4: Troop Training</h3>
+                    <p class="text-sm text-gray-400 mb-4">Enter resources and select availability.</p>
+                    <div class="mb-4">
+                        <label for="speedups-training" class="block text-sm font-medium text-gray-300">Speedups (Minutes)</label>
+                        <input type="number" name="speedups-training" id="speedups-training" min="0" class="mt-1 block w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200">
+                    </div>
+                    <div id="slot-grid-training" class="grid grid-cols-7 gap-1 mb-4">
+                        {% for i in range(49) %}<div class="slot" data-index="{{ i }}"><div class="slot-content">{{ slot_labels[i] }}</div></div>{% endfor %}
+                    </div>
+                    <input type="hidden" name="slots-training" id="slots-input-training">
+                </div>
+                {% endif %}
+                
+                {% if event.active_days.research %}
+                <div class="p-4 rounded-lg bg-kvk-gray-900 border border-kvk-gray-700">
+                    <h3 class="font-bold text-xl mb-2 text-blue-500">Day 5: Research</h3>
+                    <p class="text-sm text-gray-400 mb-4">Enter resources and select availability.</p>
+                     <div class="space-y-4 mb-4">
+                        <div>
+                            <label for="speedups-research" class="block text-sm font-medium text-gray-300">Speedups (Minutes)</label>
+                            <input type="number" name="speedups-research" id="speedups-research" min="0" class="mt-1 block w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200">
+                        </div>
+                        <div>
+                            <label for="truegold_dust" class="block text-sm font-medium text-gray-300">TrueGold Dust</label>
+                            <input type="number" name="truegold_dust" id="truegold_dust" min="0" class="mt-1 block w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200">
+                        </div>
+                    </div>
+                    <div id="slot-grid-research" class="grid grid-cols-7 gap-1 mb-4">
+                        {% for i in range(49) %}<div class="slot" data-index="{{ i }}"><div class="slot-content">{{ slot_labels[i] }}</div></div>{% endfor %}
+                    </div>
+                    <input type="hidden" name="slots-research" id="slots-input-research">
+                </div>
+                {% endif %}
+            </div>
+
+            <button type="submit" class="mt-6 w-full bg-kvk-gold text-kvk-gray-900 font-bold py-3 px-4 rounded-md hover:bg-amber-500 transition duration-300">Submit All Entries</button>
+        </form>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            
+            function initializeGrid(gridId) {
+                const grid = document.getElementById(gridId);
+                if (!grid) return;
+
+                const slotsInput = document.getElementById(gridId.replace('slot-grid', 'slots-input'));
+                let isMouseDown = false;
+
+                grid.addEventListener('mousedown', function (e) {
+                    if (e.target.classList.contains('slot') || e.target.parentElement.classList.contains('slot')) {
+                        e.preventDefault();
+                        isMouseDown = true;
+                        toggleSlot(e.target);
+                    }
+                });
+
+                grid.addEventListener('mouseover', function (e) {
+                    if (isMouseDown && (e.target.classList.contains('slot') || e.target.parentElement.classList.contains('slot'))) {
+                        toggleSlot(e.target);
+                    }
+                });
+
+                document.addEventListener('mouseup', function () {
+                    isMouseDown = false;
+                });
+                
+                function toggleSlot(element) {
+                    if (!element.classList.contains('slot')) {
+                        element = element.parentElement;
+                    }
+                    element.classList.toggle('selected');
+                    updateSlotsInput();
+                }
+
+                function updateSlotsInput() {
+                    const selectedSlots = [];
+                    grid.querySelectorAll('.slot.selected').forEach(slot => {
+                        selectedSlots.push(parseInt(slot.dataset.index));
+                    });
+                    slotsInput.value = JSON.stringify(selectedSlots);
+                }
+                
+                updateSlotsInput();
+            }
+
+            initializeGrid('slot-grid-construction');
+            initializeGrid('slot-grid-training');
+            initializeGrid('slot-grid-research');
+        });
+    </script>
+</body>
+</html>

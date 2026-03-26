@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Created Successfully</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        'kvk-gold': '#FBBF24', // Amber-400
+                        'kvk-gray': {
+                            700: '#374151',
+                            800: '#1F2937',
+                            900: '#111827',
+                        },
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-kvk-gray-900 text-gray-200 antialiased">
+    <div class="container mx-auto p-4 md:p-8 max-w-4xl">
+        <div class="bg-kvk-gray-800 p-6 rounded-xl shadow-lg border border-kvk-gray-700 text-center">
+            <h1 class="text-3xl font-bold mb-4 text-green-400">Event Created Successfully!</h1>
+            <p class="mb-6 text-gray-300">Share the following URLs with your kingdom members and administrators. <strong class="text-red-400 font-bold">Save the Admin URL, as it cannot be recovered!</strong></p>
+            
+            <div class="mb-6 text-left">
+                <h2 class="text-xl font-bold mb-2 text-kvk-gold">Player URL</h2>
+                <p class="mb-2 text-gray-400">Share this URL with players to submit their availability and resources.</p>
+                <input type="text" readonly value="{{ player_url }}" class="mt-1 block w-full bg-kvk-gray-900 border-kvk-gray-700 rounded-md shadow-sm text-gray-200" onclick="this.select();">
+            </div>
+            
+            <div class="text-left">
+                <h2 class="text-xl font-bold mb-2 text-kvk-gold">Admin URL</h2>
+                <p class="mb-2 text-gray-400">Use this URL to manage the event, view submissions, and run the scheduler.</p>
+                <input type="text" readonly value="{{ admin_url }}" class="mt-1 block w-full bg-kvk-gray-900 border-kvk-gray-700 rounded-md shadow-sm text-gray-200" onclick="this.select();">
+            </div>
+        </div>
+    </div>
+</body>
+</html>
