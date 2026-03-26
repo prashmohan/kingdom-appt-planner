@@ -339,6 +339,10 @@ def create_app():
                     day_summary[alliance_name]["assigned_count"] += 1
             alliance_summary[day] = day_summary
 
+        # Generate URLs for the admin dashboard links
+        player_url = url_for("player_form", event_uid=event_uid, _external=True)
+        finalized_url = url_for("locked_appointments", event_uid=event_uid, _external=True)
+
         return render_template(
             "admin_dashboard.html",
             event=event,
@@ -351,6 +355,8 @@ def create_app():
             slot_density=slot_density,
             max_density=max_density,
             alliance_summary=alliance_summary,
+            player_url=player_url,
+            finalized_url=finalized_url,
         )
 
     @app.route("/event/<event_uid>/schedule")

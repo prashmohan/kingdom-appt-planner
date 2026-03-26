@@ -57,12 +57,18 @@
         </header>
 
         <!-- Main Actions -->
-        <div class="bg-kvk-gray-800 border border-kvk-gray-700 p-4 rounded-xl shadow-md mb-6">
-            <h2 class="text-xl font-bold mb-2 text-gray-100">Global Actions</h2>
-            <form action="{{ url_for('distribute', event_uid=event.uid) }}" method="POST" class="inline">
-                <input type="hidden" name="secret" value="{{ secret }}">
-                <button type="submit" class="bg-kvk-gold text-kvk-gray-900 font-bold py-2 px-4 rounded-md hover:bg-amber-500 transition duration-300">Run/Trigger Full Redistribution</button>
-            </form>
+        <div class="bg-kvk-gray-800 border border-kvk-gray-700 p-4 rounded-xl shadow-md mb-6 flex flex-wrap items-center justify-between gap-4">
+            <div>
+                <h2 class="text-xl font-bold mb-2 text-gray-100">Global Actions</h2>
+                <form action="{{ url_for('distribute', event_uid=event.uid) }}" method="POST" class="inline">
+                    <input type="hidden" name="secret" value="{{ secret }}">
+                    <button type="submit" class="bg-kvk-gold text-kvk-gray-900 font-bold py-2 px-4 rounded-md hover:bg-amber-500 transition duration-300">Run/Trigger Full Redistribution</button>
+                </form>
+            </div>
+            <div class="flex space-x-4">
+                <a href="{{ player_url }}" target="_blank" class="bg-kvk-blue text-white font-bold py-2 px-4 rounded-md hover:bg-blue-600 transition duration-300">Player Form</a>
+                <a href="{{ finalized_url }}" target="_blank" class="bg-green-600 text-white font-bold py-2 px-4 rounded-md hover:bg-green-700 transition duration-300">Finalized Schedule</a>
+            </div>
         </div>
 
         <!-- Tab Buttons -->
