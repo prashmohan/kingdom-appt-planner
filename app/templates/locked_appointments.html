@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finalized Schedule - {{ event.name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        'kvk-gold': '#FBBF24',
+                        'kvk-blue': '#3B82F6',
+                        'kvk-gray': {
+                            700: '#374151',
+                            800: '#1F2937',
+                            900: '#111827',
+                        },
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .slot {
+            border: 1px solid #374151;
+            min-height: 100px;
+            position: relative;
+            font-size: 0.75rem;
+            display: flex;
+            flex-direction: column;
+        }
+        .slot-time {
+            font-weight: bold;
+            font-size: 0.8rem;
+            text-align: center;
+            padding: 2px;
+            background-color: #1F2937;
+            border-bottom: 1px solid #374151;
+        }
+        .slot-locked { 
+            background-color: #1e3a8a; 
+        }
+        .slot-empty {
+            background-color: #111827;
+            opacity: 0.5;
+        }
+        .slot-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 0.25rem;
+            text-align: center;
+        }
+    </style>
+</head>
+<body class="bg-kvk-gray-900 text-gray-200 antialiased">
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+        <header class="text-center mb-10">
+            <h1 class="text-4xl md:text-5xl font-bold text-kvk-gold">Finalized Schedule</h1>
+            <p class="text-lg text-gray-400 mt-2">{{ event.name }}</p>
+        </header>
+
+        <!-- Tab Buttons -->
+        <div class="mb-6 border-b border-kvk-gray-700">
+            <nav class="-mb-px flex justify-center space-x-8" aria-label="Tabs">
+                {% for day in active_days %}
+                <button class="tab-button whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200" data-target="tab-{{day}}">
+                    {{ day|capitalize }}
+                </button>
+                {% endfor %}
+            </nav>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="space-y-8">
+            {% for day in active_days %}
+            <div id="tab-{{day}}" class="tab-content hidden animate-fade-in">
+                <div class="bg-kvk-gray-800 p-6 rounded-xl shadow-lg border border-kvk-gray-700">
+                    <h2 class="text-2xl font-bold mb-6 text-center text-gray-100 capitalize">{{ day }} Final Schedule</h2>
+                    
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2">
+                        {% for i in range(49) %}
+                        {% set assignment = assignments.get(day, {}).get(i) %}
+                        <div class="slot rounded-lg overflow-hidden {% if assignment %}slot-locked shadow-lg border-blue-500/50{% else %}slot-empty{% endif %}">
+                            <div class="slot-time">{{ slot_labels[i] }}</div>
+                            <div class="slot-content">
+                                {% if assignment %}
+                                    <p class="font-bold text-kvk-gold text-sm">[{{ assignment.alliance_name }}]</p>
+                                    <p class="text-gray-100 font-medium break-words px-1">{{ assignment.player_name }}</p>
+                                {% else %}
+                                    <span class="text-gray-600 text-[0.6rem] uppercase tracking-wider">Unassigned</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="text-center mt-12">
+             <a href="{{ url_for('index') }}" class="text-kvk-gold hover:text-amber-300 transition-colors duration-200 font-medium border border-kvk-gold/30 px-6 py-2 rounded-full hover:border-kvk-gold">Return to Home</a>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const tabs = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const target = document.getElementById(tab.dataset.target);
+
+                    tabContents.forEach(tc => {
+                        tc.classList.add('hidden');
+                    });
+                    target.classList.remove('hidden');
+
+                    tabs.forEach(t => {
+                        t.classList.remove('border-kvk-gold', 'text-kvk-gold');
+                        t.classList.add('border-transparent', 'text-gray-400', 'hover:text-gray-200', 'hover:border-gray-300');
+                    });
+                    tab.classList.add('border-kvk-gold', 'text-kvk-gold');
+                    tab.classList.remove('border-transparent', 'text-gray-400', 'hover:text-gray-200', 'hover:border-gray-300');
+                });
+            });
+
+            // Auto-click the first tab
+            if (tabs.length > 0) {
+                tabs[0].click();
+            }
+        });
+    </script>
+</body>
+</html>

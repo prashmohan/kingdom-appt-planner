@@ -70,9 +70,59 @@ def create_app():
         admin_url = url_for(
             "admin_dashboard", event_uid=event_uid, secret=secret, _external=True
         )
+        finalized_url = url_for("locked_appointments", event_uid=event_uid, _external=True)
 
         return render_template(
-            "success.html", player_url=player_url, admin_url=admin_url
+            "success.html", player_url=player_url, admin_url=admin_url, finalized_url=finalized_url
+        )
+
+    @app.route("/event/<event_uid>/finalized")
+    def locked_appointments(event_uid):
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        event = db.execute("SELECT * FROM events WHERE uid = ?", (event_uid,)).fetchone()
+
+        if event is None:
+            return "Event not found", 404
+
+        active_days = [
+            day
+            for day, is_active in json.loads(event["active_days"]).items()
+            if is_active
+        ]
+
+        # Fetch only locked assignments
+        assignments_raw = db.execute(
+            "SELECT * FROM assignments WHERE event_uid = ? AND is_locked = 1",
+            (event_uid,),
+        ).fetchall()
+
+        # Fetch submissions to get player/alliance names
+        submissions_raw = db.execute(
+            "SELECT * FROM submissions WHERE event_uid = ?", (event_uid,)
+        ).fetchall()
+        submissions_map = {
+            (sub["day_type"], sub["player_id"]): sub for sub in submissions_raw
+        }
+
+        # Group rich assignments by day_type
+        locked_assignments = {day: {} for day in active_days}
+        for a in assignments_raw:
+            day_type = a["day_type"]
+            player_id = a["player_id"]
+            if day_type in locked_assignments:
+                submission = submissions_map.get((day_type, player_id))
+                if submission:
+                    locked_assignments[day_type][a["slot_index"]] = {
+                        "player_name": submission["player_name"],
+                        "alliance_name": submission["alliance_name"],
+                    }
+
+        return render_template(
+            "locked_appointments.html",
+            event=event,
+            active_days=active_days,
+            assignments=locked_assignments,
         )
 
     @app.route("/event/<event_uid>")
