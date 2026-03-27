@@ -167,7 +167,9 @@
                             {% for sub in submissions_by_day[day] %}
                                 {% set assignment = assignments_by_sub_id.get((sub.day_type, sub.player_id)) %}
                                 <tr class="border-b border-kvk-gray-700">
-                                    <td class="px-4 py-3 whitespace-nowrap text-gray-200">{{ sub.player_name }} ({{ sub.player_id }})</td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-gray-200 cursor-help" title="Requested Slots: {{ sub.requested_slots_text }}">
+                                        {{ sub.player_name }} ({{ sub.player_id }})
+                                    </td>
                                     <td class="px-4 py-3 whitespace-nowrap text-gray-300">{{ sub.alliance_name }}</td>
                                     <td class="px-4 py-3 whitespace-nowrap text-gray-300">{{ "%.0f"|format(sub.resources) }}</td>
                                     <td class="px-4 py-3 whitespace-nowrap text-gray-300">{{ sub.status }}</td>

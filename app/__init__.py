@@ -301,16 +301,23 @@ def create_app():
         alliance_summary = {day: {} for day in active_days}
 
         for day in active_days:
-            # Heatmap
+            # Heatmap & Requested Slots Text
             for sub in submissions_by_day[day]:
                 if not sub["feasible_slots"]:
+                    sub["requested_slots_text"] = "No slots selected"
                     continue
                 try:
                     feasible_slots = json.loads(sub["feasible_slots"])
+                    # Create human readable labels for hover text
+                    labels = generate_slot_labels()
+                    requested_labels = [labels[i] for i in feasible_slots if 0 <= i < 49]
+                    sub["requested_slots_text"] = ", ".join(requested_labels) if requested_labels else "No slots selected"
+
                     for slot_index in feasible_slots:
                         if 0 <= slot_index < 49:
                             slot_density[day][slot_index] += 1
                 except (json.JSONDecodeError, TypeError):
+                    sub["requested_slots_text"] = "Error parsing slots"
                     pass
             max_density[day] = max(slot_density[day]) if any(slot_density[day]) else 1
 
