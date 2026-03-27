@@ -120,45 +120,52 @@
                     </div>
                 </div>
                 
-                <!-- Alliance Summary -->
-                <div class="bg-kvk-gray-800 p-6 rounded-xl shadow-md border border-kvk-gray-700">
-                    <h2 class="text-2xl font-bold mb-4 text-gray-100">Alliance Impact: <span class="capitalize">{{ day }}</span></h2>
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full">
-                            <thead class="border-b border-kvk-gray-700">
-                                <tr>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Alliance</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Total Score</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Submissions</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Assignments</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for name, data in alliance_summary[day].items() %}
-                                <tr class="border-b border-kvk-gray-700">
-                                    <td class="px-4 py-3 whitespace-nowrap font-bold text-gray-200">{{ name }}</td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-gray-300">{{ "%.0f"|format(data.total_resources) }}</td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-gray-300">{{ data.submissions_count }}</td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-gray-300">{{ data.assigned_count }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Submissions List -->
+            <!-- Alliance Summary -->
             <div class="bg-kvk-gray-800 p-6 rounded-xl shadow-md border border-kvk-gray-700">
-                <h2 class="text-2xl font-bold mb-4 text-gray-100">Submissions: <span class="capitalize">{{ day }}</span></h2>
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold text-gray-100">Alliance Impact: <span class="capitalize">{{ day }}</span></h2>
+                    <input type="text" placeholder="Search alliance..." class="bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-sm text-gray-200 px-3 py-1 focus:ring-kvk-gold focus:border-kvk-gold" oninput="filterTable(this, 'alliance-table-{{day}}')">
+                </div>
                 <div class="overflow-x-auto">
-                    <table class="min-w-full">
+                    <table class="min-w-full" id="alliance-table-{{day}}">
                         <thead class="border-b border-kvk-gray-700">
                             <tr>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Player</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Alliance</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Score</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Status</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-kvk-gold transition-colors" onclick="sortTable('alliance-table-{{day}}', 0)">Alliance ↕</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-kvk-gold transition-colors" onclick="sortTable('alliance-table-{{day}}', 1, true)">Total Score ↕</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-kvk-gold transition-colors" onclick="sortTable('alliance-table-{{day}}', 2, true)">Submissions ↕</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-kvk-gold transition-colors" onclick="sortTable('alliance-table-{{day}}', 3, true)">Assignments ↕</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for name, data in alliance_summary[day].items() %}
+                            <tr class="border-b border-kvk-gray-700">
+                                <td class="px-4 py-3 whitespace-nowrap font-bold text-gray-200">{{ name }}</td>
+                                <td class="px-4 py-3 whitespace-nowrap text-gray-300" data-value="{{ data.total_resources }}">{{ "%.0f"|format(data.total_resources) }}</td>
+                                <td class="px-4 py-3 whitespace-nowrap text-gray-300" data-value="{{ data.submissions_count }}">{{ data.submissions_count }}</td>
+                                <td class="px-4 py-3 whitespace-nowrap text-gray-300" data-value="{{ data.assigned_count }}">{{ data.assigned_count }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Submissions List -->
+        <div id="tab-{{day}}-subs" class="tab-content hidden mt-6">
+            <div class="bg-kvk-gray-800 p-6 rounded-xl shadow-md border border-kvk-gray-700">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold text-gray-100">Submissions: <span class="capitalize">{{ day }}</span></h2>
+                    <input type="text" placeholder="Search submissions..." class="bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-sm text-gray-200 px-3 py-1 focus:ring-kvk-gold focus:border-kvk-gold" oninput="filterTable(this, 'submissions-table-{{day}}')">
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full" id="submissions-table-{{day}}">
+                        <thead class="border-b border-kvk-gray-700">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-kvk-gold transition-colors" onclick="sortTable('submissions-table-{{day}}', 0)">Player ↕</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-kvk-gold transition-colors" onclick="sortTable('submissions-table-{{day}}', 1)">Alliance ↕</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-kvk-gold transition-colors" onclick="sortTable('submissions-table-{{day}}', 2, true)">Score ↕</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-kvk-gold transition-colors" onclick="sortTable('submissions-table-{{day}}', 3)">Status ↕</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Assigned Slot / Manual Set</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Actions</th>
                             </tr>
@@ -173,7 +180,7 @@
                                         </span>
                                     </td>
                                     <td class="px-4 py-3 whitespace-nowrap text-gray-300">{{ sub.alliance_name }}</td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-gray-300">{{ "%.0f"|format(sub.resources) }}</td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-gray-300" data-value="{{ sub.resources }}">{{ "%.0f"|format(sub.resources) }}</td>
                                     <td class="px-4 py-3 whitespace-nowrap text-gray-300">{{ sub.status }}</td>
                                     <td class="px-4 py-3 whitespace-nowrap">
                                         {% if assignment %}
@@ -209,18 +216,87 @@
         {% endfor %}
     </div>
 <script>
+    function filterTable(input, tableId) {
+        const filter = input.value.toUpperCase();
+        const table = document.getElementById(tableId);
+        const tr = table.getElementsByTagName("tr");
+        for (let i = 1; i < tr.length; i++) {
+            let found = false;
+            const td = tr[i].getElementsByTagName("td");
+            for (let j = 0; j < td.length; j++) {
+                if (td[j]) {
+                    const txtValue = td[j].textContent || td[j].innerText;
+                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                        found = true;
+                        break;
+                    }
+                }
+            }
+            tr[i].style.display = found ? "" : "none";
+        }
+    }
+
+    function sortTable(tableId, n, isNumeric = false) {
+        const table = document.getElementById(tableId);
+        let switching = true;
+        let dir = "asc";
+        let switchcount = 0;
+        while (switching) {
+            switching = false;
+            const rows = table.rows;
+            for (var i = 1; i < (rows.length - 1); i++) {
+                var shouldSwitch = false;
+                const x = rows[i].getElementsByTagName("TD")[n];
+                const y = rows[i + 1].getElementsByTagName("TD")[n];
+                
+                let xVal = x.dataset.value || x.innerHTML.toLowerCase();
+                let yVal = y.dataset.value || y.innerHTML.toLowerCase();
+                
+                if (isNumeric) {
+                    xVal = parseFloat(xVal) || 0;
+                    yVal = parseFloat(yVal) || 0;
+                }
+
+                if (dir == "asc") {
+                    if (xVal > yVal) {
+                        shouldSwitch = true;
+                        break;
+                    }
+                } else if (dir == "desc") {
+                    if (xVal < yVal) {
+                        shouldSwitch = true;
+                        break;
+                    }
+                }
+            }
+            if (shouldSwitch) {
+                rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                switching = true;
+                switchcount++;
+            } else {
+                if (switchcount == 0 && dir == "asc") {
+                    dir = "desc";
+                    switching = true;
+                }
+            }
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         const tabs = document.querySelectorAll('.tab-button');
         const tabContents = document.querySelectorAll('.tab-content');
 
         tabs.forEach(tab => {
             tab.addEventListener('click', () => {
+                const day = tab.dataset.target.replace('tab-', '');
                 const target = document.getElementById(tab.dataset.target);
+                const subTarget = document.getElementById(`tab-${day}-subs`);
 
                 tabContents.forEach(tc => {
                     tc.classList.add('hidden');
                 });
                 target.classList.remove('hidden');
+                if (subTarget) subTarget.classList.remove('hidden');
 
                 tabs.forEach(t => {
                     t.classList.remove('border-kvk-gold', 'text-kvk-gold');
@@ -231,7 +307,6 @@
             });
         });
 
-        // Auto-click the first tab
         if (tabs.length > 0) {
             tabs[0].click();
         }
