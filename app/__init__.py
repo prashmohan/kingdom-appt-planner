@@ -1,8 +1,12 @@
 import uuid
 import json
 import sqlite3
+import mimetypes
 from flask import Flask, render_template, request, redirect, url_for, g
 from . import database, logic
+
+# Ensure .js files are served with the correct MIME type
+mimetypes.add_type('application/javascript', '.js')
 
 
 def generate_slot_labels():
@@ -266,9 +270,11 @@ def create_app():
             (event_uid,),
         ).fetchall()
         submissions_by_day = {day: [] for day in active_days}
-        for sub in submissions_raw:
-            if sub["day_type"] in submissions_by_day:
-                submissions_by_day[sub["day_type"]].append(sub)
+        for row in submissions_raw:
+            if row["day_type"] in submissions_by_day:
+                # Convert sqlite3.Row to a dictionary to allow item assignment
+                sub_dict = dict(row)
+                submissions_by_day[row["day_type"]].append(sub_dict)
 
         # 2. Group assignments and related data by day_type
         assignments_raw = db.execute(
@@ -276,6 +282,8 @@ def create_app():
         ).fetchall()
         rich_assignments = {day: {} for day in active_days}
         assignments_by_sub_id = {}
+        
+        # Use submissions_raw for the map since we only need read access here
         submissions_map = {
             (sub["day_type"], sub["player_id"]): sub for sub in submissions_raw
         }
@@ -300,6 +308,8 @@ def create_app():
         available_slots = {day: [] for day in active_days}
         alliance_summary = {day: {} for day in active_days}
 
+        slot_labels = generate_slot_labels()
+
         for day in active_days:
             # Heatmap & Requested Slots Text
             for sub in submissions_by_day[day]:
@@ -309,14 +319,13 @@ def create_app():
                 try:
                     feasible_slots = json.loads(sub["feasible_slots"])
                     # Create human readable labels for hover text
-                    labels = generate_slot_labels()
-                    requested_labels = [labels[i] for i in feasible_slots if 0 <= i < 49]
+                    requested_labels = [slot_labels[i] for i in feasible_slots if 0 <= i < 49]
                     sub["requested_slots_text"] = ", ".join(requested_labels) if requested_labels else "No slots selected"
 
                     for slot_index in feasible_slots:
                         if 0 <= slot_index < 49:
                             slot_density[day][slot_index] += 1
-                except (json.JSONDecodeError, TypeError):
+                except (json.JSONDecodeError, TypeError, KeyError):
                     sub["requested_slots_text"] = "Error parsing slots"
                     pass
             max_density[day] = max(slot_density[day]) if any(slot_density[day]) else 1
