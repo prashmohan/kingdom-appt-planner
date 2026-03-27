@@ -75,3 +75,26 @@ def test_algorithm_waitlist(app):
         # Player 2 should be waitlisted
         res = db.execute("SELECT status FROM submissions WHERE id = 'sub2'").fetchone()
         assert res[0] == 'Waitlisted'
+
+def test_algorithm_non_existent_event(app):
+    with app.app_context():
+        # Running algorithm on a non-existent UID should simply return (no crash)
+        logic.run_distribution_algorithm("none")
+
+def test_algorithm_empty_slots(app):
+    with app.app_context():
+        db = database.get_db()
+        event_uid = "empty-slots-test"
+        db.execute("INSERT INTO events (uid, name, active_days, admin_secret) VALUES (?, ?, ?, ?)",
+                   (event_uid, "Empty Test", json.dumps({"construction": True}), "secret"))
+        
+        # Player with empty slots
+        db.execute("INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?)",
+                   ("sub1", event_uid, "construction", "P1", "player1", "ALL1", 1000, "{}", "[]"))
+        
+        db.commit()
+        logic.run_distribution_algorithm(event_uid)
+        
+        # Should not be in assignments
+        a = db.execute("SELECT * FROM assignments WHERE player_id = 'player1'").fetchone()
+        assert a is None
