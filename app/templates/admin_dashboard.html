@@ -64,7 +64,7 @@
                     <div class="flex gap-2">
                         <form action="{{ url_for('distribute', event_uid=event.uid) }}" method="POST" class="inline">
                             <input type="hidden" name="secret" value="{{ secret }}">
-                            <button type="submit" class="bg-kvk-gold text-kvk-gray-900 font-bold py-2 px-4 rounded-md hover:bg-amber-500 transition duration-300">Run/Trigger Full Redistribution</button>
+                            <button type="submit" class="bg-kvk-gold text-kvk-gray-900 font-bold py-2 px-4 rounded-md hover:bg-amber-500 transition duration-300">Assign Appointments</button>
                         </form>
                         <form action="{{ url_for('refresh_players', event_uid=event.uid) }}" method="POST" class="inline">
                             <input type="hidden" name="secret" value="{{ secret }}">
