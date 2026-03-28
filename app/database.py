@@ -35,6 +35,7 @@ def init_db():
                 day_type TEXT NOT NULL,
                 player_name TEXT NOT NULL,
                 player_id TEXT NOT NULL,
+                avatar_url TEXT,
                 alliance_name TEXT,
                 resources REAL NOT NULL,
                 raw_data TEXT NOT NULL,

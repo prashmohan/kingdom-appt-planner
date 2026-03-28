@@ -175,9 +175,18 @@
                                 {% set assignment = assignments_by_sub_id.get((sub.day_type, sub.player_id)) %}
                                 <tr class="border-b border-kvk-gray-700">
                                     <td class="px-4 py-3 whitespace-nowrap text-gray-200">
-                                        <span class="cursor-help border-b border-dashed border-gray-500" title="Requested Slots: {{ sub.requested_slots_text }}">
-                                            {{ sub.player_name }} ({{ sub.player_id }})
-                                        </span>
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-8 h-8 rounded-full bg-kvk-gray-900 border border-kvk-gray-700 overflow-hidden flex-shrink-0">
+                                                {% if sub.avatar_url %}
+                                                    <img src="{{ sub.avatar_url }}" alt="" class="w-full h-full object-cover">
+                                                {% else %}
+                                                    <div class="w-full h-full flex items-center justify-center text-xs text-gray-500">?</div>
+                                                {% endif %}
+                                            </div>
+                                            <span class="cursor-help border-b border-dashed border-gray-500" title="Requested Slots: {{ sub.requested_slots_text }}">
+                                                {{ sub.player_name }} ({{ sub.player_id }})
+                                            </span>
+                                        </div>
                                     </td>
                                     <td class="px-4 py-3 whitespace-nowrap text-gray-300">{{ sub.alliance_name }}</td>
                                     <td class="px-4 py-3 whitespace-nowrap text-gray-300" data-value="{{ sub.resources }}">{{ "%.0f"|format(sub.resources) }}</td>

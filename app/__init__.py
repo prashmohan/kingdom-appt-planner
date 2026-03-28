@@ -1,8 +1,15 @@
 import uuid
 import json
 import sqlite3
-from flask import Flask, render_template, request, redirect, url_for, g
+import hashlib
+import time
+import requests
+import mimetypes
+from flask import Flask, render_template, request, redirect, url_for, g, jsonify
 from . import database, logic
+
+# Ensure .js files are served with the correct MIME type
+mimetypes.add_type("application/javascript", ".js")
 
 
 def generate_slot_labels():
@@ -42,6 +49,50 @@ def create_app():
     @app.route("/")
     def index():
         return render_template("index.html")
+
+    @app.route("/favicon.ico")
+    def favicon():
+        return "", 204
+
+    @app.route("/api/proxy/player", methods=["POST"])
+    def proxy_player():
+        fid = request.json.get("fid")
+        if not fid:
+            return jsonify({"error": "Missing fid"}), 400
+
+        # Generate Signature based on analyzed code
+        t = int(time.time() * 1000)
+        secret = "mN4!pQs6JrYwV9"
+        sign_str = f"fid={fid}&time={t}{secret}"
+        sign = hashlib.md5(sign_str.encode()).hexdigest()
+
+        print(f"DEBUG: Fetching player info for fid={fid}, time={t}")
+
+        try:
+            resp = requests.post(
+                "https://kingshot-giftcode.centurygame.com/api/player",
+                data={"fid": fid, "time": t, "sign": sign},
+                timeout=5,
+            )
+            print(f"DEBUG: API Response status_code={resp.status_code}")
+            data = resp.json()
+            print(f"DEBUG: API Response data={data}")
+
+            # The API returns success when "code" is 0
+            if data.get("code") == 0:
+                # The actual player data is nested inside another "data" key
+                inner_data = data.get("data", {})
+                return jsonify(
+                    {
+                        "nickname": inner_data.get("nickname"),
+                        "avatar_url": inner_data.get("avatar_image"),
+                    }
+                )
+            else:
+                return jsonify({"error": data.get("msg", "Player not found")}), 404
+        except Exception as e:
+            print(f"DEBUG: Proxy Error: {str(e)}")
+            return jsonify({"error": str(e)}), 500
 
     @app.route("/create", methods=["POST"])
     def create_event():
@@ -116,6 +167,7 @@ def create_app():
                     locked_assignments[day_type][a["slot_index"]] = {
                         "player_name": submission["player_name"],
                         "alliance_name": submission["alliance_name"],
+                        "avatar_url": submission["avatar_url"],
                     }
 
         return render_template(
@@ -159,6 +211,7 @@ def create_app():
         # Then, insert the new submissions from the form.
         player_name = request.form["player_name"]
         alliance_name = request.form["alliance_name"]
+        avatar_url = request.form.get("avatar_url")
 
         # --- Process Construction Submission ---
         construction_speedups = int(request.form.get("speedups-construction") or 0)
@@ -170,13 +223,14 @@ def create_app():
             raw_data = {"speedups": construction_speedups, "truegold": truegold}
             submission_id = f"{event_uid}_{player_id}_{day_type}"
             db.execute(
-                "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, avatar_url, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?,?)",
                 (
                     submission_id,
                     event_uid,
                     day_type,
                     player_name,
                     player_id,
+                    avatar_url,
                     alliance_name,
                     score,
                     json.dumps(raw_data),
@@ -193,13 +247,14 @@ def create_app():
             raw_data = {"speedups": training_speedups}
             submission_id = f"{event_uid}_{player_id}_{day_type}"
             db.execute(
-                "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, avatar_url, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?,?)",
                 (
                     submission_id,
                     event_uid,
                     day_type,
                     player_name,
                     player_id,
+                    avatar_url,
                     alliance_name,
                     score,
                     json.dumps(raw_data),
@@ -217,13 +272,14 @@ def create_app():
             raw_data = {"speedups": research_speedups, "truegold_dust": truegold_dust}
             submission_id = f"{event_uid}_{player_id}_{day_type}"
             db.execute(
-                "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, avatar_url, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?,?)",
                 (
                     submission_id,
                     event_uid,
                     day_type,
                     player_name,
                     player_id,
+                    avatar_url,
                     alliance_name,
                     score,
                     json.dumps(raw_data),
@@ -292,6 +348,7 @@ def create_app():
                         "player_id": player_id,
                         "player_name": submission["player_name"],
                         "alliance_name": submission["alliance_name"],
+                        "avatar_url": submission["avatar_url"],
                         "is_locked": a["is_locked"],
                     }
             assignments_by_sub_id[(a["day_type"], a["player_id"])] = a
