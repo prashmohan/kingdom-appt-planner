@@ -9,6 +9,11 @@ def test_index_route(client):
     assert response.status_code == 200
     assert b"Kingdom Appointment Planner" in response.data
 
+def test_guide_route(client):
+    response = client.get('/guide')
+    assert response.status_code == 200
+    assert b"User Guide" in response.data or b"Tutorial" in response.data
+
 def test_favicon(client):
     response = client.get('/favicon.ico')
     assert response.status_code == 204

@@ -5,6 +5,7 @@ import hashlib
 import time
 import requests
 import mimetypes
+import markdown
 from flask import Flask, render_template, request, redirect, url_for, g, jsonify
 from . import database, logic
 
@@ -76,6 +77,16 @@ def create_app():
     @app.route("/")
     def index():
         return render_template("index.html")
+
+    @app.route("/guide")
+    def guide():
+        try:
+            with open("README.md", "r", encoding="utf-8") as f:
+                content = f.read()
+            html_content = markdown.markdown(content, extensions=['extra', 'toc'])
+            return render_template("guide.html", content=html_content)
+        except FileNotFoundError:
+            return "Guide not found", 404
 
     @app.route("/favicon.ico")
     def favicon():
