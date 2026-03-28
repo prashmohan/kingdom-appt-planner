@@ -54,45 +54,76 @@ def create_app():
     def favicon():
         return "", 204
 
+def fetch_player_info(fid):
+    # Generate Signature based on analyzed code
+    t = int(time.time() * 1000)
+    secret = "mN4!pQs6JrYwV9"
+    sign_str = f"fid={fid}&time={t}{secret}"
+    sign = hashlib.md5(sign_str.encode()).hexdigest()
+
+    try:
+        resp = requests.post(
+            "https://kingshot-giftcode.centurygame.com/api/player",
+            data={"fid": fid, "time": t, "sign": sign},
+            timeout=5,
+        )
+        data = resp.json()
+
+        # The API returns success when "code" is 0
+        if data.get("code") == 0:
+            inner_data = data.get("data", {})
+            return {
+                "nickname": inner_data.get("nickname"),
+                "avatar_url": inner_data.get("avatar_image"),
+            }
+    except Exception as e:
+        print(f"DEBUG: Fetch Error for fid {fid}: {str(e)}")
+    return None
+
+
+def create_app():
+...
     @app.route("/api/proxy/player", methods=["POST"])
     def proxy_player():
         fid = request.json.get("fid")
         if not fid:
             return jsonify({"error": "Missing fid"}), 400
 
-        # Generate Signature based on analyzed code
-        t = int(time.time() * 1000)
-        secret = "mN4!pQs6JrYwV9"
-        sign_str = f"fid={fid}&time={t}{secret}"
-        sign = hashlib.md5(sign_str.encode()).hexdigest()
+        print(f"DEBUG: Fetching player info for fid={fid}")
+        player_info = fetch_player_info(fid)
+        
+        if player_info:
+            return jsonify(player_info)
+        else:
+            return jsonify({"error": "Player not found or API error"}), 404
 
-        print(f"DEBUG: Fetching player info for fid={fid}, time={t}")
+    @app.route("/admin/<event_uid>/refresh_players", methods=["POST"])
+    def refresh_players(event_uid):
+        secret = request.form.get("secret")
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        event = db.execute(
+            "SELECT * FROM events WHERE uid = ?", (event_uid,)
+        ).fetchone()
+        if event["admin_secret"] != secret:
+            return "Forbidden", 403
 
-        try:
-            resp = requests.post(
-                "https://kingshot-giftcode.centurygame.com/api/player",
-                data={"fid": fid, "time": t, "sign": sign},
-                timeout=5,
-            )
-            print(f"DEBUG: API Response status_code={resp.status_code}")
-            data = resp.json()
-            print(f"DEBUG: API Response data={data}")
+        # Get all unique player IDs for this event
+        players = db.execute(
+            "SELECT DISTINCT player_id FROM submissions WHERE event_uid = ?", (event_uid,)
+        ).fetchall()
 
-            # The API returns success when "code" is 0
-            if data.get("code") == 0:
-                # The actual player data is nested inside another "data" key
-                inner_data = data.get("data", {})
-                return jsonify(
-                    {
-                        "nickname": inner_data.get("nickname"),
-                        "avatar_url": inner_data.get("avatar_image"),
-                    }
+        for p in players:
+            fid = p["player_id"]
+            info = fetch_player_info(fid)
+            if info:
+                db.execute(
+                    "UPDATE submissions SET player_name = ?, avatar_url = ? WHERE event_uid = ? AND player_id = ?",
+                    (info["nickname"], info["avatar_url"], event_uid, fid),
                 )
-            else:
-                return jsonify({"error": data.get("msg", "Player not found")}), 404
-        except Exception as e:
-            print(f"DEBUG: Proxy Error: {str(e)}")
-            return jsonify({"error": str(e)}), 500
+        
+        db.commit()
+        return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
 
     @app.route("/create", methods=["POST"])
     def create_event():
