@@ -37,23 +37,6 @@ def generate_slot_labels():
     return labels
 
 
-def create_app():
-    app = Flask(__name__)
-    database.init_app(app)
-
-    # Make the label generator available to all templates
-    @app.context_processor
-    def inject_slot_labels():
-        return dict(slot_labels=generate_slot_labels())
-
-    @app.route("/")
-    def index():
-        return render_template("index.html")
-
-    @app.route("/favicon.ico")
-    def favicon():
-        return "", 204
-
 def fetch_player_info(fid):
     # Generate Signature based on analyzed code
     t = int(time.time() * 1000)
@@ -82,7 +65,22 @@ def fetch_player_info(fid):
 
 
 def create_app():
-...
+    app = Flask(__name__)
+    database.init_app(app)
+
+    # Make the label generator available to all templates
+    @app.context_processor
+    def inject_slot_labels():
+        return dict(slot_labels=generate_slot_labels())
+
+    @app.route("/")
+    def index():
+        return render_template("index.html")
+
+    @app.route("/favicon.ico")
+    def favicon():
+        return "", 204
+
     @app.route("/api/proxy/player", methods=["POST"])
     def proxy_player():
         fid = request.json.get("fid")
@@ -91,7 +89,7 @@ def create_app():
 
         print(f"DEBUG: Fetching player info for fid={fid}")
         player_info = fetch_player_info(fid)
-        
+
         if player_info:
             return jsonify(player_info)
         else:
@@ -102,15 +100,14 @@ def create_app():
         secret = request.form.get("secret")
         db = database.get_db()
         db.row_factory = sqlite3.Row
-        event = db.execute(
-            "SELECT * FROM events WHERE uid = ?", (event_uid,)
-        ).fetchone()
+        event = db.execute("SELECT * FROM events WHERE uid = ?", (event_uid,)).fetchone()
         if event["admin_secret"] != secret:
             return "Forbidden", 403
 
         # Get all unique player IDs for this event
         players = db.execute(
-            "SELECT DISTINCT player_id FROM submissions WHERE event_uid = ?", (event_uid,)
+            "SELECT DISTINCT player_id FROM submissions WHERE event_uid = ?",
+            (event_uid,),
         ).fetchall()
 
         for p in players:
@@ -121,7 +118,7 @@ def create_app():
                     "UPDATE submissions SET player_name = ?, avatar_url = ? WHERE event_uid = ? AND player_id = ?",
                     (info["nickname"], info["avatar_url"], event_uid, fid),
                 )
-        
+
         db.commit()
         return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
 
@@ -152,10 +149,15 @@ def create_app():
         admin_url = url_for(
             "admin_dashboard", event_uid=event_uid, secret=secret, _external=True
         )
-        finalized_url = url_for("locked_appointments", event_uid=event_uid, _external=True)
+        finalized_url = url_for(
+            "locked_appointments", event_uid=event_uid, _external=True
+        )
 
         return render_template(
-            "success.html", player_url=player_url, admin_url=admin_url, finalized_url=finalized_url
+            "success.html",
+            player_url=player_url,
+            admin_url=admin_url,
+            finalized_url=finalized_url,
         )
 
     @app.route("/event/<event_uid>/finalized")
@@ -332,9 +334,7 @@ def create_app():
         db.row_factory = sqlite3.Row
 
         secret = request.args.get("secret")
-        event = db.execute(
-            "SELECT * FROM events WHERE uid = ?", (event_uid,)
-        ).fetchone()
+        event = db.execute("SELECT * FROM events WHERE uid = ?", (event_uid,)).fetchone()
 
         if event is None:
             return "Event not found", 404
@@ -401,8 +401,14 @@ def create_app():
                 try:
                     feasible_slots = json.loads(sub["feasible_slots"])
                     # Create human readable labels for hover text
-                    requested_labels = [slot_labels[i] for i in feasible_slots if 0 <= i < 49]
-                    sub["requested_slots_text"] = ", ".join(requested_labels) if requested_labels else "No slots selected"
+                    requested_labels = [
+                        slot_labels[i] for i in feasible_slots if 0 <= i < 49
+                    ]
+                    sub["requested_slots_text"] = (
+                        ", ".join(requested_labels)
+                        if requested_labels
+                        else "No slots selected"
+                    )
 
                     for slot_index in feasible_slots:
                         if 0 <= slot_index < 49:
@@ -439,7 +445,9 @@ def create_app():
 
         # Generate URLs for the admin dashboard links
         player_url = url_for("player_form", event_uid=event_uid, _external=True)
-        finalized_url = url_for("locked_appointments", event_uid=event_uid, _external=True)
+        finalized_url = url_for(
+            "locked_appointments", event_uid=event_uid, _external=True
+        )
 
         return render_template(
             "admin_dashboard.html",
@@ -461,9 +469,7 @@ def create_app():
     def public_schedule(event_uid):
         db = database.get_db()
         db.row_factory = sqlite3.Row
-        event = db.execute(
-            "SELECT * FROM events WHERE uid = ?", (event_uid,)
-        ).fetchone()
+        event = db.execute("SELECT * FROM events WHERE uid = ?", (event_uid,)).fetchone()
 
         if event is None:
             return "Event not found", 404
@@ -495,9 +501,7 @@ def create_app():
         secret = request.form.get("secret")
         db = database.get_db()
         db.row_factory = sqlite3.Row
-        event = db.execute(
-            "SELECT * FROM events WHERE uid = ?", (event_uid,)
-        ).fetchone()
+        event = db.execute("SELECT * FROM events WHERE uid = ?", (event_uid,)).fetchone()
         if event["admin_secret"] != secret:
             return "Forbidden", 403
 
@@ -537,9 +541,7 @@ def create_app():
         secret = request.form.get("secret")
         db = database.get_db()
         db.row_factory = sqlite3.Row
-        event = db.execute(
-            "SELECT * FROM events WHERE uid = ?", (event_uid,)
-        ).fetchone()
+        event = db.execute("SELECT * FROM events WHERE uid = ?", (event_uid,)).fetchone()
         if event["admin_secret"] != secret:
             return "Forbidden", 403
 
@@ -552,9 +554,7 @@ def create_app():
         secret = request.form.get("secret")
         db = database.get_db()
         db.row_factory = sqlite3.Row
-        event = db.execute(
-            "SELECT * FROM events WHERE uid = ?", (event_uid,)
-        ).fetchone()
+        event = db.execute("SELECT * FROM events WHERE uid = ?", (event_uid,)).fetchone()
         if event["admin_secret"] != secret:
             return "Forbidden", 403
 
@@ -573,9 +573,7 @@ def create_app():
         secret = request.form.get("secret")
         db = database.get_db()
         db.row_factory = sqlite3.Row
-        event = db.execute(
-            "SELECT * FROM events WHERE uid = ?", (event_uid,)
-        ).fetchone()
+        event = db.execute("SELECT * FROM events WHERE uid = ?", (event_uid,)).fetchone()
         if event["admin_secret"] != secret:
             return "Forbidden", 403
 
@@ -594,9 +592,7 @@ def create_app():
         secret = request.form.get("secret")
         db = database.get_db()
         db.row_factory = sqlite3.Row
-        event = db.execute(
-            "SELECT * FROM events WHERE uid = ?", (event_uid,)
-        ).fetchone()
+        event = db.execute("SELECT * FROM events WHERE uid = ?", (event_uid,)).fetchone()
         if event["admin_secret"] != secret:
             return "Forbidden", 403
 
