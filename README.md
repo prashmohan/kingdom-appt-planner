@@ -7,7 +7,9 @@ The **Kingdom Appointment Planner** is our specialized strategic tool for domina
 ---
 
 ## 🎯 Our Objective
+
 The goal is simple: **Maximum Efficiency.** 
+
 By collecting player resource data and availability, this tool uses a "Protected Greedy Algorithm" to automatically assign the most impactful players to our limited 30-minute buff windows, while giving administrators full control to lock in "must-have" appointments manually.
 
 ---
@@ -36,7 +38,9 @@ By collecting player resource data and availability, this tool uses a "Protected
 Getting your kingdom organized is easy! Just follow these steps:
 
 ### 1. Create the Event
+
 On the home page, give your event a name (e.g., "KvK Season 10 - March"). Hit **Create Event**, and you'll be given three very important links:
+
 *   **Player URL:** Send this to everyone!
 *   **Admin URL:** **SAVE THIS.** This is your private key to managing the schedule.
 *   **Finalized Schedule URL:** Share this once you are ready for everyone to see their times.
@@ -44,10 +48,13 @@ On the home page, give your event a name (e.g., "KvK Season 10 - March"). Hit **
 > **[ PLACEHOLDER: Insert a screenshot of the Event Success Page here ]**
 
 ### 2. Collect Submissions
+
 As players enter their IDs and availability, you'll see them pop up in your **Admin Dashboard**. You can use the "Refresh Player Data" button at any time to sync the latest nicknames and avatars from the game.
 
 ### 3. Assign Appointments
+
 When you're ready to build the schedule:
+
 1.  Go to the **Admin Dashboard**.
 2.  Click **Assign Appointments**. The system will instantly fill the slots for all 3 days, prioritizing players with the most resources.
 3.  **Manual Tweak:** Notice a specific slot needs a specific player? Use the dropdown in the submissions table to manually "Set" them into a slot.
@@ -56,6 +63,7 @@ When you're ready to build the schedule:
 > **[ PLACEHOLDER: Insert a screenshot of the Admin Dashboard with Tabs here ]**
 
 ### 4. Publish
+
 Once the schedule looks perfect, just tell your players to check the **Finalized Schedule URL**. It's a clean, mobile-friendly view of exactly who goes where.
 
 ---
@@ -75,6 +83,7 @@ The app is fully dockerized for easy deployment on any home server or VPS.
 ---
 
 ## 🛡️ Security Note
+
 The **Admin URL** contains a unique "secret" key. Anyone with this link has full control over your event. Treat it like your kingdom's treasury key—don't share it publicly!
 
 ---
