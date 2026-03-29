@@ -60,6 +60,9 @@ def fetch_player_info(fid):
                 "nickname": inner_data.get("nickname"),
                 "avatar_url": inner_data.get("avatar_image"),
             }
+    except Exception:
+        pass
+    return None
 
 
 def create_app():
@@ -80,7 +83,7 @@ def create_app():
         try:
             with open("README.md", "r", encoding="utf-8") as f:
                 content = f.read()
-            html_content = markdown.markdown(content, extensions=['extra', 'toc'])
+            html_content = markdown.markdown(content, extensions=["extra", "toc"])
             return render_template("guide.html", content=html_content)
         except FileNotFoundError:
             return "Guide not found", 404
@@ -255,7 +258,6 @@ def create_app():
         alliance_name = request.form["alliance_name"]
         avatar_url = request.form.get("avatar_url")
 
-
         # --- Process Construction Submission ---
         construction_speedups = int(request.form.get("speedups-construction") or 0)
         truegold = int(request.form.get("truegold") or 0)
@@ -368,10 +370,6 @@ def create_app():
                 # Convert sqlite3.Row to a dictionary to allow item assignment
                 sub_dict = dict(row)
                 submissions_by_day[row["day_type"]].append(sub_dict)
-        
-        # Debug log first submission
-        for day in active_days:
-            if submissions_by_day[day]:
 
         # 2. Group assignments and related data by day_type
         assignments_raw = db.execute(
@@ -543,9 +541,10 @@ def create_app():
             (event_uid, day_type, slot_index, player_id, 1),
         )
 
-        # Update submission status
+        # Update submission status to 'Locked'
         db.execute(
-            "UPDATE submissions SET status = 'Confirmed' WHERE id = ?", (submission_id,)
+            "UPDATE submissions SET status = 'Locked' WHERE event_uid = ? AND player_id = ? AND day_type = ?", 
+            (event_uid, player_id, day_type)
         )
 
         db.commit()
@@ -580,10 +579,24 @@ def create_app():
 
         slot_index = request.form.get("slot_index")
         day_type = request.form.get("day_type")
+        
+        # Get the player_id for this assignment
+        assignment = db.execute(
+            "SELECT player_id FROM assignments WHERE event_uid = ? AND day_type = ? AND slot_index = ?",
+            (event_uid, day_type, slot_index)
+        ).fetchone()
+
         db.execute(
             "UPDATE assignments SET is_locked = 1 WHERE event_uid = ? AND day_type = ? AND slot_index = ?",
             (event_uid, day_type, slot_index),
         )
+        
+        if assignment:
+            db.execute(
+                "UPDATE submissions SET status = 'Locked' WHERE event_uid = ? AND day_type = ? AND player_id = ?",
+                (event_uid, day_type, assignment["player_id"])
+            )
+            
         db.commit()
 
         return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
@@ -601,10 +614,24 @@ def create_app():
 
         slot_index = request.form.get("slot_index")
         day_type = request.form.get("day_type")
+        
+        # Get the player_id for this assignment
+        assignment = db.execute(
+            "SELECT player_id FROM assignments WHERE event_uid = ? AND day_type = ? AND slot_index = ?",
+            (event_uid, day_type, slot_index)
+        ).fetchone()
+
         db.execute(
             "UPDATE assignments SET is_locked = 0 WHERE event_uid = ? AND day_type = ? AND slot_index = ?",
             (event_uid, day_type, slot_index),
         )
+        
+        if assignment:
+            db.execute(
+                "UPDATE submissions SET status = 'Confirmed' WHERE event_uid = ? AND day_type = ? AND player_id = ?",
+                (event_uid, day_type, assignment["player_id"])
+            )
+            
         db.commit()
 
         return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))

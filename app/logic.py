@@ -33,7 +33,7 @@ def run_distribution_algorithm(event_uid):
 
         # Update status for players who already have locked assignments
         for pid in assigned_player_ids:
-            db.execute("UPDATE submissions SET status = 'Confirmed' WHERE event_uid = ? AND day_type = ? AND player_id = ?", (event_uid, day_type, pid))
+            db.execute("UPDATE submissions SET status = 'Locked' WHERE event_uid = ? AND day_type = ? AND player_id = ?", (event_uid, day_type, pid))
 
         # 2. Calculate Demand for each slot (static demand based on all submissions for this day)
         slot_demand = {i: 0 for i in range(49)}

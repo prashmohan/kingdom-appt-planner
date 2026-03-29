@@ -148,9 +148,9 @@ def test_algorithm_no_double_assign(app):
         count = db.execute("SELECT COUNT(*) FROM assignments WHERE event_uid = ? AND player_id = 'player1'", (event_uid,)).fetchone()[0]
         assert count == 1
         
-        # The submission should be Confirmed (since they have an assignment)
+        # The submission should be Locked (since they have a locked assignment)
         status = db.execute("SELECT status FROM submissions WHERE id = 'sub1'").fetchone()[0]
-        assert status == 'Confirmed'
+        assert status == 'Locked'
 
 def test_algorithm_bad_json(app):
     with app.app_context():
