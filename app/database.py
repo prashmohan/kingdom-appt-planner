@@ -60,7 +60,7 @@ def init_db():
                 if "duplicate column name" not in str(e):
                     raise
 
-    # 3. Ensure 'assignments' table exists
+    # 3. Ensure 'assignments' table exists and has the correct schema
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='assignments'")
     if cursor.fetchone() is None:
         cursor.execute("""
@@ -74,6 +74,16 @@ def init_db():
                 FOREIGN KEY (event_uid) REFERENCES events (uid)
             )
         """)
+    else:
+        # Table exists, check if 'day_type' column exists
+        cursor.execute("PRAGMA table_info(assignments)")
+        columns = [column[1] for column in cursor.fetchall()]
+        if 'day_type' not in columns:
+            try:
+                cursor.execute("ALTER TABLE assignments ADD COLUMN day_type TEXT")
+            except sqlite3.OperationalError as e:
+                if "duplicate column name" not in str(e):
+                    raise
     
     db.commit()
 
