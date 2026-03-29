@@ -68,6 +68,25 @@ Once the schedule looks perfect, just tell your players to check the **Finalized
 
 ---
 
+## 💾 Maintenance & Backups
+
+We've included a handy utility script to keep your kingdom's data safe. You can run these commands from your terminal outside of the Docker container.
+
+### 1. Take a Backup
+To create a timestamped copy of your database:
+```bash
+./scripts/db_util.sh backup
+```
+The backup will be stored in the `./backups` directory on your machine.
+
+### 2. Restore from Backup
+To restore your data (Warning: this overwrites the current database):
+```bash
+./scripts/db_util.sh restore backups/planner_backup_TIMESTAMP.db
+```
+
+---
+
 ## 🚀 Technical Setup (For the Tech-Savvy)
 
 The app is fully dockerized for easy deployment on any home server or VPS.
