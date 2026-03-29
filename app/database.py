@@ -75,17 +75,56 @@ def init_db():
             )
         """)
     else:
-        # Table exists, check if 'day_type' column exists
+        # Table exists, check if 'day_type' column exists AND is part of the primary key
         cursor.execute("PRAGMA table_info(assignments)")
-        columns = [column[1] for column in cursor.fetchall()]
-        if 'day_type' not in columns:
+        columns_info = cursor.fetchall()
+        columns = [c[1] for c in columns_info]
+        pk_columns = [c[1] for c in columns_info if c[5] > 0]
+        
+        print(f"DEBUG: assignments table columns: {columns}")
+        print(f"DEBUG: assignments table primary key columns: {pk_columns}")
+        
+        # We need day_type to be in the columns AND in the primary key
+        if 'day_type' not in columns or 'day_type' not in pk_columns:
+            print("DEBUG: Migrating assignments table to new primary key...")
             try:
-                cursor.execute("ALTER TABLE assignments ADD COLUMN day_type TEXT")
+                # 1. Rename existing table
+                cursor.execute("ALTER TABLE assignments RENAME TO assignments_old")
+                print("DEBUG: Renamed assignments to assignments_old")
+                
+                # 2. Create new table with correct PK
+                cursor.execute("""
+                    CREATE TABLE assignments (
+                        event_uid TEXT NOT NULL,
+                        day_type TEXT NOT NULL,
+                        slot_index INTEGER NOT NULL,
+                        player_id TEXT,
+                        is_locked BOOLEAN DEFAULT FALSE,
+                        PRIMARY KEY (event_uid, day_type, slot_index),
+                        FOREIGN KEY (event_uid) REFERENCES events (uid)
+                    )
+                """)
+                print("DEBUG: Created new assignments table with composite primary key")
+                
+                # 3. Copy data (defaulting day_type if it was missing)
+                if 'day_type' in columns:
+                    cursor.execute("INSERT INTO assignments (event_uid, day_type, slot_index, player_id, is_locked) SELECT event_uid, day_type, slot_index, player_id, is_locked FROM assignments_old")
+                else:
+                    # Legacy data is assumed to be construction
+                    cursor.execute("INSERT INTO assignments (event_uid, day_type, slot_index, player_id, is_locked) SELECT event_uid, 'construction', slot_index, player_id, is_locked FROM assignments_old")
+                print("DEBUG: Copied data from assignments_old to assignments")
+                
+                # 4. Drop old table
+                cursor.execute("DROP TABLE assignments_old")
+                print("DEBUG: Dropped assignments_old table")
             except sqlite3.OperationalError as e:
-                if "duplicate column name" not in str(e):
+                print(f"DEBUG: Migration error: {e}")
+                # Handle concurrency (another worker might be doing this)
+                if "already exists" not in str(e) and "no such table" not in str(e):
                     raise
     
     db.commit()
+
 
 def init_app(app):
     @app.teardown_appcontext
