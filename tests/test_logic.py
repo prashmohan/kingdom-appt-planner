@@ -98,3 +98,74 @@ def test_algorithm_empty_slots(app):
         # Should not be in assignments
         a = db.execute("SELECT * FROM assignments WHERE player_id = 'player1'").fetchone()
         assert a is None
+
+def test_algorithm_smart_spread(app):
+    with app.app_context():
+        db = database.get_db()
+        event_uid = "smart-spread"
+        db.execute("INSERT INTO events (uid, name, active_days, admin_secret) VALUES (?, ?, ?, ?)",
+                   (event_uid, "Smart Spread", json.dumps({"construction": True}), "secret"))
+        
+        # Player A: Score 100, Slots [1, 2]
+        db.execute("INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?)",
+                   ("subA", event_uid, "construction", "Player A", "playerA", "ALL1", 100, "{}", "[1, 2]"))
+        
+        # Player B: Score 50, Slots [1]
+        db.execute("INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?)",
+                   ("subB", event_uid, "construction", "Player B", "playerB", "ALL1", 50, "{}", "[1]"))
+        
+        db.commit()
+        
+        logic.run_distribution_algorithm(event_uid)
+        
+        # Player A should have picked Slot 2 because Slot 1 has higher demand (2 players requested it).
+        # This leaves Slot 1 for Player B.
+        resA = db.execute("SELECT slot_index FROM assignments WHERE player_id = 'playerA'").fetchone()
+        resB = db.execute("SELECT slot_index FROM assignments WHERE player_id = 'playerB'").fetchone()
+        
+        assert resA[0] == 2
+        assert resB[0] == 1
+
+def test_algorithm_no_double_assign(app):
+    with app.app_context():
+        db = database.get_db()
+        event_uid = "double-assign-test"
+        db.execute("INSERT INTO events (uid, name, active_days, admin_secret) VALUES (?, ?, ?, ?)",
+                   (event_uid, "Double Test", json.dumps({"construction": True}), "secret"))
+        
+        # Player 1 has a LOCKED assignment in slot 10
+        db.execute("INSERT INTO assignments (event_uid, day_type, slot_index, player_id, is_locked) VALUES (?, ?, ?, ?, ?)",
+                   (event_uid, "construction", 10, "player1", 1))
+        
+        # Player 1 ALSO has a submission wanting slot 11
+        db.execute("INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?)",
+                   ("sub1", event_uid, "construction", "P1", "player1", "ALL1", 1000, "{}", "[11]"))
+        
+        db.commit()
+        logic.run_distribution_algorithm(event_uid)
+        
+        # Player 1 should STILL only have ONE assignment (the locked one)
+        count = db.execute("SELECT COUNT(*) FROM assignments WHERE event_uid = ? AND player_id = 'player1'", (event_uid,)).fetchone()[0]
+        assert count == 1
+        
+        # The submission should be Confirmed (since they have an assignment)
+        status = db.execute("SELECT status FROM submissions WHERE id = 'sub1'").fetchone()[0]
+        assert status == 'Confirmed'
+
+def test_algorithm_bad_json(app):
+    with app.app_context():
+        db = database.get_db()
+        event_uid = "bad-json-test"
+        db.execute("INSERT INTO events (uid, name, active_days, admin_secret) VALUES (?, ?, ?, ?)",
+                   (event_uid, "Bad JSON", json.dumps({"construction": True}), "secret"))
+        
+        # Submission with invalid JSON in feasible_slots
+        db.execute("INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?)",
+                   ("sub1", event_uid, "construction", "P1", "p1", "A", 100, "{}", "not-json"))
+        
+        db.commit()
+        logic.run_distribution_algorithm(event_uid)
+        
+        # Should be waitlisted
+        status = db.execute("SELECT status FROM submissions WHERE id = 'sub1'").fetchone()[0]
+        assert status == 'Waitlisted'
