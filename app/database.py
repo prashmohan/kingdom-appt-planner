@@ -100,4 +100,3 @@ def init_app(app):
         if not os.path.exists(data_dir):
             os.makedirs(data_dir)
         init_db()
-
