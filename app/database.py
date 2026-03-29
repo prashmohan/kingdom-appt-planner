@@ -53,7 +53,12 @@ def init_db():
         cursor.execute("PRAGMA table_info(submissions)")
         columns = [column[1] for column in cursor.fetchall()]
         if 'avatar_url' not in columns:
-            cursor.execute("ALTER TABLE submissions ADD COLUMN avatar_url TEXT")
+            try:
+                cursor.execute("ALTER TABLE submissions ADD COLUMN avatar_url TEXT")
+            except sqlite3.OperationalError as e:
+                # If another worker added it at the same time, ignore the error
+                if "duplicate column name" not in str(e):
+                    raise
 
     # 3. Ensure 'assignments' table exists
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='assignments'")
