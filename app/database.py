@@ -88,6 +88,9 @@ def init_db():
         if 'day_type' not in columns or 'day_type' not in pk_columns:
             print("DEBUG: Migrating assignments table to new primary key...")
             try:
+                # 0. Drop any old indexes that might be enforcing the old unique constraint
+                cursor.execute("DROP INDEX IF EXISTS idx_assignments_unique")
+                
                 # 1. Rename existing table
                 cursor.execute("ALTER TABLE assignments RENAME TO assignments_old")
                 print("DEBUG: Renamed assignments to assignments_old")
@@ -106,11 +109,10 @@ def init_db():
                 """)
                 print("DEBUG: Created new assignments table with composite primary key")
                 
-                # 3. Copy data (defaulting day_type if it was missing)
+                # 3. Copy data
                 if 'day_type' in columns:
                     cursor.execute("INSERT INTO assignments (event_uid, day_type, slot_index, player_id, is_locked) SELECT event_uid, day_type, slot_index, player_id, is_locked FROM assignments_old")
                 else:
-                    # Legacy data is assumed to be construction
                     cursor.execute("INSERT INTO assignments (event_uid, day_type, slot_index, player_id, is_locked) SELECT event_uid, 'construction', slot_index, player_id, is_locked FROM assignments_old")
                 print("DEBUG: Copied data from assignments_old to assignments")
                 
@@ -119,8 +121,18 @@ def init_db():
                 print("DEBUG: Dropped assignments_old table")
             except sqlite3.OperationalError as e:
                 print(f"DEBUG: Migration error: {e}")
-                # Handle concurrency (another worker might be doing this)
-                if "already exists" not in str(e) and "no such table" not in str(e):
+                # If assignments_old exists but assignments also exists, we might be in a halfway state from another worker
+                if "already exists" in str(e):
+                    # Check if the new table is actually correct now
+                    cursor.execute("PRAGMA table_info(assignments)")
+                    new_cols = cursor.fetchall()
+                    if any(c[1] == 'day_type' and c[5] > 0 for c in new_cols):
+                        print("DEBUG: Migration already completed by another worker.")
+                    else:
+                        raise
+                elif "no such table" in str(e) and "assignments_old" in str(e):
+                    print("DEBUG: assignments_old already dropped, migration likely finished.")
+                else:
                     raise
     
     db.commit()
