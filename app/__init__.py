@@ -112,6 +112,8 @@ def create_app():
         db = database.get_db()
         db.row_factory = sqlite3.Row
         event = db.execute("SELECT * FROM events WHERE uid = ?", (event_uid,)).fetchone()
+        if event is None:
+            return "Event not found", 404
         if event["admin_secret"] != secret:
             return "Forbidden", 403
 
@@ -513,6 +515,8 @@ def create_app():
         db = database.get_db()
         db.row_factory = sqlite3.Row
         event = db.execute("SELECT * FROM events WHERE uid = ?", (event_uid,)).fetchone()
+        if event is None:
+            return "Event not found", 404
         if event["admin_secret"] != secret:
             return "Forbidden", 403
 
@@ -553,6 +557,8 @@ def create_app():
         db = database.get_db()
         db.row_factory = sqlite3.Row
         event = db.execute("SELECT * FROM events WHERE uid = ?", (event_uid,)).fetchone()
+        if event is None:
+            return "Event not found", 404
         if event["admin_secret"] != secret:
             return "Forbidden", 403
 
@@ -566,6 +572,8 @@ def create_app():
         db = database.get_db()
         db.row_factory = sqlite3.Row
         event = db.execute("SELECT * FROM events WHERE uid = ?", (event_uid,)).fetchone()
+        if event is None:
+            return "Event not found", 404
         if event["admin_secret"] != secret:
             return "Forbidden", 403
 
@@ -585,6 +593,8 @@ def create_app():
         db = database.get_db()
         db.row_factory = sqlite3.Row
         event = db.execute("SELECT * FROM events WHERE uid = ?", (event_uid,)).fetchone()
+        if event is None:
+            return "Event not found", 404
         if event["admin_secret"] != secret:
             return "Forbidden", 403
 
@@ -604,6 +614,8 @@ def create_app():
         db = database.get_db()
         db.row_factory = sqlite3.Row
         event = db.execute("SELECT * FROM events WHERE uid = ?", (event_uid,)).fetchone()
+        if event is None:
+            return "Event not found", 404
         if event["admin_secret"] != secret:
             return "Forbidden", 403
 
