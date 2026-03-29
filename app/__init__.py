@@ -259,6 +259,8 @@ def create_app():
         alliance_name = request.form["alliance_name"]
         avatar_url = request.form.get("avatar_url")
 
+        print(f"DEBUG: Received submission for {player_id}: name={player_name}, avatar={avatar_url}")
+
         # --- Process Construction Submission ---
         construction_speedups = int(request.form.get("speedups-construction") or 0)
         truegold = int(request.form.get("truegold") or 0)
@@ -371,6 +373,11 @@ def create_app():
                 # Convert sqlite3.Row to a dictionary to allow item assignment
                 sub_dict = dict(row)
                 submissions_by_day[row["day_type"]].append(sub_dict)
+        
+        # Debug log first submission
+        for day in active_days:
+            if submissions_by_day[day]:
+                print(f"DEBUG: Sample sub for {day}: {submissions_by_day[day][0]}")
 
         # 2. Group assignments and related data by day_type
         assignments_raw = db.execute(
