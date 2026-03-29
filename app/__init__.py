@@ -60,9 +60,6 @@ def fetch_player_info(fid):
                 "nickname": inner_data.get("nickname"),
                 "avatar_url": inner_data.get("avatar_image"),
             }
-    except Exception as e:
-        print(f"DEBUG: Fetch Error for fid {fid}: {str(e)}")
-    return None
 
 
 def create_app():
@@ -98,7 +95,6 @@ def create_app():
         if not fid:
             return jsonify({"error": "Missing fid"}), 400
 
-        print(f"DEBUG: Fetching player info for fid={fid}")
         player_info = fetch_player_info(fid)
 
         if player_info:
@@ -259,7 +255,6 @@ def create_app():
         alliance_name = request.form["alliance_name"]
         avatar_url = request.form.get("avatar_url")
 
-        print(f"DEBUG: Received submission for {player_id}: name={player_name}, avatar={avatar_url}")
 
         # --- Process Construction Submission ---
         construction_speedups = int(request.form.get("speedups-construction") or 0)
@@ -377,7 +372,6 @@ def create_app():
         # Debug log first submission
         for day in active_days:
             if submissions_by_day[day]:
-                print(f"DEBUG: Sample sub for {day}: {submissions_by_day[day][0]}")
 
         # 2. Group assignments and related data by day_type
         assignments_raw = db.execute(
