@@ -14,7 +14,7 @@ def init_db():
     db = get_db()
     cursor = db.cursor()
     
-    # Check if tables exist. If not, create them.
+    # 1. Ensure 'events' table exists
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='events'")
     if cursor.fetchone() is None:
         cursor.execute("""
@@ -28,6 +28,9 @@ def init_db():
             )
         """)
 
+    # 2. Ensure 'submissions' table exists and has the correct schema
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='submissions'")
+    if cursor.fetchone() is None:
         cursor.execute("""
             CREATE TABLE submissions (
                 id TEXT PRIMARY KEY,
@@ -45,7 +48,16 @@ def init_db():
                 FOREIGN KEY (event_uid) REFERENCES events (uid)
             )
         """)
+    else:
+        # Table exists, check if 'avatar_url' column exists
+        cursor.execute("PRAGMA table_info(submissions)")
+        columns = [column[1] for column in cursor.fetchall()]
+        if 'avatar_url' not in columns:
+            cursor.execute("ALTER TABLE submissions ADD COLUMN avatar_url TEXT")
 
+    # 3. Ensure 'assignments' table exists
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='assignments'")
+    if cursor.fetchone() is None:
         cursor.execute("""
             CREATE TABLE assignments (
                 event_uid TEXT NOT NULL,
@@ -57,7 +69,8 @@ def init_db():
                 FOREIGN KEY (event_uid) REFERENCES events (uid)
             )
         """)
-        db.commit()
+    
+    db.commit()
 
 def init_app(app):
     @app.teardown_appcontext
