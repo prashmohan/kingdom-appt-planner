@@ -70,20 +70,24 @@ Once the schedule looks perfect, just tell your players to check the **Finalized
 
 ## 💾 Maintenance & Backups
 
-We've included a handy utility script to keep your kingdom's data safe. You can run these commands from your terminal outside of the Docker container.
+We've included a handy utility script to keep your kingdom's data safe. You can run these from your host machine.
 
 ### 1. Take a Backup
 To create a timestamped copy of your database:
 ```bash
 ./scripts/db_util.sh backup
 ```
-The backup will be stored in the `./backups` directory on your machine.
+
+**Advanced Options:**
+*   **Custom Container Name:** `./scripts/db_util.sh -c my-container-name backup`
+*   **Custom Backup Directory:** `./scripts/db_util.sh -d /path/to/backups backup`
 
 ### 2. Restore from Backup
 To restore your data (Warning: this overwrites the current database):
 ```bash
 ./scripts/db_util.sh restore backups/planner_backup_TIMESTAMP.db
 ```
+You can also use the `-c` flag during restore if your container name is different.
 
 ---
 
