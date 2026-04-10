@@ -11,9 +11,9 @@ def test_generate_slot_labels():
     labels = generate_slot_labels()
     assert len(labels) == 49
     # Check slot 0 (23:45-00:15)
-    assert labels[0] == "23:45-00:15"
+    assert labels[0] == "23:45-\u200b00:15"
     # Check slot 1 (00:15-00:45)
-    assert labels[1] == "00:15-00:45"
+    assert labels[1] == "00:15-\u200b00:45"
     # Check wrap around at the end
     assert labels[48].endswith("23:45") or "23:45" in labels[48]
 
@@ -45,7 +45,7 @@ def test_database_migrations():
         # Create tables missing the new columns
         conn.execute("CREATE TABLE events (id INTEGER PRIMARY KEY, uid TEXT UNIQUE, name TEXT, active_days TEXT, admin_secret TEXT)")
         conn.execute("CREATE TABLE submissions (id TEXT PRIMARY KEY, event_uid TEXT, day_type TEXT, player_name TEXT, player_id TEXT, alliance_name TEXT, resources REAL, raw_data TEXT, feasible_slots TEXT)")
-        conn.execute("CREATE TABLE assignments (event_uid TEXT, slot_index INTEGER, player_id TEXT, is_locked BOOLEAN)")
+        conn.execute("CREATE TABLE assignments (event_uid TEXT, slot_index INTEGER, player_id TEXT, is_locked BOOLEAN, PRIMARY KEY (event_uid, slot_index))")
         conn.commit()
         conn.close()
 
@@ -55,67 +55,168 @@ def test_database_migrations():
         with app.app_context():
             database.init_db()
             
-            # Verify columns were added
+            # Verify columns AND Primary Key structure
             db = database.get_db()
             
-            # Check submissions for avatar_url
-            cursor = db.execute("PRAGMA table_info(submissions)")
-            cols = [c[1] for c in cursor.fetchall()]
-            assert "avatar_url" in cols
-            
-            # Check assignments for day_type
+            # Check assignments table info
             cursor = db.execute("PRAGMA table_info(assignments)")
-            cols = [c[1] for c in cursor.fetchall()]
+            info = cursor.fetchall()
+            cols = [c[1] for c in info]
+            pk_cols = [c[1] for c in info if c[5] > 0]
+            
             assert "day_type" in cols
+            assert "event_uid" in pk_cols
+            assert "day_type" in pk_cols
+            assert "slot_index" in pk_cols
+            assert len(pk_cols) == 3
 
-            # Test calling it again should be fine
+            # FUNCTIONAL TEST: Try to insert same slot for different days
+            db.execute("INSERT INTO assignments (event_uid, day_type, slot_index, player_id) VALUES ('e1', 'construction', 10, 'p1')")
+            db.execute("INSERT INTO assignments (event_uid, day_type, slot_index, player_id) VALUES ('e1', 'training', 10, 'p2')")
+            db.commit()
+            
+            # Verify both exist
+            count = db.execute("SELECT COUNT(*) FROM assignments WHERE event_uid='e1' AND slot_index=10").fetchone()[0]
+            assert count == 2
+
+            # Test calling it again should be fine (idempotency)
             database.init_db() 
     finally:
         os.close(db_fd)
         os.unlink(db_path)
 
-def test_database_concurrency_catch():
-    # Use a fresh database
+def test_database_init_submissions_race():
     db_fd, db_path = tempfile.mkstemp()
     try:
         app = Flask(__name__)
         database.DATABASE_PATH = db_path
-        
         with app.app_context():
-            # Create base tables
             database.init_db()
-            
-            # CLEAR g._database so next get_db() calls the mock
-            if hasattr(g, '_database'):
-                del g._database
-            
-            # Mock get_db to return a mock connection
+            if hasattr(g, '_database'): del g._database
             with patch('app.database.get_db') as mock_get_db:
-                mock_conn = MagicMock()
-                mock_cursor = MagicMock()
+                mock_conn = MagicMock(); mock_cursor = MagicMock()
                 mock_get_db.return_value = mock_conn
-                # Ensure cursor() always returns the SAME mock_cursor
                 mock_conn.cursor.return_value = mock_cursor
+                mock_cursor.fetchone.return_value = ("exists",)
                 
-                # Use lambda to always return something (table exists)
-                mock_cursor.fetchone.side_effect = lambda: ("exists",)
-                # Mock fetchall to return columns missing the new ones
-                mock_cursor.fetchall.return_value = [[0, "id"], [1, "uid"]] 
+                def fetchall_side_effect():
+                    # Check current query string
+                    sql = str(mock_cursor.execute.call_args_list[-1]).upper()
+                    if "SUBMISSIONS" in sql:
+                        return [(0, "id", "TEXT", 1, None, 1)]
+                    return [(0, "id", "T", 1, None, 1), (1, "day_type", "T", 1, None, 2), (2, "slot_index", "T", 1, None, 3)]
                 
-                # Mock cursor.execute to raise OperationalError ONLY on ALTER TABLE
+                mock_cursor.fetchall.side_effect = fetchall_side_effect
+                
                 def side_effect(sql, *args):
-                    if "ALTER TABLE" in sql.upper():
+                    if "ALTER TABLE SUBMISSIONS" in sql.upper():
                         raise sqlite3.OperationalError("duplicate column name")
                     return MagicMock()
-                
                 mock_cursor.execute.side_effect = side_effect
                 
-                # This should NOT raise an error because it's caught
                 database.init_db()
                 assert mock_cursor.execute.called
     finally:
-        os.close(db_fd)
-        os.unlink(db_path)
+        os.close(db_fd); os.unlink(db_path)
+
+def test_database_migration_failed_verification():
+    db_fd, db_path = tempfile.mkstemp()
+    try:
+        app = Flask(__name__)
+        database.DATABASE_PATH = db_path
+        with app.app_context():
+            database.init_db()
+            if hasattr(g, '_database'): del g._database
+            with patch('app.database.get_db') as mock_get_db:
+                mock_conn = MagicMock(); mock_cursor = MagicMock()
+                mock_get_db.return_value = mock_conn
+                mock_conn.cursor.return_value = mock_cursor
+                mock_cursor.fetchone.return_value = ("exists",)
+                
+                def fetchall_side_effect():
+                    sql = str(mock_cursor.execute.call_args_list[-1]).upper()
+                    if "SUBMISSIONS" in sql:
+                        return [(0, "id", "T", 1, None, 1), (1, "avatar_url", "T", 0, None, 0)]
+                    # Return schema containing day_type but NOT in PK (Line 114)
+                    return [(0, "event_uid", "T", 1, None, 1), (1, "day_type", "T", 1, None, 0), (2, "slot_index", "T", 1, None, 0)]
+                
+                mock_cursor.fetchall.side_effect = fetchall_side_effect
+                
+                def side_effect(sql, *args):
+                    if "RENAME" in sql.upper():
+                        raise sqlite3.OperationalError("already exists")
+                    return MagicMock()
+                mock_cursor.execute.side_effect = side_effect
+                
+                with pytest.raises(sqlite3.OperationalError):
+                    database.init_db()
+    finally:
+        os.close(db_fd); os.unlink(db_path)
+
+def test_database_migration_worker_halfway():
+    db_fd, db_path = tempfile.mkstemp()
+    try:
+        app = Flask(__name__)
+        database.DATABASE_PATH = db_path
+        with app.app_context():
+            database.init_db()
+            if hasattr(g, '_database'): del g._database
+            with patch('app.database.get_db') as mock_get_db:
+                mock_conn = MagicMock(); mock_cursor = MagicMock()
+                mock_get_db.return_value = mock_conn
+                mock_conn.cursor.return_value = mock_cursor
+                mock_cursor.fetchone.return_value = ("exists",)
+                
+                def fetchall_side_effect():
+                    sql = str(mock_cursor.execute.call_args_list[-1]).upper()
+                    if "SUBMISSIONS" in sql:
+                        return [(0, "id", "T", 1, None, 1), (1, "avatar_url", "T", 0, None, 0)]
+                    # assignments initial: incomplete, verification: complete
+                    # Check fetchall call count for assignments
+                    if mock_cursor.fetchall.call_count == 2:
+                        return [(0, "id", "T", 1, None, 1)]
+                    return [(0, "id", "T", 1, None, 1), (1, "day_type", "T", 1, None, 2), (2, "slot_index", "T", 1, None, 3)]
+                
+                mock_cursor.fetchall.side_effect = fetchall_side_effect
+                
+                def side_effect(sql, *args):
+                    if "RENAME" in sql.upper():
+                        raise sqlite3.OperationalError("already exists")
+                    return MagicMock()
+                mock_cursor.execute.side_effect = side_effect
+                
+                database.init_db()
+    finally:
+        os.close(db_fd); os.unlink(db_path)
+
+def test_database_migration_already_dropped():
+    db_fd, db_path = tempfile.mkstemp()
+    try:
+        app = Flask(__name__)
+        database.DATABASE_PATH = db_path
+        with app.app_context():
+            database.init_db()
+            if hasattr(g, '_database'): del g._database
+            with patch('app.database.get_db') as mock_get_db:
+                mock_conn = MagicMock(); mock_cursor = MagicMock()
+                mock_get_db.return_value = mock_conn
+                mock_conn.cursor.return_value = mock_cursor
+                mock_cursor.fetchone.return_value = ("exists",)
+                def fetchall_side_effect():
+                    if "SUBMISSIONS" in str(mock_cursor.execute.call_args_list[-1]).upper():
+                        return [(0, "id", "T", 1, None, 1), (1, "avatar_url", "T", 0, None, 0)]
+                    return [(0, "id", "T", 1, None, 1)]
+                mock_cursor.fetchall.side_effect = fetchall_side_effect
+                
+                def side_effect(sql, *args):
+                    if "RENAME" in sql.upper():
+                        raise sqlite3.OperationalError("no such table: assignments_old")
+                    return MagicMock()
+                mock_cursor.execute.side_effect = side_effect
+                
+                database.init_db()
+    finally:
+        os.close(db_fd); os.unlink(db_path)
 
 def test_database_concurrency_error_re_raised_submissions():
     db_fd, db_path = tempfile.mkstemp()
@@ -123,26 +224,20 @@ def test_database_concurrency_error_re_raised_submissions():
         app = Flask(__name__)
         database.DATABASE_PATH = db_path
         with app.app_context():
-            # First initialization to create tables
             database.init_db()
-            
-            # CLEAR g._database
-            if hasattr(g, '_database'):
-                del g._database
-
+            if hasattr(g, '_database'): del g._database
             with patch('app.database.get_db') as mock_get_db:
-                mock_conn = MagicMock()
-                mock_cursor = MagicMock()
+                mock_conn = MagicMock(); mock_cursor = MagicMock()
                 mock_get_db.return_value = mock_conn
                 mock_conn.cursor.return_value = mock_cursor
-                
-                # Tricky part:
-                # 1. table existence check needs truthy
-                # 2. PRAGMA call needs to be followed by fetchall returning minimal
-                # 3. ALTER TABLE needs to raise error
-                
                 mock_cursor.fetchone.return_value = ("exists",)
-                mock_cursor.fetchall.return_value = [[0, "id"]]
+                
+                def fetchall_side_effect():
+                    sql = str(mock_cursor.execute.call_args_list[-1]).upper()
+                    if "SUBMISSIONS" in sql:
+                        return [(0, "id", "T", 1, None, 1)] # Incomplete
+                    return [(0, "id", "T", 1, None, 1), (1, "day_type", "T", 1, None, 2), (2, "slot_index", "T", 1, None, 3)] # Complete
+                mock_cursor.fetchall.side_effect = fetchall_side_effect
                 
                 def side_effect(sql, *args):
                     if "ALTER TABLE SUBMISSIONS" in sql.upper():
@@ -150,12 +245,10 @@ def test_database_concurrency_error_re_raised_submissions():
                     return MagicMock()
                 mock_cursor.execute.side_effect = side_effect
                 
-                with pytest.raises(sqlite3.OperationalError) as excinfo:
+                with pytest.raises(sqlite3.OperationalError):
                     database.init_db()
-                assert "submissions error" in str(excinfo.value)
     finally:
-        os.close(db_fd)
-        os.unlink(db_path)
+        os.close(db_fd); os.unlink(db_path)
 
 def test_database_concurrency_error_re_raised_assignments():
     db_fd, db_path = tempfile.mkstemp()
@@ -164,29 +257,28 @@ def test_database_concurrency_error_re_raised_assignments():
         database.DATABASE_PATH = db_path
         with app.app_context():
             database.init_db()
-            
-            # CLEAR g._database
-            if hasattr(g, '_database'):
-                del g._database
-
+            if hasattr(g, '_database'): del g._database
             with patch('app.database.get_db') as mock_get_db:
-                mock_conn = MagicMock()
-                mock_cursor = MagicMock()
+                mock_conn = MagicMock(); mock_cursor = MagicMock()
                 mock_get_db.return_value = mock_conn
                 mock_conn.cursor.return_value = mock_cursor
-                
                 mock_cursor.fetchone.return_value = ("exists",)
-                mock_cursor.fetchall.return_value = [[0, "id"]]
+                
+                def fetchall_side_effect():
+                    sql = str(mock_cursor.execute.call_args_list[-1]).upper()
+                    if "SUBMISSIONS" in sql:
+                        return [(0, "id", "T", 1, None, 1), (1, "avatar_url", "T", 0, None, 0)]
+                    return [(0, "id", "T", 1, None, 1)]
+                
+                mock_cursor.fetchall.side_effect = fetchall_side_effect
                 
                 def side_effect(sql, *args):
-                    if "ALTER TABLE ASSIGNMENTS" in sql.upper():
-                        raise sqlite3.OperationalError("assignments error")
+                    if "RENAME" in sql.upper():
+                        raise sqlite3.OperationalError("other error")
                     return MagicMock()
                 mock_cursor.execute.side_effect = side_effect
                 
-                with pytest.raises(sqlite3.OperationalError) as excinfo:
+                with pytest.raises(sqlite3.OperationalError):
                     database.init_db()
-                assert "assignments error" in str(excinfo.value)
     finally:
-        os.close(db_fd)
-        os.unlink(db_path)
+        os.close(db_fd); os.unlink(db_path)

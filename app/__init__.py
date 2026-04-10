@@ -34,7 +34,7 @@ def generate_slot_labels():
         end_hour = (end_total_minutes // 60) % 24
         end_min = end_total_minutes % 60
 
-        labels.append(f"{start_hour:02d}:{start_min:02d}-{end_hour:02d}:{end_min:02d}")
+        labels.append(f"{start_hour:02d}:{start_min:02d}-\u200b{end_hour:02d}:{end_min:02d}")
     return labels
 
 
