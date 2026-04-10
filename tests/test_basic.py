@@ -85,6 +85,31 @@ def test_database_migrations():
         os.close(db_fd)
         os.unlink(db_path)
 
+def test_database_migration_with_column_present():
+    # Create a database where day_type is present as a column but NOT in PK
+    db_fd, db_path = tempfile.mkstemp()
+    try:
+        conn = sqlite3.connect(db_path)
+        conn.execute("CREATE TABLE events (id INTEGER PRIMARY KEY, uid TEXT UNIQUE, name TEXT, active_days TEXT, admin_secret TEXT)")
+        conn.execute("CREATE TABLE submissions (id TEXT PRIMARY KEY, event_uid TEXT, day_type TEXT, player_name TEXT, player_id TEXT, alliance_name TEXT, resources REAL, raw_data TEXT, feasible_slots TEXT, avatar_url TEXT)")
+        # day_type is here, but PK is only (event_uid, slot_index)
+        conn.execute("CREATE TABLE assignments (event_uid TEXT, day_type TEXT, slot_index INTEGER, player_id TEXT, is_locked BOOLEAN, PRIMARY KEY (event_uid, slot_index))")
+        conn.commit()
+        conn.close()
+
+        app = Flask(__name__)
+        database.DATABASE_PATH = db_path
+        with app.app_context():
+            database.init_db() # Should trigger migration and use Line 105
+            
+            db = database.get_db()
+            cursor = db.execute("PRAGMA table_info(assignments)")
+            pk_cols = [c[1] for c in cursor.fetchall() if c[5] > 0]
+            assert "day_type" in pk_cols
+    finally:
+        os.close(db_fd)
+        os.unlink(db_path)
+
 def test_database_init_submissions_race():
     db_fd, db_path = tempfile.mkstemp()
     try:
@@ -100,7 +125,6 @@ def test_database_init_submissions_race():
                 mock_cursor.fetchone.return_value = ("exists",)
                 
                 def fetchall_side_effect():
-                    # Check current query string
                     sql = str(mock_cursor.execute.call_args_list[-1]).upper()
                     if "SUBMISSIONS" in sql:
                         return [(0, "id", "TEXT", 1, None, 1)]
@@ -137,7 +161,7 @@ def test_database_migration_failed_verification():
                     sql = str(mock_cursor.execute.call_args_list[-1]).upper()
                     if "SUBMISSIONS" in sql:
                         return [(0, "id", "T", 1, None, 1), (1, "avatar_url", "T", 0, None, 0)]
-                    # Return schema containing day_type but NOT in PK (Line 114)
+                    # Return schema containing day_type but NOT in PK
                     return [(0, "event_uid", "T", 1, None, 1), (1, "day_type", "T", 1, None, 0), (2, "slot_index", "T", 1, None, 0)]
                 
                 mock_cursor.fetchall.side_effect = fetchall_side_effect
@@ -172,8 +196,7 @@ def test_database_migration_worker_halfway():
                     if "SUBMISSIONS" in sql:
                         return [(0, "id", "T", 1, None, 1), (1, "avatar_url", "T", 0, None, 0)]
                     # assignments initial: incomplete, verification: complete
-                    # Check fetchall call count for assignments
-                    if mock_cursor.fetchall.call_count == 2:
+                    if mock_cursor.fetchall.call_count <= 2: # 1 sub, 1 ass initial
                         return [(0, "id", "T", 1, None, 1)]
                     return [(0, "id", "T", 1, None, 1), (1, "day_type", "T", 1, None, 2), (2, "slot_index", "T", 1, None, 3)]
                 
