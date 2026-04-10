@@ -9,7 +9,9 @@ DB_PATH="/app/data/planner.db"
 BACKUP_DIR="./backups"
 
 usage() {
-    echo "Usage: $0 [options] [backup|restore] [filename]"
+    echo "Usage:"
+    echo "  $0 [options] backup"
+    echo "  $0 [options] restore <filename>"
     echo ""
     echo "Options:"
     echo "  -c <name>    Docker container name (default: $CONTAINER_NAME)"
