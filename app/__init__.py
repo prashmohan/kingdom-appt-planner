@@ -425,9 +425,32 @@ def create_app():
                     for slot_index in feasible_slots:
                         if 0 <= slot_index < 49:
                             slot_density[day][slot_index] += 1
+
                 except (json.JSONDecodeError, TypeError, KeyError):
                     sub["requested_slots_text"] = "Error parsing slots"
                     pass
+
+                # Resources Hover Text
+                try:
+                    raw_resources = json.loads(sub["raw_data"])
+                    parts = []
+                    if day == "construction":
+                        if raw_resources.get("speedups"):
+                            parts.append(f"Speedups: {raw_resources['speedups']}m")
+                        if raw_resources.get("truegold"):
+                            parts.append(f"Truegold: {raw_resources['truegold']}")
+                    elif day == "training":
+                        if raw_resources.get("speedups"):
+                            parts.append(f"Speedups: {raw_resources['speedups']}m")
+                    elif day == "research":
+                        if raw_resources.get("speedups"):
+                            parts.append(f"Speedups: {raw_resources['speedups']}m")
+                        if raw_resources.get("truegold_dust"):
+                            parts.append(f"Dust: {raw_resources['truegold_dust']}")
+                    sub["resources_text"] = " | ".join(parts) if parts else "No raw data"
+                except (json.JSONDecodeError, TypeError):
+                    sub["resources_text"] = "Error parsing resources"
+
             max_density[day] = max(slot_density[day]) if any(slot_density[day]) else 1
 
             # Available Slots

@@ -214,7 +214,11 @@
                                             </button>
                                         </form>
                                     </td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-gray-300" data-value="{{ sub.resources }}">{{ "%.0f"|format(sub.resources) }}</td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-gray-300">
+                                        <span class="cursor-help border-b border-dashed border-gray-500" title="{{ sub.resources_text }}">
+                                            {{ "%.0f"|format(sub.resources) }}
+                                        </span>
+                                    </td>
                                     <td class="px-4 py-3 whitespace-nowrap text-gray-300">{{ sub.status }}</td>
                                     <td class="px-4 py-3 whitespace-nowrap">
                                         {% if assignment %}
