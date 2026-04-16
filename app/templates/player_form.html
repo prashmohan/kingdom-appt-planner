@@ -64,7 +64,7 @@
             <p class="text-lg text-gray-400 mt-2">{{ event.name }}</p>
         </header>
 
-        <form action="/event/{{ event.uid }}/submit" method="POST" enctype="multipart/form-data" class="bg-kvk-gray-800 p-6 rounded-xl shadow-lg border border-kvk-gray-700">
+        <form action="/event/{{ event.uid }}/submit" method="POST" {% if enable_screenshot_upload %}enctype="multipart/form-data"{% endif %} class="bg-kvk-gray-800 p-6 rounded-xl shadow-lg border border-kvk-gray-700">
             
             <div class="p-4 border-b border-kvk-gray-700">
                 <h2 class="text-2xl font-bold text-gray-100 mb-4">Your Information</h2>
@@ -95,6 +95,7 @@
                     </div>
                 </div>
                 
+                {% if enable_screenshot_upload %}
                 <div class="mt-6 border-t border-kvk-gray-700 pt-6">
                     <label for="backpack_screenshot" class="block text-sm font-medium text-gray-300 mb-2">Backpack Screenshot (Optional)</label>
                     <div class="flex items-center gap-4">
@@ -107,6 +108,7 @@
                         <p class="text-xs text-gray-500 italic">Upload a screenshot of your backpack to help verify your resources.</p>
                     </div>
                 </div>
+                {% endif %}
             </div>
 
             <div class="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">

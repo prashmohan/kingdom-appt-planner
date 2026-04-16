@@ -12,6 +12,7 @@ import io
 from werkzeug.utils import secure_filename
 from flask import Flask, render_template, request, redirect, url_for, g, jsonify, Response
 from . import database, logic
+from config import Config
 
 # Ensure .js files are served with the correct MIME type
 mimetypes.add_type("application/javascript", ".js")
@@ -75,8 +76,11 @@ def create_app():
 
     # Make the label generator available to all templates
     @app.context_processor
-    def inject_slot_labels():
-        return dict(slot_labels=generate_slot_labels())
+    def inject_global_config():
+        return dict(
+            slot_labels=generate_slot_labels(),
+            enable_screenshot_upload=Config.ENABLE_SCREENSHOT_UPLOAD
+        )
 
     @app.route("/")
     def index():
@@ -254,7 +258,7 @@ def create_app():
 
         # Handle backpack screenshot upload
         backpack_url = None
-        if "backpack_screenshot" in request.files:
+        if Config.ENABLE_SCREENSHOT_UPLOAD and "backpack_screenshot" in request.files:
             file = request.files["backpack_screenshot"]
             if file and file.filename:
                 # Create upload directory if it doesn't exist
