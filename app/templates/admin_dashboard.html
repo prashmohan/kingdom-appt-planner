@@ -96,11 +96,19 @@
                 <div class="bg-kvk-gray-800 p-6 rounded-xl shadow-md border border-kvk-gray-700">
                     <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
                         <h2 class="text-2xl font-bold text-gray-100">Schedule Heatmap: <span class="capitalize">{{ day }}</span></h2>
-                        <form action="{{ url_for('distribute', event_uid=event.uid) }}" method="POST" class="inline">
-                            <input type="hidden" name="secret" value="{{ secret }}">
-                            <input type="hidden" name="day_type" value="{{ day }}">
-                            <button type="submit" class="bg-kvk-gold text-kvk-gray-900 font-bold py-1.5 px-4 rounded-md text-sm hover:bg-amber-500 transition duration-300 shadow-sm">Assign Appointments</button>
-                        </form>
+                        <div class="flex gap-2 items-center">
+                            <form action="{{ url_for('distribute', event_uid=event.uid) }}" method="POST" class="inline">
+                                <input type="hidden" name="secret" value="{{ secret }}">
+                                <input type="hidden" name="day_type" value="{{ day }}">
+                                <button type="submit" class="bg-kvk-gold text-kvk-gray-900 font-bold py-1.5 px-4 rounded-md text-sm hover:bg-amber-500 transition duration-300 shadow-sm">Assign Appointments</button>
+                            </form>
+                            <a href="{{ url_for('export_csv', event_uid=event.uid, day_type=day, secret=secret) }}" class="bg-kvk-gray-700 text-kvk-gold font-bold py-1.5 px-4 rounded-md text-sm hover:bg-kvk-gray-600 transition duration-300 shadow-sm flex items-center gap-1 border border-kvk-gold/20">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                Export CSV
+                            </a>
+                        </div>
                     </div>
                     <div class="grid grid-cols-7 gap-1">
                         {% for i in range(49) %}

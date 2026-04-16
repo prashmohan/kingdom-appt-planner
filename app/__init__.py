@@ -7,8 +7,10 @@ import os
 import requests
 import mimetypes
 import markdown
+import csv
+import io
 from werkzeug.utils import secure_filename
-from flask import Flask, render_template, request, redirect, url_for, g, jsonify
+from flask import Flask, render_template, request, redirect, url_for, g, jsonify, Response
 from . import database, logic
 
 # Ensure .js files are served with the correct MIME type
@@ -610,6 +612,54 @@ def create_app():
         logic.run_distribution_algorithm(event_uid, day_type)
 
         return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
+
+    @app.route("/admin/<event_uid>/export/<day_type>", methods=["GET"])
+    def export_csv(event_uid, day_type):
+        secret = request.args.get("secret")
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        event = db.execute("SELECT * FROM events WHERE uid = ?", (event_uid,)).fetchone()
+        if event is None:
+            return "Event not found", 404
+        if event["admin_secret"] != secret:
+            return "Forbidden", 403
+
+        # Fetch locked assignments joined with submissions to get player name
+        assignments = db.execute(
+            """
+            SELECT a.day_type, a.player_id, s.player_name, a.slot_index
+            FROM assignments a
+            JOIN submissions s ON a.event_uid = s.event_uid AND a.day_type = s.day_type AND a.player_id = s.player_id
+            WHERE a.event_uid = ? AND a.day_type = ? AND a.is_locked = 1
+            ORDER BY a.slot_index ASC
+            """,
+            (event_uid, day_type),
+        ).fetchall()
+
+        slot_labels = generate_slot_labels()
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["Event Type", "Player ID", "Player Name", "Appointment Slot"])
+
+        for a in assignments:
+            writer.writerow(
+                [
+                    a["day_type"],
+                    a["player_id"],
+                    a["player_name"],
+                    slot_labels[a["slot_index"]],
+                ]
+            )
+
+        output.seek(0)
+        return Response(
+            output.getvalue(),
+            mimetype="text/csv",
+            headers={
+                "Content-Disposition": f"attachment; filename=schedule_{event['uid']}_{day_type}.csv"
+            },
+        )
 
     @app.route("/admin/<event_uid>/confirm", methods=["POST"])
     def confirm(event_uid):

@@ -168,6 +168,35 @@ def test_full_flow(client, app):
     # 9. Delete
     client.post(f'/admin/{uid}/delete', data={'secret': secret, 'submission_id': f"{uid}_p1_construction"})
 
+def test_export_csv(client, app):
+    # 1. Setup
+    client.post('/create', data={'event_name': 'Export Test'})
+    with app.app_context():
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        event = db.execute("SELECT uid, admin_secret FROM events").fetchone()
+        uid, secret = event['uid'], event['admin_secret']
+
+    # 2. Submit, assign and lock
+    client.post(f'/event/{uid}/submit', data={
+        'player_name': 'P1', 'player_id': 'p1', 'alliance_name': 'A',
+        'speedups-construction': '10', 'slots-construction': '[10]'
+    })
+    client.post(f'/admin/{uid}/manual_assign', data={
+        'secret': secret, 'submission_id': f"{uid}_p1_construction", 'slot_index': '10'
+    })
+    # manual_assign locks by default in this app's logic
+
+    # 3. Export
+    resp = client.get(f'/admin/{uid}/export/construction?secret={secret}')
+    assert resp.status_code == 200
+    assert resp.mimetype == "text/csv"
+    assert b"Event Type,Player ID,Player Name,Appointment Slot" in resp.data
+    assert b"construction,p1,P1" in resp.data
+
+    # 4. Unauthorized
+    assert client.get(f'/admin/{uid}/export/construction?secret=bad').status_code == 403
+
 def test_submit_with_backpack(client, app):
     # 1. Setup
     client.post('/create', data={'event_name': 'Backpack Test'})
