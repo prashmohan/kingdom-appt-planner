@@ -5,3 +5,4 @@ __pycache__/
 .env
 backups/
 .coverage
+app/static/uploads/

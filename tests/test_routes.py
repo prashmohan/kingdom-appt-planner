@@ -2,6 +2,7 @@ import pytest
 import json
 import sqlite3
 import os
+import io
 from unittest.mock import patch, MagicMock
 from app import database
 
@@ -166,6 +167,41 @@ def test_full_flow(client, app):
 
     # 9. Delete
     client.post(f'/admin/{uid}/delete', data={'secret': secret, 'submission_id': f"{uid}_p1_construction"})
+
+def test_submit_with_backpack(client, app):
+    # 1. Setup
+    client.post('/create', data={'event_name': 'Backpack Test'})
+    with app.app_context():
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        event = db.execute("SELECT uid, admin_secret FROM events").fetchone()
+        uid, secret = event['uid'], event['admin_secret']
+
+    # 2. Submit with file
+    data = {
+        'player_name': 'P1', 'player_id': 'p1', 'alliance_name': 'A',
+        'speedups-construction': '10', 'slots-construction': '[0]',
+        'backpack_screenshot': (io.BytesIO(b"dummy image data"), 'test.jpg')
+    }
+    
+    resp = client.post(f'/event/{uid}/submit', data=data, content_type='multipart/form-data', follow_redirects=True)
+    assert resp.status_code == 200
+
+    # 3. Verify in DB
+    with app.app_context():
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        sub = db.execute("SELECT backpack_url FROM submissions WHERE player_id = 'p1'").fetchone()
+        assert sub['backpack_url'] is not None
+        assert '/static/uploads/' in sub['backpack_url']
+        
+        # Verify file exists on disk
+        filename = sub['backpack_url'].split('/')[-1]
+        filepath = os.path.join(app.static_folder, 'uploads', filename)
+        assert os.path.exists(filepath)
+        
+        # Cleanup
+        os.remove(filepath)
 
 def test_tab_specific_distribute(client, app):
     # 1. Setup

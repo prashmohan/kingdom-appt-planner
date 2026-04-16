@@ -64,7 +64,7 @@
             <p class="text-lg text-gray-400 mt-2">{{ event.name }}</p>
         </header>
 
-        <form action="/event/{{ event.uid }}/submit" method="POST" class="bg-kvk-gray-800 p-6 rounded-xl shadow-lg border border-kvk-gray-700">
+        <form action="/event/{{ event.uid }}/submit" method="POST" enctype="multipart/form-data" class="bg-kvk-gray-800 p-6 rounded-xl shadow-lg border border-kvk-gray-700">
             
             <div class="p-4 border-b border-kvk-gray-700">
                 <h2 class="text-2xl font-bold text-gray-100 mb-4">Your Information</h2>
@@ -92,6 +92,19 @@
                     <div>
                         <label for="alliance_name" class="block text-sm font-medium text-gray-300 mb-1">Alliance</label>
                         <input type="text" name="alliance_name" id="alliance_name" class="mt-1 block w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md shadow-sm text-gray-200 focus:border-kvk-gold focus:ring focus:ring-kvk-gold focus:ring-opacity-50">
+                    </div>
+                </div>
+                
+                <div class="mt-6 border-t border-kvk-gray-700 pt-6">
+                    <label for="backpack_screenshot" class="block text-sm font-medium text-gray-300 mb-2">Backpack Screenshot (Optional)</label>
+                    <div class="flex items-center gap-4">
+                        <input type="file" name="backpack_screenshot" id="backpack_screenshot" accept="image/*" class="block w-full text-sm text-gray-400
+                            file:mr-4 file:py-2 file:px-4
+                            file:rounded-md file:border-0
+                            file:text-sm file:font-semibold
+                            file:bg-kvk-gray-700 file:text-kvk-gold
+                            hover:file:bg-kvk-gray-600 transition">
+                        <p class="text-xs text-gray-500 italic">Upload a screenshot of your backpack to help verify your resources.</p>
                     </div>
                 </div>
             </div>

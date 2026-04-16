@@ -35,6 +35,7 @@ def init_db():
             player_name TEXT NOT NULL,
             player_id TEXT NOT NULL,
             avatar_url TEXT,
+            backpack_url TEXT,
             alliance_name TEXT,
             resources REAL NOT NULL,
             raw_data TEXT NOT NULL,
@@ -53,6 +54,13 @@ def init_db():
             cursor.execute("ALTER TABLE submissions ADD COLUMN avatar_url TEXT")
         except sqlite3.OperationalError as e:
             # If another worker added it at the same time, ignore the error
+            if "duplicate column name" not in str(e):
+                raise
+    
+    if 'backpack_url' not in columns:
+        try:
+            cursor.execute("ALTER TABLE submissions ADD COLUMN backpack_url TEXT")
+        except sqlite3.OperationalError as e:
             if "duplicate column name" not in str(e):
                 raise
 

@@ -3,9 +3,11 @@ import json
 import sqlite3
 import hashlib
 import time
+import os
 import requests
 import mimetypes
 import markdown
+from werkzeug.utils import secure_filename
 from flask import Flask, render_template, request, redirect, url_for, g, jsonify
 from . import database, logic
 
@@ -247,6 +249,21 @@ def create_app():
         db = database.get_db()
         player_id = request.form["player_id"].strip().lower()
 
+        # Handle backpack screenshot upload
+        backpack_url = None
+        if "backpack_screenshot" in request.files:
+            file = request.files["backpack_screenshot"]
+            if file and file.filename:
+                # Create upload directory if it doesn't exist
+                upload_dir = os.path.join(app.static_folder, "uploads")
+                if not os.path.exists(upload_dir):
+                    os.makedirs(upload_dir)
+                
+                # Generate unique filename: event_uid + player_id + timestamp + original filename
+                filename = secure_filename(f"{event_uid}_{player_id}_{int(time.time())}_{file.filename}")
+                file.save(os.path.join(upload_dir, filename))
+                backpack_url = url_for("static", filename=f"uploads/{filename}")
+
         # First, delete all previous submissions for this player and event.
         db.execute(
             "DELETE FROM submissions WHERE event_uid = ? AND player_id = ?",
@@ -268,7 +285,7 @@ def create_app():
             raw_data = {"speedups": construction_speedups, "truegold": truegold}
             submission_id = f"{event_uid}_{player_id}_{day_type}"
             db.execute(
-                "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, avatar_url, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, avatar_url, backpack_url, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
                 (
                     submission_id,
                     event_uid,
@@ -276,6 +293,7 @@ def create_app():
                     player_name,
                     player_id,
                     avatar_url,
+                    backpack_url,
                     alliance_name,
                     score,
                     json.dumps(raw_data),
@@ -292,7 +310,7 @@ def create_app():
             raw_data = {"speedups": training_speedups}
             submission_id = f"{event_uid}_{player_id}_{day_type}"
             db.execute(
-                "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, avatar_url, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, avatar_url, backpack_url, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
                 (
                     submission_id,
                     event_uid,
@@ -300,6 +318,7 @@ def create_app():
                     player_name,
                     player_id,
                     avatar_url,
+                    backpack_url,
                     alliance_name,
                     score,
                     json.dumps(raw_data),
@@ -317,7 +336,7 @@ def create_app():
             raw_data = {"speedups": research_speedups, "truegold_dust": truegold_dust}
             submission_id = f"{event_uid}_{player_id}_{day_type}"
             db.execute(
-                "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, avatar_url, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, avatar_url, backpack_url, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
                 (
                     submission_id,
                     event_uid,
@@ -325,6 +344,7 @@ def create_app():
                     player_name,
                     player_id,
                     avatar_url,
+                    backpack_url,
                     alliance_name,
                     score,
                     json.dumps(raw_data),
