@@ -222,7 +222,14 @@
                                     <td class="px-4 py-3 whitespace-nowrap text-gray-300">{{ sub.status }}</td>
                                     <td class="px-4 py-3 whitespace-nowrap">
                                         {% if assignment %}
-                                            <span class="font-bold text-gray-200">{{ slot_labels[assignment.slot_index] }}</span>
+                                            <div class="flex items-center gap-2">
+                                                <span class="font-bold text-gray-200">{{ slot_labels[assignment.slot_index] }}</span>
+                                                <form action="{{ url_for('unset_assignment', event_uid=event.uid) }}" method="POST" class="inline">
+                                                    <input type="hidden" name="secret" value="{{ secret }}">
+                                                    <input type="hidden" name="submission_id" value="{{ sub.id }}">
+                                                    <button type="submit" class="text-xs bg-red-600/30 text-red-400 px-2 py-0.5 rounded hover:bg-red-600/50 transition duration-200" title="Unset Appointment">Unset</button>
+                                                </form>
+                                            </div>
                                         {% else %}
                                             <form action="{{ url_for('manual_assign', event_uid=event.uid) }}" method="POST" class="flex items-center">
                                                 <input type="hidden" name="secret" value="{{ secret }}">

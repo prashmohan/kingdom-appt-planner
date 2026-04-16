@@ -710,6 +710,36 @@ def create_app():
 
         return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
 
+    @app.route("/admin/<event_uid>/unset", methods=["POST"])
+    def unset_assignment(event_uid):
+        secret = request.form.get("secret")
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        event = db.execute("SELECT * FROM events WHERE uid = ?", (event_uid,)).fetchone()
+        if event is None:
+            return "Event not found", 404
+        if event["admin_secret"] != secret:
+            return "Forbidden", 403
+
+        submission_id = request.form.get("submission_id")
+        _, player_id, day_type = submission_id.split("_", 2)
+
+        # Delete the assignment for this player on this day
+        db.execute(
+            "DELETE FROM assignments WHERE event_uid = ? AND player_id = ? AND day_type = ?",
+            (event_uid, player_id, day_type),
+        )
+
+        # Update submission status back to 'Pending'
+        db.execute(
+            "UPDATE submissions SET status = 'Pending' WHERE event_uid = ? AND player_id = ? AND day_type = ?",
+            (event_uid, player_id, day_type)
+        )
+
+        db.commit()
+
+        return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
+
     return app
 
 

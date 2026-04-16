@@ -167,6 +167,47 @@ def test_full_flow(client, app):
     # 9. Delete
     client.post(f'/admin/{uid}/delete', data={'secret': secret, 'submission_id': f"{uid}_p1_construction"})
 
+def test_unset_assignment(client, app):
+    # 1. Setup
+    client.post('/create', data={'event_name': 'Unset Test'})
+    with app.app_context():
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        event = db.execute("SELECT uid, admin_secret FROM events").fetchone()
+        uid, secret = event['uid'], event['admin_secret']
+
+    client.post(f'/event/{uid}/submit', data={
+        'player_name': 'P1', 'player_id': 'p1', 'alliance_name': 'A',
+        'speedups-construction': '10', 'slots-construction': '[0]'
+    })
+    submission_id = f"{uid}_p1_construction"
+
+    # 2. Manually assign
+    client.post(f'/admin/{uid}/manual_assign', data={
+        'secret': secret, 'submission_id': submission_id, 'slot_index': '10'
+    })
+
+    # 3. Verify assigned
+    with app.app_context():
+        db = database.get_db()
+        count = db.execute("SELECT count(*) FROM assignments WHERE event_uid = ? AND player_id = ?", (uid, 'p1')).fetchone()[0]
+        assert count == 1
+
+    # 4. Unset
+    resp = client.post(f'/admin/{uid}/unset', data={
+        'secret': secret, 'submission_id': submission_id
+    }, follow_redirects=True)
+    assert resp.status_code == 200
+
+    # 5. Verify unassigned and status reset
+    with app.app_context():
+        db = database.get_db()
+        count = db.execute("SELECT count(*) FROM assignments WHERE event_uid = ? AND player_id = ?", (uid, 'p1')).fetchone()[0]
+        assert count == 0
+        
+        sub = db.execute("SELECT status FROM submissions WHERE id = ?", (submission_id,)).fetchone()
+        assert sub[0] == 'Pending'
+
 def test_update_alliance(client, app):
     # 1. Setup
     client.post('/create', data={'event_name': 'Alliance Test'})
