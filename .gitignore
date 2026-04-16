@@ -3,3 +3,5 @@ data/*.db
 __pycache__/
 *.pyc
 .env
+backups/
+.coverage
