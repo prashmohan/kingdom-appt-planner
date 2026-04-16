@@ -212,6 +212,7 @@ def create_app():
                 submission = submissions_map.get((day_type, player_id))
                 if submission:
                     locked_assignments[day_type][a["slot_index"]] = {
+                        "player_id": player_id,
                         "player_name": submission["player_name"],
                         "alliance_name": submission["alliance_name"],
                         "avatar_url": submission["avatar_url"],

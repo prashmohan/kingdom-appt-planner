@@ -47,6 +47,9 @@
             background-color: #111827;
             opacity: 0.5;
         }
+        .cursor-copy {
+            cursor: pointer;
+        }
         .slot-content {
             flex-grow: 1;
             display: flex;
@@ -86,12 +89,14 @@
                     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2">
                         {% for i in range(49) %}
                         {% set assignment = assignments.get(day, {}).get(i) %}
-                        <div class="slot rounded-lg overflow-hidden {% if assignment %}slot-locked shadow-lg border-blue-500/50{% else %}slot-empty{% endif %}">
+                        <div class="slot rounded-lg overflow-hidden {% if assignment %}slot-locked shadow-lg border-blue-500/50 cursor-copy hover:border-kvk-gold transition-all duration-200{% else %}slot-empty{% endif %}"
+                             {% if assignment %}onclick="copyToClipboard('{{ assignment.player_id }}', this)" title="Click to copy Player ID"{% endif %}>
                             <div class="slot-time">{{ slot_labels[i] }}</div>
                             <div class="slot-content">
                                 {% if assignment %}
                                     <p class="font-bold text-kvk-gold text-sm">[{{ assignment.alliance_name }}]</p>
                                     <p class="text-gray-100 font-medium break-words px-1">{{ assignment.player_name }}</p>
+                                    <div class="copy-feedback hidden absolute inset-0 bg-green-600/90 flex items-center justify-center font-bold text-white text-xs rounded-lg">Copied!</div>
                                 {% else %}
                                     <span class="text-gray-600 text-[0.6rem] uppercase tracking-wider">Unassigned</span>
                                 {% endif %}
@@ -118,6 +123,20 @@
     </div>
 
     <script>
+        function copyToClipboard(text, element) {
+            navigator.clipboard.writeText(text).then(() => {
+                const feedback = element.querySelector('.copy-feedback');
+                if (feedback) {
+                    feedback.classList.remove('hidden');
+                    setTimeout(() => {
+                        feedback.classList.add('hidden');
+                    }, 1500);
+                }
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+            });
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             const tabs = document.querySelectorAll('.tab-button');
             const tabContents = document.querySelectorAll('.tab-content');
