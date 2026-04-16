@@ -2,7 +2,7 @@ import sqlite3
 import json
 from . import database
 
-def run_distribution_algorithm(event_uid):
+def run_distribution_algorithm(event_uid, day_type=None):
     db = database.get_db()
     db.row_factory = sqlite3.Row
 
@@ -11,10 +11,16 @@ def run_distribution_algorithm(event_uid):
     if not event:
         return
 
-    active_days = [day for day, is_active in json.loads(event['active_days']).items() if is_active]
+    if day_type:
+        active_days = [day_type]
+    else:
+        active_days = [day for day, is_active in json.loads(event['active_days']).items() if is_active]
 
-    # Reset all submissions for the event to 'Pending' before starting
-    db.execute("UPDATE submissions SET status = 'Pending' WHERE event_uid = ?", (event_uid,))
+    # Reset all relevant submissions for the event to 'Pending' before starting
+    if day_type:
+        db.execute("UPDATE submissions SET status = 'Pending' WHERE event_uid = ? AND day_type = ?", (event_uid, day_type))
+    else:
+        db.execute("UPDATE submissions SET status = 'Pending' WHERE event_uid = ?", (event_uid,))
 
     # Loop through each active day and run the distribution for it
     for day_type in active_days:

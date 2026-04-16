@@ -585,7 +585,8 @@ def create_app():
         if event["admin_secret"] != secret:
             return "Forbidden", 403
 
-        logic.run_distribution_algorithm(event_uid)
+        day_type = request.form.get("day_type")
+        logic.run_distribution_algorithm(event_uid, day_type)
 
         return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
 

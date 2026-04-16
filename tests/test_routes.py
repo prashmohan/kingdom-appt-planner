@@ -167,6 +167,46 @@ def test_full_flow(client, app):
     # 9. Delete
     client.post(f'/admin/{uid}/delete', data={'secret': secret, 'submission_id': f"{uid}_p1_construction"})
 
+def test_tab_specific_distribute(client, app):
+    # 1. Setup
+    client.post('/create', data={'event_name': 'Tab Dist Test'})
+    with app.app_context():
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        event = db.execute("SELECT uid, admin_secret FROM events").fetchone()
+        uid, secret = event['uid'], event['admin_secret']
+
+    # Submit for construction and training in ONE call
+    client.post(f'/event/{uid}/submit', data={
+        'player_name': 'P1', 'player_id': 'p1', 'alliance_name': 'A',
+        'speedups-construction': '10', 'slots-construction': '[0]',
+        'speedups-training': '10', 'slots-training': '[0]'
+    })
+
+    # 2. Run distribute only for construction
+    client.post(f'/admin/{uid}/distribute', data={'secret': secret, 'day_type': 'construction'})
+
+    # 3. Verify construction is assigned, training is not
+    with app.app_context():
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        
+        # Construction should be assigned
+        cons_ass = db.execute("SELECT * FROM assignments WHERE event_uid = ? AND day_type = ?", (uid, 'construction')).fetchone()
+        assert cons_ass is not None
+        
+        # Training should NOT be assigned
+        train_ass = db.execute("SELECT * FROM assignments WHERE event_uid = ? AND day_type = ?", (uid, 'training')).fetchone()
+        assert train_ass is None
+        
+        # Construction status should be Confirmed
+        cons_sub = db.execute("SELECT status FROM submissions WHERE event_uid = ? AND day_type = ?", (uid, 'construction')).fetchone()
+        assert cons_sub['status'] == 'Confirmed'
+        
+        # Training status should still be Pending
+        train_sub = db.execute("SELECT status FROM submissions WHERE event_uid = ? AND day_type = ?", (uid, 'training')).fetchone()
+        assert train_sub['status'] == 'Pending'
+
 def test_unset_assignment(client, app):
     # 1. Setup
     client.post('/create', data={'event_name': 'Unset Test'})

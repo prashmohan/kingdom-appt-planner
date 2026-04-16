@@ -64,10 +64,6 @@
                 <div>
                     <h2 class="text-xl font-bold mb-2 text-gray-100">Global Actions</h2>
                     <div class="flex gap-2">
-                        <form action="{{ url_for('distribute', event_uid=event.uid) }}" method="POST" class="inline">
-                            <input type="hidden" name="secret" value="{{ secret }}">
-                            <button type="submit" class="bg-kvk-gold text-kvk-gray-900 font-bold py-2 px-4 rounded-md hover:bg-amber-500 transition duration-300">Assign Appointments</button>
-                        </form>
                         <form action="{{ url_for('refresh_players', event_uid=event.uid) }}" method="POST" class="inline">
                             <input type="hidden" name="secret" value="{{ secret }}">
                             <button type="submit" class="bg-kvk-blue text-white font-bold py-2 px-4 rounded-md hover:bg-blue-600 transition duration-300">Refresh Player Data</button>
@@ -98,7 +94,14 @@
             <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
                 <!-- Schedule Grid -->
                 <div class="bg-kvk-gray-800 p-6 rounded-xl shadow-md border border-kvk-gray-700">
-                    <h2 class="text-2xl font-bold mb-4 text-gray-100">Schedule Heatmap: <span class="capitalize">{{ day }}</span></h2>
+                    <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
+                        <h2 class="text-2xl font-bold text-gray-100">Schedule Heatmap: <span class="capitalize">{{ day }}</span></h2>
+                        <form action="{{ url_for('distribute', event_uid=event.uid) }}" method="POST" class="inline">
+                            <input type="hidden" name="secret" value="{{ secret }}">
+                            <input type="hidden" name="day_type" value="{{ day }}">
+                            <button type="submit" class="bg-kvk-gold text-kvk-gray-900 font-bold py-1.5 px-4 rounded-md text-sm hover:bg-amber-500 transition duration-300 shadow-sm">Assign Appointments</button>
+                        </form>
+                    </div>
                     <div class="grid grid-cols-7 gap-1">
                         {% for i in range(49) %}
                             {% set current_assignment = assignments.get(day, {}).get(i) %}
