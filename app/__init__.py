@@ -665,6 +665,28 @@ def create_app():
 
         return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
 
+    @app.route("/admin/<event_uid>/update_alliance", methods=["POST"])
+    def update_alliance(event_uid):
+        secret = request.form.get("secret")
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        event = db.execute("SELECT * FROM events WHERE uid = ?", (event_uid,)).fetchone()
+        if event is None:
+            return "Event not found", 404
+        if event["admin_secret"] != secret:
+            return "Forbidden", 403
+
+        submission_id = request.form.get("submission_id")
+        new_alliance_name = request.form.get("alliance_name").strip()
+
+        db.execute(
+            "UPDATE submissions SET alliance_name = ? WHERE id = ? AND event_uid = ?",
+            (new_alliance_name, submission_id, event_uid),
+        )
+        db.commit()
+
+        return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
+
     return app
 
 

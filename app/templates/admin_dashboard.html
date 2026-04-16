@@ -201,7 +201,19 @@
                                             </span>
                                         </div>
                                     </td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-gray-300">{{ sub.alliance_name }}</td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-gray-300">
+                                        <form action="{{ url_for('update_alliance', event_uid=event.uid) }}" method="POST" class="flex items-center gap-1">
+                                            <input type="hidden" name="secret" value="{{ secret }}">
+                                            <input type="hidden" name="submission_id" value="{{ sub.id }}">
+                                            <input type="text" name="alliance_name" value="{{ sub.alliance_name }}" 
+                                                   class="bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-xs text-gray-200 px-2 py-1 w-24 focus:ring-kvk-gold focus:border-kvk-gold">
+                                            <button type="submit" class="text-xs bg-kvk-gray-600 text-white px-1.5 py-1 rounded hover:bg-kvk-gray-500" title="Save Alliance">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                                </svg>
+                                            </button>
+                                        </form>
+                                    </td>
                                     <td class="px-4 py-3 whitespace-nowrap text-gray-300" data-value="{{ sub.resources }}">{{ "%.0f"|format(sub.resources) }}</td>
                                     <td class="px-4 py-3 whitespace-nowrap text-gray-300">{{ sub.status }}</td>
                                     <td class="px-4 py-3 whitespace-nowrap">

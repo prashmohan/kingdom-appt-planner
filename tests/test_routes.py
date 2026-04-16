@@ -167,6 +167,41 @@ def test_full_flow(client, app):
     # 9. Delete
     client.post(f'/admin/{uid}/delete', data={'secret': secret, 'submission_id': f"{uid}_p1_construction"})
 
+def test_update_alliance(client, app):
+    # 1. Setup
+    client.post('/create', data={'event_name': 'Alliance Test'})
+    with app.app_context():
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        event = db.execute("SELECT uid, admin_secret FROM events").fetchone()
+        uid, secret = event['uid'], event['admin_secret']
+
+    client.post(f'/event/{uid}/submit', data={
+        'player_name': 'P1', 'player_id': 'p1', 'alliance_name': 'Old',
+        'speedups-construction': '10', 'slots-construction': '[0]'
+    })
+    submission_id = f"{uid}_p1_construction"
+
+    # 2. Success
+    resp = client.post(f'/admin/{uid}/update_alliance', data={
+        'secret': secret, 'submission_id': submission_id, 'alliance_name': 'New'
+    }, follow_redirects=True)
+    assert resp.status_code == 200
+    with app.app_context():
+        db = database.get_db()
+        sub = db.execute("SELECT alliance_name FROM submissions WHERE id = ?", (submission_id,)).fetchone()
+        assert sub[0] == 'New'
+
+    # 3. Forbidden
+    assert client.post(f'/admin/{uid}/update_alliance', data={
+        'secret': 'bad', 'submission_id': submission_id, 'alliance_name': 'Fail'
+    }).status_code == 403
+
+    # 4. Not Found
+    assert client.post('/admin/none/update_alliance', data={
+        'secret': 'any', 'submission_id': 'any', 'alliance_name': 'any'
+    }).status_code == 404
+
 def test_error_routes(client, app):
     # 404s
     assert client.get('/event/none').status_code == 404
