@@ -300,12 +300,54 @@ def test_submit_with_backpack_disabled(client, app):
         resp = client.post(f'/event/{uid}/submit', data=data, content_type='multipart/form-data', follow_redirects=True)
     assert resp.status_code == 200
 
-    # 3. Verify in DB (backpack_url should be None)
+    # 3. Verify NOT in DB (backpack_url should be None)
     with app.app_context():
         db = database.get_db()
         db.row_factory = sqlite3.Row
         sub = db.execute("SELECT backpack_url FROM submissions WHERE player_id = '12345'").fetchone()
         assert sub['backpack_url'] is None
+
+def test_overwrite_clears_assignments(client, app):
+    # 1. Setup
+    client.post('/create', data={'event_name': 'Overwrite Test'})
+    with app.app_context():
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        event = db.execute("SELECT uid, admin_secret FROM events").fetchone()
+        uid, secret = event['uid'], event['admin_secret']
+
+    # 2. Submit for construction and training
+    client.post(f'/event/{uid}/submit', data={
+        'player_name': 'P1', 'player_id': '123', 'alliance_name': 'A',
+        'speedups-construction': '10', 'slots-construction': '[0]',
+        'speedups-training': '10', 'slots-training': '[0]'
+    })
+
+    # 3. Assign them
+    client.post(f'/admin/{uid}/manual_assign', data={
+        'secret': secret, 'submission_id': f"{uid}_123_construction", 'slot_index': '0'
+    })
+    client.post(f'/admin/{uid}/manual_assign', data={
+        'secret': secret, 'submission_id': f"{uid}_123_training", 'slot_index': '0'
+    })
+
+    # 4. Verify assigned for both
+    with app.app_context():
+        db = database.get_db()
+        count = db.execute("SELECT count(*) FROM assignments WHERE event_uid = ? AND player_id = '123'", (uid,)).fetchone()[0]
+        assert count == 2
+
+    # 5. Overwrite with ONLY training
+    client.post(f'/event/{uid}/submit', data={
+        'player_name': 'P1', 'player_id': '123', 'alliance_name': 'A',
+        'speedups-training': '10', 'slots-training': '[0]'
+    })
+
+    # 6. Verify BOTH assignments are gone (since we clear all on resubmit)
+    with app.app_context():
+        db = database.get_db()
+        count = db.execute("SELECT count(*) FROM assignments WHERE event_uid = ? AND player_id = '123'", (uid,)).fetchone()[0]
+        assert count == 0
 
 def test_tab_specific_distribute(client, app):
     # 1. Setup
@@ -370,7 +412,8 @@ def test_unset_assignment(client, app):
     # 3. Verify assigned
     with app.app_context():
         db = database.get_db()
-        count = db.execute("SELECT count(*) FROM assignments WHERE event_uid = ? AND player_id = ?", (uid, '12345')).fetchone()[0]
+        db.row_factory = sqlite3.Row
+        count = db.execute("SELECT count(*) FROM assignments WHERE event_uid = ? AND player_id = '12345'", (uid,)).fetchone()[0]
         assert count == 1
 
     # 4. Unset
@@ -383,7 +426,7 @@ def test_unset_assignment(client, app):
     with app.app_context():
         db = database.get_db()
         db.row_factory = sqlite3.Row
-        count = db.execute("SELECT count(*) FROM assignments WHERE event_uid = ? AND player_id = ?", (uid, '12345')).fetchone()[0]
+        count = db.execute("SELECT count(*) FROM assignments WHERE event_uid = ? AND player_id = '12345'", (uid,)).fetchone()[0]
         assert count == 0
         
         sub = db.execute("SELECT status FROM submissions WHERE id = ?", (submission_id,)).fetchone()

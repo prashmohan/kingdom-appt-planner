@@ -279,9 +279,13 @@ def create_app():
                 file.save(os.path.join(upload_dir, filename))
                 backpack_url = url_for("static", filename=f"uploads/{filename}")
 
-        # First, delete all previous submissions for this player and event.
+        # First, delete all previous submissions and assignments for this player and event.
         db.execute(
             "DELETE FROM submissions WHERE event_uid = ? AND player_id = ?",
+            (event_uid, player_id),
+        )
+        db.execute(
+            "DELETE FROM assignments WHERE event_uid = ? AND player_id = ?",
             (event_uid, player_id),
         )
 
