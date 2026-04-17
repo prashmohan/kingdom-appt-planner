@@ -70,8 +70,10 @@
                 <h2 class="text-2xl font-bold text-gray-100 mb-4">Your Information</h2>
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
                     <div class="md:col-span-1">
-                        <label for="player_id" class="block text-sm font-medium text-gray-300 mb-1">Player ID</label>
-                        <input type="text" name="player_id" id="player_id" required class="block w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md shadow-sm text-gray-200 focus:border-kvk-gold focus:ring focus:ring-kvk-gold focus:ring-opacity-50">
+                        <label for="player_id" class="block text-sm font-medium text-gray-300 mb-1">Player ID (Numeric)</label>
+                        <input type="text" name="player_id" id="player_id" required 
+                               pattern="\d*" inputmode="numeric" placeholder="e.g. 12345678"
+                               class="block w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md shadow-sm text-gray-200 focus:border-kvk-gold focus:ring focus:ring-kvk-gold focus:ring-opacity-50">
                     </div>
                     <div class="flex items-center gap-4 md:col-span-2">
                         <div id="avatar-container" class="w-12 h-12 rounded-full bg-kvk-gray-900 border border-kvk-gray-700 overflow-hidden flex-shrink-0">
@@ -295,6 +297,22 @@
             // Form Validation
             const form = document.querySelector('form');
             form.addEventListener('submit', function(e) {
+                // 1. Validate Player ID
+                const player_id = document.getElementById('player_id').value.trim();
+                const player_name = document.getElementById('player_name').value;
+
+                if (!/^\d+$/.test(player_id)) {
+                    e.preventDefault();
+                    alert("Player ID must be numeric.");
+                    return;
+                }
+
+                if (!player_name) {
+                    e.preventDefault();
+                    alert("Please enter a valid Player ID that resolves to a name.");
+                    return;
+                }
+
                 const days = [
                     { id: 'construction', name: 'Construction', speedups: 'speedups-construction', gold: 'truegold', slots: 'slots-input-construction' },
                     { id: 'training', name: 'Training', speedups: 'speedups-training', slots: 'slots-input-training' },

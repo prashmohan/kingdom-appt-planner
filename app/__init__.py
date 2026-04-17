@@ -255,6 +255,14 @@ def create_app():
     def submit(event_uid):
         db = database.get_db()
         player_id = request.form["player_id"].strip().lower()
+        player_name = request.form.get("player_name", "").strip()
+
+        # Server-side validation
+        if not player_id.isdigit():
+            return "Invalid Player ID: Must be numeric", 400
+        
+        if not player_name:
+            return "Invalid Player ID: Could not resolve to a name", 400
 
         # Handle backpack screenshot upload
         backpack_url = None
