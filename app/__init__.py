@@ -285,9 +285,9 @@ def create_app():
         # --- Process Construction Submission ---
         construction_speedups = int(request.form.get("speedups-construction") or 0)
         truegold = int(request.form.get("truegold") or 0)
-        if construction_speedups > 0 or truegold > 0:
+        feasible_slots = request.form.get("slots-construction", "[]")
+        if (construction_speedups > 0 or truegold > 0) and feasible_slots != "[]":
             day_type = "construction"
-            feasible_slots = request.form.get("slots-construction", "[]")
             score = (construction_speedups * 30) + (truegold * 2000)
             raw_data = {"speedups": construction_speedups, "truegold": truegold}
             submission_id = f"{event_uid}_{player_id}_{day_type}"
@@ -310,9 +310,9 @@ def create_app():
 
         # --- Process Training Submission ---
         training_speedups = int(request.form.get("speedups-training") or 0)
-        if training_speedups > 0:
+        feasible_slots = request.form.get("slots-training", "[]")
+        if training_speedups > 0 and feasible_slots != "[]":
             day_type = "training"
-            feasible_slots = request.form.get("slots-training", "[]")
             score = training_speedups * 90
             raw_data = {"speedups": training_speedups}
             submission_id = f"{event_uid}_{player_id}_{day_type}"
@@ -336,9 +336,9 @@ def create_app():
         # --- Process Research Submission ---
         research_speedups = int(request.form.get("speedups-research") or 0)
         truegold_dust = int(request.form.get("truegold_dust") or 0)
-        if research_speedups > 0 or truegold_dust > 0:
+        feasible_slots = request.form.get("slots-research", "[]")
+        if (research_speedups > 0 or truegold_dust > 0) and feasible_slots != "[]":
             day_type = "research"
-            feasible_slots = request.form.get("slots-research", "[]")
             score = (research_speedups * 30) + (truegold_dust * 1000)
             raw_data = {"speedups": research_speedups, "truegold_dust": truegold_dust}
             submission_id = f"{event_uid}_{player_id}_{day_type}"

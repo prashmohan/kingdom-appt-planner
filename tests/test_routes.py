@@ -197,6 +197,27 @@ def test_export_csv(client, app):
     # 4. Unauthorized
     assert client.get(f'/admin/{uid}/export/construction?secret=bad').status_code == 403
 
+def test_submit_no_slots(client, app):
+    # 1. Setup
+    client.post('/create', data={'event_name': 'No Slots Test'})
+    with app.app_context():
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        event = db.execute("SELECT uid, admin_secret FROM events").fetchone()
+        uid = event['uid']
+
+    # 2. Submit with resources but NO slots
+    client.post(f'/event/{uid}/submit', data={
+        'player_name': 'P1', 'player_id': 'p1', 'alliance_name': 'A',
+        'speedups-construction': '10', 'slots-construction': '[]'
+    })
+
+    # 3. Verify NOT in DB
+    with app.app_context():
+        db = database.get_db()
+        count = db.execute("SELECT count(*) FROM submissions WHERE player_id = 'p1'").fetchone()[0]
+        assert count == 0
+
 def test_submit_with_backpack(client, app):
     # 1. Setup
     client.post('/create', data={'event_name': 'Backpack Test'})

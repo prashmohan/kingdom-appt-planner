@@ -291,6 +291,48 @@
                     nameDisplay.innerText = 'Connection error';
                 }
             });
+
+            // Form Validation
+            const form = document.querySelector('form');
+            form.addEventListener('submit', function(e) {
+                const days = [
+                    { id: 'construction', name: 'Construction', speedups: 'speedups-construction', gold: 'truegold', slots: 'slots-input-construction' },
+                    { id: 'training', name: 'Training', speedups: 'speedups-training', slots: 'slots-input-training' },
+                    { id: 'research', name: 'Research', speedups: 'speedups-research', gold: 'truegold_dust', slots: 'slots-input-research' }
+                ];
+
+                let daysAttempted = 0;
+                let daysInvalid = [];
+
+                days.forEach(day => {
+                    const speedupsInput = document.getElementById(day.speedups);
+                    if (!speedupsInput) return; // Day not active
+
+                    const speedups = parseInt(speedupsInput.value || 0);
+                    const gold = day.gold ? parseInt(document.getElementById(day.gold).value || 0) : 0;
+                    const slotsVal = document.getElementById(day.slots).value || "[]";
+                    const slots = JSON.parse(slotsVal);
+
+                    if (speedups > 0 || gold > 0) {
+                        daysAttempted++;
+                        if (slots.length === 0) {
+                            daysInvalid.push(day.name);
+                        }
+                    }
+                });
+
+                if (daysAttempted === 0) {
+                    e.preventDefault();
+                    alert("Please enter resource data for at least one event day.");
+                    return;
+                }
+
+                if (daysInvalid.length > 0) {
+                    e.preventDefault();
+                    alert("You must select at least one time slot for: " + daysInvalid.join(", "));
+                    return;
+                }
+            });
         });
     </script>
 </body>
