@@ -307,6 +307,30 @@ def test_submit_with_backpack_disabled(client, app):
         sub = db.execute("SELECT backpack_url FROM submissions WHERE player_id = '12345'").fetchone()
         assert sub['backpack_url'] is None
 
+def test_resource_breakdown_text(client, app):
+    client.post('/create', data={'event_name': 'Breakdown Test'})
+    with app.app_context():
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        event = db.execute("SELECT uid, admin_secret FROM events").fetchone()
+        uid, secret = event['uid'], event['admin_secret']
+
+    # Submit for all days with different resources
+    client.post(f'/event/{uid}/submit', data={
+        'player_name': 'P1', 'player_id': '123', 'alliance_name': 'A',
+        'speedups-construction': '100', 'truegold': '5', 'slots-construction': '[0]',
+        'speedups-training': '200', 'slots-training': '[0]',
+        'speedups-research': '300', 'truegold_dust': '10', 'slots-research': '[0]'
+    })
+
+    resp = client.get(f'/admin/{uid}?secret={secret}')
+    assert resp.status_code == 200
+    
+    # Check breakdown texts in the response (they are in 'title' attributes)
+    assert b"Speedups: 100m | Truegold: 5" in resp.data
+    assert b"Speedups: 200m" in resp.data
+    assert b"Speedups: 300m | Dust: 10" in resp.data
+
 def test_overwrite_clears_assignments(client, app):
     # 1. Setup
     client.post('/create', data={'event_name': 'Overwrite Test'})
@@ -472,6 +496,9 @@ def test_error_routes(client, app):
     assert client.post('/admin/none/unlock', data={'secret': 'any'}).status_code == 404
     assert client.post('/admin/none/delete', data={'secret': 'any'}).status_code == 404
     assert client.post('/admin/none/refresh_players', data={'secret': 'any'}).status_code == 404
+    assert client.post('/admin/none/unset', data={'secret': 'any'}).status_code == 404
+    assert client.post('/admin/none/update_alliance', data={'secret': 'any'}).status_code == 404
+    assert client.get('/admin/none/export/construction?secret=any').status_code == 404
 
     # 403s
     client.post('/create', data={'event_name': 'E'})
@@ -486,6 +513,9 @@ def test_error_routes(client, app):
     assert client.post(f'/admin/{uid}/confirm', data={'secret': 'bad'}).status_code == 403
     assert client.post(f'/admin/{uid}/unlock', data={'secret': 'bad'}).status_code == 403
     assert client.post(f'/admin/{uid}/delete', data={'secret': 'bad'}).status_code == 403
+    assert client.post(f'/admin/{uid}/unset', data={'secret': 'bad'}).status_code == 403
+    assert client.post(f'/admin/{uid}/update_alliance', data={'secret': 'bad'}).status_code == 403
+    assert client.get(f'/admin/{uid}/export/construction?secret=bad').status_code == 403
     assert client.post(f'/admin/{uid}/manual_assign', data={'secret': secret, 'slot_index': ''}).status_code == 302
 
 def test_json_and_orphans(client, app):
@@ -499,13 +529,39 @@ def test_json_and_orphans(client, app):
         # Empty slots
         db.execute("INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?)",
                    ("empty", uid, "construction", "P", "1", "A", 0, "{}", ""))
-        # Bad JSON
+        # Bad JSON slots
         db.execute("INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?)",
-                   ("bad", uid, "training", "P", "1", "A", 0, "{}", "not-json"))
+                   ("bad_slots", uid, "training", "P", "1", "A", 0, "{}", "not-json"))
+        # Bad JSON raw_data
+        db.execute("INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?)",
+                   ("bad_raw", uid, "research", "P", "1", "A", 0, "not-json", "[]"))
+        
         # Orphaned assignment (submission missing)
         db.execute("INSERT INTO assignments (event_uid, day_type, slot_index, player_id, is_locked) VALUES (?, ?, ?, ?, ?)",
                    (uid, "construction", 15, "nobody", 1))
         db.commit()
 
-    assert client.get(f'/admin/{uid}?secret={secret}').status_code == 200
+    resp = client.get(f'/admin/{uid}?secret={secret}')
+    assert resp.status_code == 200
+    assert b"Error parsing resources" in resp.data
     assert client.get(f'/event/{uid}/finalized').status_code == 200
+
+def test_submit_creates_dir(client, app):
+    client.post('/create', data={'event_name': 'Dir Test'})
+    with app.app_context():
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        event = db.execute("SELECT uid FROM events").fetchone()
+        uid = event['uid']
+
+    data = {
+        'player_name': 'P1', 'player_id': '123', 'alliance_name': 'A',
+        'speedups-construction': '10', 'slots-construction': '[0]',
+        'backpack_screenshot': (io.BytesIO(b"data"), 'test.jpg')
+    }
+
+    with patch('config.Config.ENABLE_SCREENSHOT_UPLOAD', True):
+        with patch('os.path.exists', return_value=False):
+            with patch('os.makedirs') as mock_makedirs:
+                client.post(f'/event/{uid}/submit', data=data, content_type='multipart/form-data')
+                mock_makedirs.assert_called()

@@ -70,6 +70,12 @@ def test_database_migrations():
             assert "slot_index" in pk_cols
             assert len(pk_cols) == 3
 
+            # Check submissions table info
+            cursor = db.execute("PRAGMA table_info(submissions)")
+            cols = [c[1] for c in cursor.fetchall()]
+            assert "avatar_url" in cols
+            assert "backpack_url" in cols
+
             # FUNCTIONAL TEST: Try to insert same slot for different days
             db.execute("INSERT INTO assignments (event_uid, day_type, slot_index, player_id) VALUES ('e1', 'construction', 10, 'p1')")
             db.execute("INSERT INTO assignments (event_uid, day_type, slot_index, player_id) VALUES ('e1', 'training', 10, 'p2')")
@@ -140,6 +146,74 @@ def test_database_init_submissions_race():
                 
                 database.init_db()
                 assert mock_cursor.execute.called
+    finally:
+        os.close(db_fd); os.unlink(db_path)
+
+def test_database_init_backpack_race():
+    db_fd, db_path = tempfile.mkstemp()
+    try:
+        app = Flask(__name__)
+        database.DATABASE_PATH = db_path
+        with app.app_context():
+            database.init_db()
+            if hasattr(g, '_database'): del g._database
+            with patch('app.database.get_db') as mock_get_db:
+                mock_conn = MagicMock(); mock_cursor = MagicMock()
+                mock_get_db.return_value = mock_conn
+                mock_conn.cursor.return_value = mock_cursor
+                mock_cursor.fetchone.return_value = ("exists",)
+                
+                def fetchall_side_effect():
+                    sql = str(mock_cursor.execute.call_args_list[-1]).upper()
+                    if "SUBMISSIONS" in sql:
+                        # Missing backpack_url
+                        return [(0, "id", "T", 1, None, 1), (1, "avatar_url", "T", 0, None, 0)]
+                    return [(0, "id", "T", 1, None, 1), (1, "day_type", "T", 1, None, 2), (2, "slot_index", "T", 1, None, 3)]
+                
+                mock_cursor.fetchall.side_effect = fetchall_side_effect
+                
+                def side_effect(sql, *args):
+                    if "ALTER TABLE SUBMISSIONS" in sql.upper() and "BACKPACK_URL" in sql.upper():
+                        raise sqlite3.OperationalError("duplicate column name")
+                    return MagicMock()
+                mock_cursor.execute.side_effect = side_effect
+                
+                database.init_db()
+                assert mock_cursor.execute.called
+    finally:
+        os.close(db_fd); os.unlink(db_path)
+
+def test_database_init_backpack_error():
+    db_fd, db_path = tempfile.mkstemp()
+    try:
+        app = Flask(__name__)
+        database.DATABASE_PATH = db_path
+        with app.app_context():
+            database.init_db()
+            if hasattr(g, '_database'): del g._database
+            with patch('app.database.get_db') as mock_get_db:
+                mock_conn = MagicMock(); mock_cursor = MagicMock()
+                mock_get_db.return_value = mock_conn
+                mock_conn.cursor.return_value = mock_cursor
+                mock_cursor.fetchone.return_value = ("exists",)
+                
+                def fetchall_side_effect():
+                    sql = str(mock_cursor.execute.call_args_list[-1]).upper()
+                    if "SUBMISSIONS" in sql:
+                        # Missing backpack_url
+                        return [(0, "id", "T", 1, None, 1), (1, "avatar_url", "T", 0, None, 0)]
+                    return [(0, "id", "T", 1, None, 1), (1, "day_type", "T", 1, None, 2), (2, "slot_index", "T", 1, None, 3)]
+                
+                mock_cursor.fetchall.side_effect = fetchall_side_effect
+                
+                def side_effect(sql, *args):
+                    if "ALTER TABLE SUBMISSIONS" in sql.upper() and "BACKPACK_URL" in sql.upper():
+                        raise sqlite3.OperationalError("other error")
+                    return MagicMock()
+                mock_cursor.execute.side_effect = side_effect
+                
+                with pytest.raises(sqlite3.OperationalError):
+                    database.init_db()
     finally:
         os.close(db_fd); os.unlink(db_path)
 
