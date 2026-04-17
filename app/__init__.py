@@ -10,7 +10,7 @@ import markdown
 import csv
 import io
 from werkzeug.utils import secure_filename
-from flask import Flask, render_template, request, redirect, url_for, g, jsonify, Response
+from flask import Flask, render_template, request, redirect, url_for, g, jsonify, Response, send_from_directory
 from . import database, logic
 from config import Config
 
@@ -98,7 +98,11 @@ def create_app():
 
     @app.route("/favicon.ico")
     def favicon():
-        return "", 204
+        return send_from_directory(
+            os.path.join(app.root_path, "static"),
+            "favicon.svg",
+            mimetype="image/svg+xml",
+        )
 
     @app.route("/api/proxy/player", methods=["POST"])
     def proxy_player():

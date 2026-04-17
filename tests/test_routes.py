@@ -28,7 +28,8 @@ def test_guide_route(client):
 
 def test_favicon(client):
     response = client.get('/favicon.ico')
-    assert response.status_code == 204
+    assert response.status_code == 200
+    assert response.mimetype == "image/svg+xml"
 
 def test_submission_success_route(client):
     response = client.get('/submission-success')
