@@ -58,6 +58,7 @@
             <p class="text-lg text-gray-400 mt-2">{{ event.name }}</p>
         </header>
 
+        <div id="admin-dynamic-content">
         <!-- Main Actions -->
         <div class="bg-kvk-gray-800 border border-kvk-gray-700 p-4 rounded-xl shadow-md mb-6 flex flex-wrap items-center justify-between gap-4">
             <div class="flex flex-wrap gap-4">
@@ -263,7 +264,7 @@
                                         {% endif %}
                                     </td>
                                     <td class="px-4 py-3 whitespace-nowrap">
-                                        <form action="{{ url_for('delete', event_uid=event.uid) }}" method="POST">
+                                        <form action="{{ url_for('delete', event_uid=event.uid) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this submission?');">
                                             <input type="hidden" name="secret" value="{{ secret }}">
                                             <input type="hidden" name="submission_id" value="{{ sub.id }}">
                                             <button type="submit" class="text-red-500 hover:text-red-400">Delete</button>
@@ -277,6 +278,8 @@
             </div>
         </div>
         {% endfor %}
+
+        </div>
 
         <footer class="mt-12 pb-8 text-center border-t border-kvk-gray-700 pt-8">
             <a href="https://github.com/prashmohan/kingdom-appt-planner" target="_blank" class="text-gray-500 hover:text-kvk-gold transition inline-block">
@@ -353,35 +356,103 @@
         }
     }
 
-    document.addEventListener('DOMContentLoaded', function() {
+    function activateTab(tab) {
+        if (!tab) return;
+        const day = tab.dataset.target.replace('tab-', '');
+        const target = document.getElementById(tab.dataset.target);
+        const subTarget = document.getElementById(`tab-${day}-subs`);
         const tabs = document.querySelectorAll('.tab-button');
         const tabContents = document.querySelectorAll('.tab-content');
 
+        tabContents.forEach(tc => {
+            tc.classList.add('hidden');
+        });
+        
+        if (target) target.classList.remove('hidden');
+        if (subTarget) subTarget.classList.remove('hidden');
+
+        tabs.forEach(t => {
+            t.classList.remove('border-kvk-gold', 'text-kvk-gold');
+            t.classList.add('border-transparent', 'text-gray-400', 'hover:text-gray-200', 'hover:border-gray-300');
+        });
+        tab.classList.add('border-kvk-gold', 'text-kvk-gold');
+        tab.classList.remove('border-transparent', 'text-gray-400', 'hover:text-gray-200', 'hover:border-gray-300');
+        
+        // Persist the active tab
+        localStorage.setItem('admin_active_tab', tab.dataset.target);
+    }
+
+    function initializeTabs() {
+        const tabs = document.querySelectorAll('.tab-button');
         tabs.forEach(tab => {
             tab.addEventListener('click', () => {
-                const day = tab.dataset.target.replace('tab-', '');
-                const target = document.getElementById(tab.dataset.target);
-                const subTarget = document.getElementById(`tab-${day}-subs`);
-
-                tabContents.forEach(tc => {
-                    tc.classList.add('hidden');
-                });
-                target.classList.remove('hidden');
-                if (subTarget) subTarget.classList.remove('hidden');
-
-                tabs.forEach(t => {
-                    t.classList.remove('border-kvk-gold', 'text-kvk-gold');
-                    t.classList.add('border-transparent', 'text-gray-400', 'hover:text-gray-200', 'hover:border-gray-300');
-                });
-                tab.classList.add('border-kvk-gold', 'text-kvk-gold');
-                tab.classList.remove('border-transparent', 'text-gray-400', 'hover:text-gray-200', 'hover:border-gray-300');
+                activateTab(tab);
             });
         });
 
-        // Auto-click the first tab
-        if (tabs.length > 0) {
-            tabs[0].click();
+        // Restore tab from localStorage or auto-click the first tab
+        const savedTab = localStorage.getItem('admin_active_tab');
+        let tabToActivate = tabs[0];
+        
+        if (savedTab) {
+            const foundTab = Array.from(tabs).find(t => t.dataset.target === savedTab);
+            if (foundTab) tabToActivate = foundTab;
         }
+
+        if (tabToActivate) {
+            activateTab(tabToActivate);
+        }
+    }
+
+    async function handleFormSubmit(event) {
+        if (event.defaultPrevented) return;
+        
+        const form = event.target;
+        if (form.method.toUpperCase() !== 'POST' || form.hasAttribute('data-no-ajax')) return;
+
+        event.preventDefault();
+        const formData = new FormData(form);
+        const submitButton = form.querySelector('button[type="submit"]');
+        const originalHtml = submitButton ? submitButton.innerHTML : '';
+
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<span class="inline-block animate-spin mr-1">↻</span>';
+        }
+
+        try {
+            const response = await fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            if (response.ok) {
+                const html = await response.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const newContent = doc.getElementById('admin-dynamic-content');
+                if (newContent) {
+                    document.getElementById('admin-dynamic-content').innerHTML = newContent.innerHTML;
+                    initializeTabs(); // Re-initialize tabs for new content
+                } else {
+                    location.reload();
+                }
+            } else {
+                console.error('Action failed:', response.status);
+                location.reload();
+            }
+        } catch (error) {
+            console.error('AJAX Error:', error);
+            location.reload();
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        initializeTabs();
+        document.addEventListener('submit', handleFormSubmit);
     });
 </script>
 </body>
