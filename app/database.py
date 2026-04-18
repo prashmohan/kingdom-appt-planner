@@ -7,7 +7,9 @@ DATABASE_PATH = os.environ.get('DATABASE_PATH', 'data/planner.db')
 def get_db():
     db = getattr(g, '_database', None)
     if db is None:
-        db = g._database = sqlite3.connect(DATABASE_PATH)
+        db = g._database = sqlite3.connect(DATABASE_PATH, timeout=30.0)
+        # Enable WAL mode for significantly better concurrency
+        db.execute("PRAGMA journal_mode=WAL")
     return db
 
 def init_db():
