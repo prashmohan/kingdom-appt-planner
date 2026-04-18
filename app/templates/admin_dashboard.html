@@ -75,12 +75,6 @@
                 </div>
             </div>
             <div class="flex space-x-4">
-                <a href="{{ url_for('view_logs', event_uid=event.uid, secret=secret) }}" target="_blank" class="bg-kvk-gray-700 text-gray-300 font-bold py-2 px-4 rounded-md hover:bg-kvk-gray-600 transition duration-300 flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    Audit Log
-                </a>
                 <a href="{{ player_url }}" target="_blank" class="bg-kvk-gray-700 text-white font-bold py-2 px-4 rounded-md hover:bg-kvk-gray-600 transition duration-300">Player Form</a>
 
                 <a href="{{ finalized_url }}" target="_blank" class="bg-green-600 text-white font-bold py-2 px-4 rounded-md hover:bg-green-700 transition duration-300">Finalized Schedule</a>
