@@ -66,6 +66,7 @@
         </header>
 
         <form action="/event/{{ event.uid }}/submit" method="POST" {% if enable_screenshot_upload %}enctype="multipart/form-data"{% endif %} class="bg-kvk-gray-800 p-6 rounded-xl shadow-lg border border-kvk-gray-700">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             
             <div class="p-4 border-b border-kvk-gray-700">
                 <h2 class="text-2xl font-bold text-gray-100 mb-4">Your Information</h2>

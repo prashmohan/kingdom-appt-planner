@@ -11,6 +11,7 @@ import csv
 import io
 from werkzeug.utils import secure_filename
 from flask import Flask, render_template, request, redirect, url_for, g, jsonify, Response, send_from_directory
+from flask_wtf.csrf import CSRFProtect
 from . import database, logic
 from config import Config
 
@@ -46,7 +47,7 @@ def generate_slot_labels():
 def fetch_player_info(fid):
     # Generate Signature based on analyzed code
     t = int(time.time() * 1000)
-    secret = "mN4!pQs6JrYwV9"
+    secret = Config.EXTERNAL_API_SECRET
     sign_str = f"fid={fid}&time={t}{secret}"
     sign = hashlib.md5(sign_str.encode()).hexdigest()
 
@@ -72,6 +73,8 @@ def fetch_player_info(fid):
 
 def create_app():
     app = Flask(__name__)
+    app.config.from_object(Config)
+    CSRFProtect(app)
     database.init_app(app)
 
     # Make the label generator available to all templates
@@ -81,6 +84,15 @@ def create_app():
             slot_labels=generate_slot_labels(),
             enable_screenshot_upload=Config.ENABLE_SCREENSHOT_UPLOAD
         )
+
+    @app.after_request
+    def add_security_headers(response):
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers[
+            "Content-Security-Policy"
+        ] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:;"
+        return response
 
     @app.route("/")
     def index():
@@ -273,6 +285,12 @@ def create_app():
         if Config.ENABLE_SCREENSHOT_UPLOAD and "backpack_screenshot" in request.files:
             file = request.files["backpack_screenshot"]
             if file and file.filename:
+                # Security: Validate file extension
+                allowed_extensions = {"png", "jpg", "jpeg", "gif"}
+                extension = file.filename.rsplit(".", 1)[-1].lower()
+                if extension not in allowed_extensions:
+                    return "Invalid file type. Only images are allowed.", 400
+
                 # Create upload directory if it doesn't exist
                 upload_dir = os.path.join(app.static_folder, "uploads")
                 if not os.path.exists(upload_dir):

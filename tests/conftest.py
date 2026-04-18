@@ -15,6 +15,7 @@ def app():
     app.config.update({
         "TESTING": True,
         "DATABASE_PATH": db_path,
+        "WTF_CSRF_ENABLED": False,
     })
 
     # Update the database module's path for the test

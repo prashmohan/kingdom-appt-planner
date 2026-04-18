@@ -67,6 +67,7 @@
                     <h2 class="text-xl font-bold mb-2 text-gray-100">Global Actions</h2>
                     <div class="flex gap-2">
                         <form action="{{ url_for('refresh_players', event_uid=event.uid) }}" method="POST" class="inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input type="hidden" name="secret" value="{{ secret }}">
                             <button type="submit" class="bg-kvk-blue text-white font-bold py-2 px-4 rounded-md hover:bg-blue-600 transition duration-300">Refresh Player Data</button>
                         </form>
@@ -100,7 +101,9 @@
                         <h2 class="text-2xl font-bold text-gray-100">Schedule Heatmap: <span class="capitalize">{{ day }}</span></h2>
                         <div class="flex gap-2 items-center">
                             <form action="{{ url_for('distribute', event_uid=event.uid) }}" method="POST" class="inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <input type="hidden" name="secret" value="{{ secret }}">
+
                                 <input type="hidden" name="day_type" value="{{ day }}">
                                 <button type="submit" class="bg-kvk-gold text-kvk-gray-900 font-bold py-1.5 px-4 rounded-md text-sm hover:bg-amber-500 transition duration-300 shadow-sm">Assign Appointments</button>
                             </form>
@@ -123,21 +126,25 @@
                                 {% if current_assignment %}
                                     <div class="slot-content">
                                         <p class="font-bold text-xs">[{{ current_assignment.alliance_name }}] {{ current_assignment.player_name }}</p>
-                                        {% if not current_assignment.is_locked %}
-                                        <form action="{{ url_for('confirm', event_uid=event.uid) }}" method="POST" class="inline">
-                                            <input type="hidden" name="secret" value="{{ secret }}">
-                                            <input type="hidden" name="day_type" value="{{ day }}">
-                                            <input type="hidden" name="slot_index" value="{{ i }}">
-                                            <button type="submit" class="text-xs bg-blue-600 text-white px-2 py-1 rounded mt-1">Lock</button>
-                                        </form>
-                                        {% else %}
-                                        <form action="{{ url_for('unlock', event_uid=event.uid) }}" method="POST" class="inline">
-                                            <input type="hidden" name="secret" value="{{ secret }}">
-                                            <input type="hidden" name="day_type" value="{{ day }}">
-                                            <input type="hidden" name="slot_index" value="{{ i }}">
-                                            <button type="submit" class="text-xs bg-yellow-600 text-white px-2 py-1 rounded mt-1">Unlock</button>
-                                        </form>
-                                        {% endif %}
+                                        <div class="flex items-center justify-center">
+                                            {% if current_assignment.is_locked %}
+                                                <form action="{{ url_for('unlock', event_uid=event.uid) }}" method="POST" class="inline">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                    <input type="hidden" name="secret" value="{{ secret }}">
+                                                    <input type="hidden" name="day_type" value="{{ day }}">
+                                                    <input type="hidden" name="slot_index" value="{{ i }}">
+                                                    <button type="submit" class="text-xs bg-yellow-600 text-white px-2 py-1 rounded mt-1">Unlock</button>
+                                                </form>
+                                            {% else %}
+                                                <form action="{{ url_for('confirm', event_uid=event.uid) }}" method="POST" class="inline">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                    <input type="hidden" name="secret" value="{{ secret }}">
+                                                    <input type="hidden" name="day_type" value="{{ day }}">
+                                                    <input type="hidden" name="slot_index" value="{{ i }}">
+                                                    <button type="submit" class="text-xs bg-blue-600 text-white px-2 py-1 rounded mt-1">Lock</button>
+                                                </form>
+                                            {% endif %}
+                                        </div>
                                     </div>
                                 {% endif %}
                             </div>
@@ -223,6 +230,7 @@
                                     </td>
                                     <td class="px-4 py-3 whitespace-nowrap text-gray-300">
                                         <form action="{{ url_for('update_alliance', event_uid=event.uid) }}" method="POST" class="flex items-center gap-1">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <input type="hidden" name="secret" value="{{ secret }}">
                                             <input type="hidden" name="submission_id" value="{{ sub.id }}">
                                             <input type="text" name="alliance_name" value="{{ sub.alliance_name }}" 
@@ -252,6 +260,7 @@
                                             </div>
                                         {% else %}
                                             <form action="{{ url_for('manual_assign', event_uid=event.uid) }}" method="POST" class="flex items-center">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                 <input type="hidden" name="secret" value="{{ secret }}">
                                                 <input type="hidden" name="submission_id" value="{{ sub.id }}">
                                                 <select name="slot_index" class="w-36 bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-sm text-gray-200 focus:border-kvk-gold focus:ring-kvk-gold">
@@ -266,6 +275,7 @@
                                     </td>
                                     <td class="px-4 py-3 whitespace-nowrap">
                                         <form action="{{ url_for('delete', event_uid=event.uid) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this submission?');">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <input type="hidden" name="secret" value="{{ secret }}">
                                             <input type="hidden" name="submission_id" value="{{ sub.id }}">
                                             <button type="submit" class="text-red-500 hover:text-red-400">Delete</button>
@@ -422,11 +432,13 @@
         }
 
         try {
+            const csrfToken = form.querySelector('input[name="csrf_token"]').value;
             const response = await fetch(form.action, {
                 method: 'POST',
                 body: formData,
                 headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': csrfToken
                 }
             });
 
