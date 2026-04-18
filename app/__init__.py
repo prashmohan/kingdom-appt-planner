@@ -9,6 +9,8 @@ import mimetypes
 import markdown
 import csv
 import io
+import logging
+from logging.handlers import RotatingFileHandler
 from werkzeug.utils import secure_filename
 from flask import Flask, render_template, request, redirect, url_for, g, jsonify, Response, send_from_directory
 from flask_wtf.csrf import CSRFProtect
@@ -77,6 +79,22 @@ def create_app():
     CSRFProtect(app)
     database.init_app(app)
 
+    # Setup Audit Logging
+    log_dir = os.path.join(app.root_path, "..", "logs")
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    
+    audit_handler = RotatingFileHandler(
+        os.path.join(log_dir, "audit.log"), maxBytes=1000000, backupCount=5
+    )
+    audit_handler.setFormatter(logging.Formatter(
+        '%(asctime)s - %(levelname)s - %(message)s'
+    ))
+    audit_logger = logging.getLogger("audit")
+    audit_logger.setLevel(logging.INFO)
+    audit_logger.addHandler(audit_handler)
+    app.audit_logger = audit_logger
+
     # Make the label generator available to all templates
     @app.context_processor
     def inject_global_config():
@@ -139,6 +157,8 @@ def create_app():
             return "Event not found", 404
         if event["admin_secret"] != secret:
             return "Forbidden", 403
+
+        app.audit_logger.info(f"ADMIN: Refresh player data triggered for event {event_uid}")
 
         # Get all unique player IDs for this event
         players = db.execute(
@@ -279,6 +299,8 @@ def create_app():
         
         if not player_name:
             return "Invalid Player ID: Could not resolve to a name", 400
+
+        app.audit_logger.info(f"SUBMISSION: Player {player_name} ({player_id}) submitted resources for event {event_uid}")
 
         # Handle backpack screenshot upload
         backpack_url = None
@@ -613,6 +635,8 @@ def create_app():
 
         _, player_id, day_type = submission_id.split("_", 2)
 
+        app.audit_logger.info(f"ADMIN: Manual assign - Player {player_id} to slot {slot_index} for day {day_type} in event {event_uid}")
+
         # Delete any pre-existing assignment for this player on this day
         db.execute(
             "DELETE FROM assignments WHERE event_uid = ? AND player_id = ? AND day_type = ?",
@@ -647,6 +671,7 @@ def create_app():
             return "Forbidden", 403
 
         day_type = request.form.get("day_type")
+        app.audit_logger.info(f"ADMIN: Automatic distribution triggered for event {event_uid}, day {day_type or 'all'}")
         logic.run_distribution_algorithm(event_uid, day_type)
 
         return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
@@ -724,6 +749,8 @@ def create_app():
             (event_uid, day_type, slot_index),
         )
         
+        app.audit_logger.info(f"ADMIN: Lock - Slot {slot_index} for day {day_type} in event {event_uid}")
+
         if assignment:
             db.execute(
                 "UPDATE submissions SET status = 'Locked' WHERE event_uid = ? AND day_type = ? AND player_id = ?",
@@ -758,8 +785,11 @@ def create_app():
             "UPDATE assignments SET is_locked = 0 WHERE event_uid = ? AND day_type = ? AND slot_index = ?",
             (event_uid, day_type, slot_index),
         )
-        
+
+        app.audit_logger.info(f"ADMIN: Unlock - Slot {slot_index} for day {day_type} in event {event_uid}")
+
         if assignment:
+
             db.execute(
                 "UPDATE submissions SET status = 'Confirmed' WHERE event_uid = ? AND day_type = ? AND player_id = ?",
                 (event_uid, day_type, assignment["player_id"])
@@ -781,6 +811,8 @@ def create_app():
             return "Forbidden", 403
 
         submission_id = request.form.get("submission_id")
+        
+        app.audit_logger.info(f"ADMIN: Delete submission {submission_id} in event {event_uid}")
 
         # Find player_id and day_type from submission_id
         _, player_id, day_type = submission_id.split("_", 2)
@@ -812,6 +844,8 @@ def create_app():
         submission_id = request.form.get("submission_id")
         new_alliance_name = request.form.get("alliance_name").strip()
 
+        app.audit_logger.info(f"ADMIN: Update alliance for submission {submission_id} to {new_alliance_name} in event {event_uid}")
+
         db.execute(
             "UPDATE submissions SET alliance_name = ? WHERE id = ? AND event_uid = ?",
             (new_alliance_name, submission_id, event_uid),
@@ -834,6 +868,8 @@ def create_app():
         submission_id = request.form.get("submission_id")
         _, player_id, day_type = submission_id.split("_", 2)
 
+        app.audit_logger.info(f"ADMIN: Unset assignment for Player {player_id} on day {day_type} in event {event_uid}")
+
         # Delete the assignment for this player on this day
         db.execute(
             "DELETE FROM assignments WHERE event_uid = ? AND player_id = ? AND day_type = ?",
@@ -849,6 +885,28 @@ def create_app():
         db.commit()
 
         return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
+
+    @app.route("/admin/<event_uid>/logs")
+    def view_logs(event_uid):
+        secret = request.args.get("secret")
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        event = db.execute("SELECT * FROM events WHERE uid = ?", (event_uid,)).fetchone()
+        if event is None:
+            return "Event not found", 404
+        if event["admin_secret"] != secret:
+            return "Forbidden", 403
+
+        log_path = os.path.join(app.root_path, "..", "logs", "audit.log")
+        if not os.path.exists(log_path):
+            return "Log file not found", 404
+
+        with open(log_path, "r") as f:
+            # Read last 1000 lines
+            lines = f.readlines()[-1000:]
+            content = "".join(lines)
+
+        return Response(content, mimetype="text/plain")
 
     return app
 

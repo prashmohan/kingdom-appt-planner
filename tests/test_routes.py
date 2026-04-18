@@ -517,7 +517,64 @@ def test_error_routes(client, app):
     assert client.post(f'/admin/{uid}/unset', data={'secret': 'bad'}).status_code == 403
     assert client.post(f'/admin/{uid}/update_alliance', data={'secret': 'bad'}).status_code == 403
     assert client.get(f'/admin/{uid}/export/construction?secret=bad').status_code == 403
+    assert client.get(f'/admin/{uid}/logs?secret=bad').status_code == 403
     assert client.post(f'/admin/{uid}/manual_assign', data={'secret': secret, 'slot_index': ''}).status_code == 302
+
+def test_view_logs(client, app):
+    # 1. Setup
+    client.post('/create', data={'event_name': 'Log Test'})
+    with app.app_context():
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        event = db.execute("SELECT uid, admin_secret FROM events").fetchone()
+        uid, secret = event['uid'], event['admin_secret']
+
+    # 2. Trigger some logs
+    client.post(f'/event/{uid}/submit', data={
+        'player_name': 'P1', 'player_id': '123', 'alliance_name': 'A',
+        'speedups-construction': '10', 'slots-construction': '[0]'
+    })
+
+    # 3. View Logs (Success)
+    resp = client.get(f'/admin/{uid}/logs?secret={secret}')
+    assert resp.status_code == 200
+    assert b"SUBMISSION" in resp.data
+    assert b"123" in resp.data
+
+    # 4. Not Found (Invalid event)
+    assert client.get('/admin/none/logs?secret=any').status_code == 404
+
+def test_view_logs_missing_file(client, app):
+    client.post('/create', data={'event_name': 'No Log'})
+    with app.app_context():
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        event = db.execute("SELECT uid, admin_secret FROM events").fetchone()
+        uid, secret = event['uid'], event['admin_secret']
+
+    with patch('os.path.exists', return_value=False):
+        resp = client.get(f'/admin/{uid}/logs?secret={secret}')
+        assert resp.status_code == 404
+        assert b"Log file not found" in resp.data
+
+def test_submit_invalid_extension(client, app):
+    client.post('/create', data={'event_name': 'Ext Test'})
+    with app.app_context():
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        event = db.execute("SELECT uid FROM events").fetchone()
+        uid = event['uid']
+
+    data = {
+        'player_name': 'P1', 'player_id': '123', 'alliance_name': 'A',
+        'speedups-construction': '10', 'slots-construction': '[0]',
+        'backpack_screenshot': (io.BytesIO(b"data"), 'test.exe')
+    }
+
+    with patch('config.Config.ENABLE_SCREENSHOT_UPLOAD', True):
+        resp = client.post(f'/event/{uid}/submit', data=data, content_type='multipart/form-data')
+        assert resp.status_code == 400
+        assert b"Invalid file type" in resp.data
 
 def test_json_and_orphans(client, app):
     client.post('/create', data={'event_name': 'Orphan'})

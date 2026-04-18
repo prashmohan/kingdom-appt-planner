@@ -2,7 +2,7 @@ import os
 import shutil
 import tempfile
 import sqlite3
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, PropertyMock
 from flask import Flask, g
 import pytest
 from app import generate_slot_labels, database
@@ -36,6 +36,39 @@ def test_init_db_creates_directory():
     
     # Cleanup
     shutil.rmtree(tmpdir)
+
+def test_create_app_creates_log_dir():
+    # Use a temp directory for the root
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # The logic we want to test:
+        # log_dir = os.path.join(app.root_path, "..", "logs")
+        # if not os.path.exists(log_dir): os.makedirs(log_dir)
+        
+        mock_app = MagicMock()
+        mock_app.root_path = os.path.join(tmpdir, "app")
+        os.makedirs(mock_app.root_path)
+        
+        expected_log_dir = os.path.join(tmpdir, "logs")
+        assert not os.path.exists(expected_log_dir)
+
+        # We can't easily call create_app() due to its global nature and side effects,
+        # but we can test the specific logic by calling a helper or mocking what it uses.
+        # Actually, let's just mock os.makedirs and os.path.exists within the context of create_app
+        with patch('os.path.exists') as mock_exists:
+            with patch('os.makedirs') as mock_mkdir:
+                # Setup exists to return False for the logs dir
+                def exists_side_effect(path):
+                    if "logs" in path: return False
+                    return True
+                mock_exists.side_effect = exists_side_effect
+                
+                from app import create_app
+                with patch('app.database.init_app'):
+                    create_app()
+                
+                # Check if it tried to create a logs directory
+                made_logs = any("logs" in str(args[0]) for args, kwargs in mock_mkdir.call_args_list)
+                assert made_logs
 
 def test_database_migrations():
     # Create a database with an OLD schema
