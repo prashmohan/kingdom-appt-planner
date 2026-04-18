@@ -42,7 +42,12 @@
             border-bottom: 1px solid #374151;
         }
         .slot-locked { 
-            background-color: #1e3a8a; 
+            background-color: #1e3a8a;
+            border: 1px solid #3b82f6;
+        }
+        .slot-tentative {
+            background-color: #45331d;
+            border: 1px solid #d97706;
         }
         .slot-empty {
             background-color: #111827;
@@ -90,12 +95,19 @@
                     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2">
                         {% for i in range(49) %}
                         {% set assignment = assignments.get(day, {}).get(i) %}
-                        <div class="slot rounded-lg overflow-hidden {% if assignment %}slot-locked shadow-lg border-blue-500/50 cursor-copy hover:border-kvk-gold transition-all duration-200{% else %}slot-empty{% endif %}"
+                        <div class="slot rounded-lg overflow-hidden {% if assignment %}{% if assignment.is_locked %}slot-locked shadow-lg border-blue-500/50{% else %}slot-tentative shadow-lg border-amber-500/50{% endif %} cursor-copy hover:border-kvk-gold transition-all duration-200{% else %}slot-empty{% endif %}"
                              {% if assignment %}onclick="copyToClipboard('{{ assignment.player_id }}', this)" title="Click to copy Player ID"{% endif %}>
                             <div class="slot-time">{{ slot_labels[i] }}</div>
                             <div class="slot-content">
                                 {% if assignment %}
-                                    <p class="font-bold text-kvk-gold text-sm">[{{ assignment.alliance_name }}]</p>
+                                    <p class="font-bold text-kvk-gold text-[0.7rem] mb-1">
+                                        {% if assignment.is_locked %}
+                                            <span class="text-blue-300">● CONFIRMED</span>
+                                        {% else %}
+                                            <span class="text-amber-400 italic">○ TENTATIVE</span>
+                                        {% endif %}
+                                    </p>
+                                    <p class="font-bold text-gray-100 text-xs">[{{ assignment.alliance_name }}]</p>
                                     <p class="text-gray-100 font-medium break-words px-1">{{ assignment.player_name }}</p>
                                     <div class="copy-feedback hidden absolute inset-0 bg-green-600/90 flex items-center justify-center font-bold text-white text-xs rounded-lg">Copied!</div>
                                 {% else %}

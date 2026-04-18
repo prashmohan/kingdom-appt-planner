@@ -162,6 +162,7 @@ def test_full_flow(client, app):
     assert client.get(f'/event/{uid}/schedule').status_code == 200
     resp = client.get(f'/event/{uid}/finalized')
     assert resp.status_code == 200
+    assert b"CONFIRMED" in resp.data
     assert b"P1" in resp.data # Should be visible now
 
     # 8. Unlock
@@ -169,6 +170,34 @@ def test_full_flow(client, app):
 
     # 9. Delete
     client.post(f'/admin/{uid}/delete', data={'secret': secret, 'submission_id': f"{uid}_12345_construction"})
+
+def test_finalized_schedule_states(client, app):
+    # 1. Setup
+    client.post('/create', data={'event_name': 'States Test'})
+    with app.app_context():
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        event = db.execute("SELECT uid, admin_secret FROM events").fetchone()
+        uid, secret = event['uid'], event['admin_secret']
+
+    # 2. Submit for construction and training
+    client.post(f'/event/{uid}/submit', data={
+        'player_name': 'P1', 'player_id': '123', 'alliance_name': 'A',
+        'speedups-construction': '10', 'slots-construction': '[0]',
+        'speedups-training': '10', 'slots-training': '[0]'
+    })
+
+    # 3. Distribution (results in TENTATIVE status)
+    client.post(f'/admin/{uid}/distribute', data={'secret': secret})
+
+    # 4. Lock only construction
+    client.post(f'/admin/{uid}/confirm', data={'secret': secret, 'day_type': 'construction', 'slot_index': '0'})
+
+    # 5. Check Finalized Schedule
+    resp = client.get(f'/event/{uid}/finalized')
+    assert resp.status_code == 200
+    assert b"CONFIRMED" in resp.data
+    assert b"TENTATIVE" in resp.data
 
 def test_export_csv(client, app):
     # 1. Setup

@@ -231,9 +231,9 @@ def create_app():
             if is_active
         ]
 
-        # Fetch only locked assignments
+        # Fetch all assignments
         assignments_raw = db.execute(
-            "SELECT * FROM assignments WHERE event_uid = ? AND is_locked = 1",
+            "SELECT * FROM assignments WHERE event_uid = ?",
             (event_uid,),
         ).fetchall()
 
@@ -246,25 +246,26 @@ def create_app():
         }
 
         # Group rich assignments by day_type
-        locked_assignments = {day: {} for day in active_days}
+        all_assignments = {day: {} for day in active_days}
         for a in assignments_raw:
             day_type = a["day_type"]
             player_id = a["player_id"]
-            if day_type in locked_assignments:
+            if day_type in all_assignments:
                 submission = submissions_map.get((day_type, player_id))
                 if submission:
-                    locked_assignments[day_type][a["slot_index"]] = {
+                    all_assignments[day_type][a["slot_index"]] = {
                         "player_id": player_id,
                         "player_name": submission["player_name"],
                         "alliance_name": submission["alliance_name"],
                         "avatar_url": submission["avatar_url"],
+                        "is_locked": bool(a["is_locked"]),
                     }
 
         return render_template(
             "locked_appointments.html",
             event=event,
             active_days=active_days,
-            assignments=locked_assignments,
+            assignments=all_assignments,
         )
 
     @app.route("/event/<event_uid>")
