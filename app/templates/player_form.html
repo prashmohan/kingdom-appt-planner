@@ -261,9 +261,13 @@
                 nameDisplay.className = 'py-2 px-3 bg-kvk-gray-900 border border-kvk-gray-700 rounded-md text-gray-500 italic';
 
                 try {
+                    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
                     const response = await fetch('/api/proxy/player', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken
+                        },
                         body: JSON.stringify({ fid })
                     });
 
