@@ -254,6 +254,7 @@
                                             <div class="flex items-center gap-2">
                                                 <span class="font-bold text-gray-200">{{ slot_labels[assignment.slot_index] }}</span>
                                                 <form action="{{ url_for('unset_assignment', event_uid=event.uid) }}" method="POST" class="inline">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                     <input type="hidden" name="secret" value="{{ secret }}">
                                                     <input type="hidden" name="submission_id" value="{{ sub.id }}">
                                                     <button type="submit" class="text-xs bg-red-600/30 text-red-400 px-2 py-0.5 rounded hover:bg-red-600/50 transition duration-200" title="Unset Appointment">Unset</button>
@@ -433,7 +434,8 @@
         }
 
         try {
-            const csrfToken = form.querySelector('input[name="csrf_token"]').value;
+            const csrfTokenElement = form.querySelector('input[name="csrf_token"]');
+            const csrfToken = csrfTokenElement ? csrfTokenElement.value : '';
             const response = await fetch(form.action, {
                 method: 'POST',
                 body: formData,
