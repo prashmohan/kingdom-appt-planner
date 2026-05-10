@@ -100,16 +100,22 @@ def create_app():
     def inject_global_config():
         return dict(
             slot_labels=generate_slot_labels(),
-            enable_screenshot_upload=Config.ENABLE_SCREENSHOT_UPLOAD
+            enable_screenshot_upload=Config.ENABLE_SCREENSHOT_UPLOAD,
+            ga_measurement_id=Config.GA_MEASUREMENT_ID
         )
 
     @app.after_request
     def add_security_headers(response):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers[
-            "Content-Security-Policy"
-        ] = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:;"
+        csp = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: https:; "
+            "connect-src 'self' https://www.google-analytics.com;"
+        )
+        response.headers["Content-Security-Policy"] = csp
         return response
 
     @app.route("/")
