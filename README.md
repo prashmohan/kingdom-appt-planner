@@ -1,114 +1,129 @@
-# 👑 KingShot Kingdom Appointment Planner
+# 👑 Kingdom Appointment Planner
 
-Welcome, Leadership! 🏰 
+### *Maximize your Kingdom's Glory with Strategic Buff Management*
 
-The **Kingdom Appointment Planner** is our specialized strategic tool for dominating the **Kingdom vs Kingdom (KvK)** events. In the heat of battle, every minute of a "King's Buff" counts. This tool ensures that our strongest players are perfectly synchronized with the kingdom's buffs to generate the maximum possible points for our glory!
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![Docker](https://img.shields.io/badge/docker-ready-cyan.svg)](https://www.docker.com/)
 
----
+In the high-stakes world of **Kingdom vs Kingdom (KvK)**, timing isn't just everything—it's the *only* thing. The **Kingdom Appointment Planner** is a specialized strategic tool designed to synchronize your strongest players with the kingdom's "King's Buffs," ensuring every second of that 30-minute window translates into maximum points.
 
-## 🎯 Our Objective
-
-The goal is simple: **Maximum Efficiency.** 
-
-By collecting player resource data and availability, this tool uses a "Protected Greedy Algorithm" to automatically assign the most impactful players to our limited 30-minute buff windows, while giving administrators full control to lock in "must-have" appointments manually.
+![Kingdom Appointment Planner Landing Page](app/static/images/landing_page.png)
 
 ---
 
-## ✨ Key Capabilities
+## 🎯 Why Use the Planner?
 
-*   **Dynamic Player Fetching:** Players just enter their ID; the tool automatically grabs their name and avatar from the game!
-*   **Smart Prioritization:** Automatically ranks players based on their potential point contribution (Speedups, TrueGold, etc.).
-*   **Independent Daily Schedules:** Manages separate calendars for **Construction (Day 1)**, **Troop Training (Day 4)**, and **Research (Day 5)**.
-*   **Secret Admin Dashboard:** A private, tabbed interface to manage everything without players seeing the behind-the-scenes magic.
-*   **Manual Overrides:** Directly assign a player to a specific slot or "Lock" an automated assignment to protect it from changes.
-*   **Real-time Analytics:** Search, filter, and sort alliance contributions and player submissions instantly.
-*   **Finalized View:** A clean, read-only page to share with the entire kingdom once the schedule is set.
+Managing a kingdom of hundreds of players manually is a nightmare. This tool automates the heavy lifting:
 
----
-
-## 📸 Application Preview
-
-> [!TIP]
-> **[ PLACEHOLDER: Insert a screenshot of the Dark Mode Landing Page here ]**
+*   **Eliminate Spreadsheet Fatigue:** No more manual data entry or juggling conflicting time zones.
+*   **Optimal Resource Utilization:** Our "Protected Greedy Algorithm" automatically identifies and assigns players with the highest potential point contribution.
+*   **Fair & Transparent:** Clear, publicly accessible schedules ensure everyone knows when it's their time to shine.
+*   **Full Admin Control:** Balance automation with manual overrides for high-priority VIPs or special circumstances.
 
 ---
 
-## 📖 Administrator's Tutorial
+## ✨ Key Features
 
-Getting your kingdom organized is easy! Just follow these steps:
+| Feature | Description |
+| :--- | :--- |
+| **Auto-Fetching** | Players enter their ID; the tool fetches their name and avatar directly from the game! |
+| **Smart Scheduling** | Prioritizes players based on Speedups, TrueGold, and availability. |
+| **Multi-Day Support** | Independent schedules for Construction (Day 1), Training (Day 4), and Research (Day 5). |
+| **Update Submissions** | Players can re-submit at any time; new entries automatically replace old ones to keep data fresh. |
+| **Verification System** | Players can upload backpack screenshots for admins to verify resource claims. |
+| **Heatmap Analytics** | Visualize alliance contributions and slot distribution at a glance. |
+| **Manual Overrides** | "Lock" automated assignments or manually set specific players to specific slots. |
+| **Private Admin Suite** | Secure, tabbed interface for full event management. |
 
-### 1. Create the Event
+---
 
-On the home page, give your event a name (e.g., "KvK Season 10 - March"). Hit **Create Event**, and you'll be given three very important links:
+## 📸 A Visual Tour
 
-*   **Player URL:** Send this to everyone!
-*   **Admin URL:** **SAVE THIS.** This is your private key to managing the schedule.
-*   **Finalized Schedule URL:** Share this once you are ready for everyone to see their times.
+### 1. Simple Event Setup
+Create a new KvK event in seconds. You'll receive three unique links: one for players, one for the public, and one (secret!) for you.
+![Event Creation](app/static/images/successful_event_creation.png)
 
-> **[ PLACEHOLDER: Insert a screenshot of the Event Success Page here ]**
+### 2. Player-Friendly Submissions
+A clean interface where players can submit their resource levels and all feasible time slots across all three major KvK days. **Tip:** If your resource levels change, just submit again—your record will be updated automatically!
+![Player Submissions](app/static/images/player_detail_submission_page.png)
 
-### 2. Collect Submissions
+### 3. Powerful Admin Dashboard
+See a live heatmap of your schedule and a breakdown of alliance impact. The "Assign Appointments" button runs our optimization algorithm in real-time.
+![Admin Dashboard](app/static/images/admin_interface_for_appointment_distribution.png)
 
-As players enter their IDs and availability, you'll see them pop up in your **Admin Dashboard**. You can use the "Refresh Player Data" button at any time to sync the latest nicknames and avatars from the game.
+### 4. Precision Control
+Need to make a quick change? Manually assign players or lock existing appointments to protect them from future auto-shuffles.
+![Manual Overrides](app/static/images/manual_appointment_overrides.png)
 
-### 3. Assign Appointments
+### 5. The Finalized Schedule
+When you're ready, publish a beautiful, mobile-friendly schedule that the entire kingdom can access.
+![Finalized Schedule](app/static/images/finalized_schedule.png)
 
-When you're ready to build the schedule:
+---
 
-1.  Go to the **Admin Dashboard**.
-2.  Click **Assign Appointments**. The system will instantly fill the slots for all 3 days, prioritizing players with the most resources.
-3.  **Manual Tweak:** Notice a specific slot needs a specific player? Use the dropdown in the submissions table to manually "Set" them into a slot.
-4.  **Locking:** Click the **Lock** button on any slot to make it permanent. Locked slots won't be moved if you click "Assign Appointments" again.
+## 🧠 The "Protected Greedy" Algorithm
 
-> **[ PLACEHOLDER: Insert a screenshot of the Admin Dashboard with Tabs here ]**
+To ensure the Kingdom generates the absolute maximum points during KvK, the planner uses a specialized optimization strategy:
 
-### 4. Publish
+1.  **Scoring:** Every player is assigned a "Potential Score" based on their available speedups and rare resources (like TrueGold).
+2.  **Ranking:** The algorithm sorts all submissions from highest score to lowest.
+3.  **Greedy Assignment:** Starting with the highest-ranked player, the system searches for an open slot that matches the player's submitted availability.
+4.  **Protection (Locking):** Administrators can "Lock" any appointment. The algorithm treats locked slots as immutable—it will never move a locked player, even if a higher-scoring player becomes available later. This allows leadership to guarantee slots for critical contributors while letting the algorithm handle the rest.
 
-Once the schedule looks perfect, just tell your players to check the **Finalized Schedule URL**. It's a clean, mobile-friendly view of exactly who goes where.
+---
+
+## 📖 Administrator's Guide
+
+### Step 1: Launch your Event
+Give your event a name (e.g., "KvK Season 12") and save the **Admin URL**. This is your private key!
+
+### Step 2: Data Collection & Verification
+Share the **Player URL** with your kingdom. 
+
+*   **Verification:** Encourage players to upload screenshots of their backpack. You can view these images directly in the Admin Dashboard to verify their resource claims.
+*   **Live Updates:** If a player earns more speedups, they can simply use the link again. The system recognizes their Player ID and updates their existing entry.
+
+### Step 3: Optimization
+Click **Assign Appointments**. The system will fill the slots, prioritizing players with the most resources. Review the results, make manual tweaks if needed, and "Lock" the slots you are happy with.
+
+### Step 4: Go Live!
+Share the **Finalized Schedule URL**. It's read-only and always reflects your latest locked/assigned appointments.
+
+---
+
+## 🚀 Quick Start (Docker)
+
+The application is fully containerized for a one-command deployment.
+
+*   **Clone the Repository:**
+```bash
+git clone https://github.com/prashmohan/kingdom-appt-planner.git
+cd kingdom-appt-planner
+```
+
+*   **Launch with Docker Compose:**
+```bash
+docker-compose up --build -d
+```
+
+*   **Access the App:** Open your browser to `http://localhost:12348`.
 
 ---
 
 ## 💾 Maintenance & Backups
 
-We've included a handy utility script to keep your kingdom's data safe. You can run these from your host machine.
+Keep your data safe with our included utility script:
 
-### 1. Take a Backup
-To create a timestamped copy of your database:
-```bash
-./scripts/db_util.sh backup
-```
-
-**Advanced Options:**
-*   **Custom Container Name:** `./scripts/db_util.sh -c my-container-name backup`
-*   **Custom Backup Directory:** `./scripts/db_util.sh -d /path/to/backups backup`
-
-### 2. Restore from Backup
-To restore your data (Warning: this overwrites the current database):
-```bash
-./scripts/db_util.sh restore backups/planner_backup_TIMESTAMP.db
-```
-You can also use the `-c` flag during restore if your container name is different.
-
----
-
-## 🚀 Technical Setup (For the Tech-Savvy)
-
-The app is fully dockerized for easy deployment on any home server or VPS.
-
-1.  **Install Docker and Docker Compose.**
-2.  **Clone this repo.**
-3.  **Launch:**
-    ```bash
-    docker-compose up --build -d
-    ```
-4.  **Access:** Open your browser to `http://localhost:12348`.
+*   **Backup:** `./scripts/db_util.sh backup`
+*   **Restore:** `./scripts/db_util.sh restore backups/planner_backup_TIMESTAMP.db`
 
 ---
 
 ## 🛡️ Security Note
 
-The **Admin URL** contains a unique "secret" key. Anyone with this link has full control over your event. Treat it like your kingdom's treasury key—don't share it publicly!
+The **Admin URL** contains a unique secret key. Treat it with the same care as your kingdom's treasury—if someone has this link, they have full control over your event.
 
 ---
 
-*Built with ❤️ for the KingShot community.* ⚔️
+*Built with ❤️ for the KingShot community. Dominate your KvK!* ⚔️

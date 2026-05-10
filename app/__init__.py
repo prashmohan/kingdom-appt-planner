@@ -120,8 +120,15 @@ def create_app():
     def guide():
         try:
             with open("README.md", "r", encoding="utf-8") as f:
-                content = f.read()
-            html_content = markdown.markdown(content, extensions=["extra", "toc"])
+                lines = f.readlines()
+            
+            # Filter out technical badges for the in-app guide
+            filtered_lines = [line for line in lines if not line.strip().startswith("[![")]
+            content = "".join(filtered_lines)
+
+            # Replace local file paths with web-accessible static paths for the in-app guide
+            content = content.replace("app/static/images/", "/static/images/")
+            html_content = markdown.markdown(content, extensions=["extra", "toc", "fenced_code"])
             return render_template("guide.html", content=html_content)
         except FileNotFoundError:
             return "Guide not found", 404
