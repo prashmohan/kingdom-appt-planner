@@ -80,7 +80,11 @@
             <nav class="-mb-px flex justify-center space-x-8" aria-label="Tabs">
                 {% for day in active_days %}
                 <button class="tab-button whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200" data-target="tab-{{day}}">
-                    {{ day|capitalize }}
+                    {% if day == 'research' %}
+                        Research (Day {{ event.active_days.research_day if event.active_days.research_day else '5' }})
+                    {% else %}
+                        {{ day|capitalize }}
+                    {% endif %}
                 </button>
                 {% endfor %}
             </nav>
@@ -91,7 +95,14 @@
             {% for day in active_days %}
             <div id="tab-{{day}}" class="tab-content hidden animate-fade-in">
                 <div class="bg-kvk-gray-800 p-6 rounded-xl shadow-lg border border-kvk-gray-700">
-                    <h2 class="text-2xl font-bold mb-6 text-center text-gray-100 capitalize">{{ day }} Final Schedule</h2>
+                    <h2 class="text-2xl font-bold mb-6 text-center text-gray-100 capitalize">
+                        {% if day == 'research' %}
+                            Research (Day {{ event.active_days.research_day if event.active_days.research_day else '5' }})
+                        {% else %}
+                            {{ day }}
+                        {% endif %} 
+                        Final Schedule
+                    </h2>
                     
                     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2">
                         {% for i in range(49) %}

@@ -87,7 +87,11 @@
             <nav class="-mb-px flex space-x-8" aria-label="Tabs">
                 {% for day in active_days %}
                 <button class="tab-button whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-target="tab-{{day}}">
-                    {{ day|capitalize }}
+                    {% if day == 'research' %}
+                        Research (Day {{ event.active_days.research_day if event.active_days.research_day else '5' }})
+                    {% else %}
+                        {{ day|capitalize }}
+                    {% endif %}
                 </button>
                 {% endfor %}
             </nav>
@@ -100,7 +104,16 @@
                 <!-- Schedule Grid -->
                 <div class="bg-kvk-gray-800 p-6 rounded-xl shadow-md border border-kvk-gray-700">
                     <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
-                        <h2 class="text-2xl font-bold text-gray-100">Schedule Heatmap: <span class="capitalize">{{ day }}</span></h2>
+                        <h2 class="text-2xl font-bold text-gray-100">
+                            Schedule Heatmap: 
+                            <span class="capitalize">
+                                {% if day == 'research' %}
+                                    Research (Day {{ event.active_days.research_day if event.active_days.research_day else '5' }})
+                                {% else %}
+                                    {{ day }}
+                                {% endif %}
+                            </span>
+                        </h2>
                         <div class="flex gap-2 items-center">
                             <form action="{{ url_for('distribute', event_uid=event.uid) }}" method="POST" class="inline">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -157,7 +170,16 @@
                 <!-- Alliance Summary -->
                 <div class="bg-kvk-gray-800 p-6 rounded-xl shadow-md border border-kvk-gray-700">
                     <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-2xl font-bold text-gray-100">Alliance Impact: <span class="capitalize">{{ day }}</span></h2>
+                        <h2 class="text-2xl font-bold text-gray-100">
+                            Alliance Impact: 
+                            <span class="capitalize">
+                                {% if day == 'research' %}
+                                    Research (Day {{ event.active_days.research_day if event.active_days.research_day else '5' }})
+                                {% else %}
+                                    {{ day }}
+                                {% endif %}
+                            </span>
+                        </h2>
                         <input type="text" placeholder="Search alliance..." class="bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-sm text-gray-200 px-3 py-1 focus:ring-kvk-gold focus:border-kvk-gold" oninput="filterTable(this, 'alliance-table-{{day}}')">
                     </div>
                     <div class="overflow-x-auto">
@@ -190,7 +212,16 @@
         <div id="tab-{{day}}-subs" class="tab-content hidden mt-6">
             <div class="bg-kvk-gray-800 p-6 rounded-xl shadow-md border border-kvk-gray-700">
                 <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-2xl font-bold text-gray-100">Submissions: <span class="capitalize">{{ day }}</span></h2>
+                    <h2 class="text-2xl font-bold text-gray-100">
+                        Submissions: 
+                        <span class="capitalize">
+                            {% if day == 'research' %}
+                                Research (Day {{ event.active_days.research_day if event.active_days.research_day else '5' }})
+                            {% else %}
+                                {{ day }}
+                            {% endif %}
+                        </span>
+                    </h2>
                     <input type="text" placeholder="Search submissions..." class="bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-sm text-gray-200 px-3 py-1 focus:ring-kvk-gold focus:border-kvk-gold" oninput="filterTable(this, 'submissions-table-{{day}}')">
                 </div>
                 <div class="overflow-x-auto">

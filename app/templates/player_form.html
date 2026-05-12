@@ -155,7 +155,7 @@
                 
                 {% if event.active_days.research %}
                 <div class="p-4 rounded-lg bg-kvk-gray-900 border border-kvk-gray-700">
-                    <h3 class="font-bold text-xl mb-2 text-blue-500">Day 5: Research</h3>
+                    <h3 class="font-bold text-xl mb-2 text-blue-500">Day {{ event.active_days.research_day if event.active_days.research_day else '5' }}: Research</h3>
                     <p class="text-xs text-gray-400 mb-4 italic">Enter resources and select <strong>all feasible</strong> time slots. More slots give the system more flexibility to match you.</p>
                      <div class="space-y-4 mb-4">
                         <div>

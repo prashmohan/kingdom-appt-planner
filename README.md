@@ -29,7 +29,7 @@ Managing a kingdom of hundreds of players manually is a nightmare. This tool aut
 | :--- | :--- |
 | **Auto-Fetching** | Players enter their ID; the tool fetches their name and avatar directly from the game! |
 | **Smart Scheduling** | Prioritizes players based on Speedups, TrueGold, and availability. |
-| **Multi-Day Support** | Independent schedules for Construction (Day 1), Training (Day 4), and Research (Day 5). |
+| **Multi-Day Support** | Independent schedules for Construction (Day 1), Training (Day 4), and Research (Day 2 or 5). |
 | **Update Submissions** | Players can re-submit at any time; new entries automatically replace old ones to keep data fresh. |
 | **Verification System** | Players can upload backpack screenshots for admins to verify resource claims. |
 | **Heatmap Analytics** | Visualize alliance contributions and slot distribution at a glance. |
@@ -76,7 +76,7 @@ To ensure the Kingdom generates the absolute maximum points during KvK, the plan
 ## 📖 Administrator's Guide
 
 ### Step 1: Launch your Event
-Give your event a name (e.g., "KvK Season 12") and save the **Admin URL**. This is your private key!
+Give your event a name (e.g., "KvK Season 12") and select whether your kingdom runs Research on **Day 2** or **Day 5**. Save the **Admin URL**—this is your private key!
 
 ### Step 2: Data Collection & Verification
 Share the **Player URL** with your kingdom. 

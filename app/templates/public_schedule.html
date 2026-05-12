@@ -69,7 +69,14 @@
         <div class="space-y-8">
             {% for day in active_days %}
             <div class="bg-kvk-gray-800 p-6 rounded-xl shadow-lg border border-kvk-gray-700">
-                <h2 class="text-2xl font-bold mb-4 capitalize text-gray-100">{{ day }} Schedule</h2>
+                <h2 class="text-2xl font-bold mb-4 capitalize text-gray-100">
+                    {% if day == 'research' %}
+                        Research (Day {{ event.active_days.research_day if event.active_days.research_day else '5' }})
+                    {% else %}
+                        {{ day }}
+                    {% endif %}
+                    Schedule
+                </h2>
                 <div class="grid grid-cols-7 gap-1">
                     {% for i in range(49) %}
                     {% set day_assignments = assignments.get(day, {}) %}

@@ -194,9 +194,16 @@ def create_app():
     @app.route("/create", methods=["POST"])
     def create_event():
         event_name = request.form["event_name"]
+        research_day = request.form.get("research_day", "5")
 
         # All events will now have all 3 days active by default.
-        active_days = {"construction": True, "training": True, "research": True}
+        # Store the research day preference in the JSON
+        active_days = {
+            "construction": True, 
+            "training": True, 
+            "research": True,
+            "research_day": int(research_day)
+        }
 
         uid = str(uuid.uuid4())
         admin_secret = str(uuid.uuid4())
