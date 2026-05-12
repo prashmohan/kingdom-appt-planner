@@ -245,11 +245,19 @@ def create_app():
         if event is None:
             return "Event not found", 404
 
+        active_days_config = json.loads(event["active_days"])
         active_days = [
             day
-            for day, is_active in json.loads(event["active_days"]).items()
-            if is_active
+            for day in ["construction", "training", "research"]
+            if active_days_config.get(day)
         ]
+
+        # Create a dictionary from the database row for the template
+        event_dict = {
+            "uid": event["uid"],
+            "name": event["name"],
+            "active_days": active_days_config,
+        }
 
         # Fetch all assignments
         assignments_raw = db.execute(
@@ -283,7 +291,7 @@ def create_app():
 
         return render_template(
             "locked_appointments.html",
-            event=event,
+            event=event_dict,
             active_days=active_days,
             assignments=all_assignments,
         )
@@ -457,11 +465,19 @@ def create_app():
         if event["admin_secret"] != secret:
             return "Forbidden", 403
 
+        active_days_config = json.loads(event["active_days"])
         active_days = [
             day
-            for day, is_active in json.loads(event["active_days"]).items()
-            if is_active
+            for day in ["construction", "training", "research"]
+            if active_days_config.get(day)
         ]
+
+        # Create a dictionary from the database row for the template
+        event_dict = {
+            "uid": event["uid"],
+            "name": event["name"],
+            "active_days": active_days_config,
+        }
 
         # 1. Group submissions by day_type
         submissions_raw = db.execute(
@@ -590,7 +606,7 @@ def create_app():
 
         return render_template(
             "admin_dashboard.html",
-            event=event,
+            event=event_dict,
             active_days=active_days,
             submissions_by_day=submissions_by_day,
             assignments=rich_assignments,
@@ -613,11 +629,20 @@ def create_app():
         if event is None:
             return "Event not found", 404
 
+        active_days_config = json.loads(event["active_days"])
         active_days = [
             day
-            for day, is_active in json.loads(event["active_days"]).items()
-            if is_active
+            for day in ["construction", "training", "research"]
+            if active_days_config.get(day)
         ]
+
+        # Create a dictionary from the database row for the template
+        event_dict = {
+            "uid": event["uid"],
+            "name": event["name"],
+            "active_days": active_days_config,
+        }
+
         assignments_raw = db.execute(
             "SELECT * FROM assignments WHERE event_uid = ?", (event_uid,)
         ).fetchall()
@@ -630,7 +655,7 @@ def create_app():
 
         return render_template(
             "public_schedule.html",
-            event=event,
+            event=event_dict,
             active_days=active_days,
             assignments=assignments,
         )
