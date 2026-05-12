@@ -81,8 +81,7 @@ def create_app():
 
     # Setup Audit Logging
     log_dir = os.path.join(app.root_path, "..", "logs")
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
+    os.makedirs(log_dir, exist_ok=True)
     
     audit_handler = RotatingFileHandler(
         os.path.join(log_dir, "audit.log"), maxBytes=1000000, backupCount=5
@@ -344,8 +343,7 @@ def create_app():
 
                 # Create upload directory if it doesn't exist
                 upload_dir = os.path.join(app.static_folder, "uploads")
-                if not os.path.exists(upload_dir):
-                    os.makedirs(upload_dir)
+                os.makedirs(upload_dir, exist_ok=True)
                 
                 # Generate unique filename: event_uid + player_id + timestamp + original filename
                 filename = secure_filename(f"{event_uid}_{player_id}_{int(time.time())}_{file.filename}")

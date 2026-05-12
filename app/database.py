@@ -149,6 +149,5 @@ def init_app(app):
     with app.app_context():
         # Ensure the data directory exists
         data_dir = os.path.dirname(DATABASE_PATH)
-        if not os.path.exists(data_dir):
-            os.makedirs(data_dir)
+        os.makedirs(data_dir, exist_ok=True)
         init_db()
