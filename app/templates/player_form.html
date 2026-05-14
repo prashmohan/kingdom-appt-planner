@@ -123,8 +123,27 @@
                     <p class="text-xs text-gray-400 mb-4 italic">Enter resources and select <strong>all feasible</strong> time slots. More slots give the system more flexibility to match you.</p>
                     <div class="space-y-4 mb-4">
                         <div>
-                            <label for="speedups-construction" class="block text-sm font-medium text-gray-300">Speedups (Minutes)</label>
-                            <input type="number" name="speedups-construction" id="speedups-construction" min="0" class="mt-1 block w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200">
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Speedups</label>
+                            <div class="flex gap-2 mb-2">
+                                <button type="button" data-unit="days" data-section="construction" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gray-700 bg-kvk-gray-700 text-gray-400 hover:bg-kvk-gray-600 transition">Days</button>
+                                <button type="button" data-unit="hours" data-section="construction" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gray-700 bg-kvk-gray-700 text-gray-400 hover:bg-kvk-gray-600 transition">Hours</button>
+                                <button type="button" data-unit="minutes" data-section="construction" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gold bg-kvk-gold text-kvk-gray-900 font-bold transition">Minutes</button>
+                            </div>
+                            <div id="input-group-construction" class="grid grid-cols-3 gap-2">
+                                <div class="hidden" id="days-container-construction">
+                                    <label class="block text-[10px] uppercase text-gray-500 mb-1">Days</label>
+                                    <input type="number" id="days-construction" min="0" placeholder="0" class="dynamic-input w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200 text-sm">
+                                </div>
+                                <div class="hidden" id="hours-container-construction">
+                                    <label class="block text-[10px] uppercase text-gray-500 mb-1">Hours</label>
+                                    <input type="number" id="hours-construction" min="0" max="23" placeholder="0" class="dynamic-input w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200 text-sm">
+                                </div>
+                                <div id="minutes-container-construction">
+                                    <label class="block text-[10px] uppercase text-gray-500 mb-1">Minutes</label>
+                                    <input type="number" id="mins-construction" min="0" placeholder="0" class="dynamic-input w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200 text-sm">
+                                </div>
+                            </div>
+                            <input type="hidden" name="speedups-construction" id="speedups-construction" value="0">
                         </div>
                         <div>
                             <label for="truegold" class="block text-sm font-medium text-gray-300">TrueGold</label>
@@ -143,8 +162,27 @@
                     <h3 class="font-bold text-xl mb-2 text-red-500">Day 4: Troop Training</h3>
                     <p class="text-xs text-gray-400 mb-4 italic">Enter resources and select <strong>all feasible</strong> time slots. More slots give the system more flexibility to match you.</p>
                     <div class="mb-4">
-                        <label for="speedups-training" class="block text-sm font-medium text-gray-300">Speedups (Minutes)</label>
-                        <input type="number" name="speedups-training" id="speedups-training" min="0" class="mt-1 block w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200">
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Speedups</label>
+                        <div class="flex gap-2 mb-2">
+                            <button type="button" data-unit="days" data-section="training" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gray-700 bg-kvk-gray-700 text-gray-400 hover:bg-kvk-gray-600 transition">Days</button>
+                            <button type="button" data-unit="hours" data-section="training" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gray-700 bg-kvk-gray-700 text-gray-400 hover:bg-kvk-gray-600 transition">Hours</button>
+                            <button type="button" data-unit="minutes" data-section="training" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gold bg-kvk-gold text-kvk-gray-900 font-bold transition">Minutes</button>
+                        </div>
+                        <div id="input-group-training" class="grid grid-cols-3 gap-2">
+                            <div class="hidden" id="days-container-training">
+                                <label class="block text-[10px] uppercase text-gray-500 mb-1">Days</label>
+                                <input type="number" id="days-training" min="0" placeholder="0" class="dynamic-input w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200 text-sm">
+                            </div>
+                            <div class="hidden" id="hours-container-training">
+                                <label class="block text-[10px] uppercase text-gray-500 mb-1">Hours</label>
+                                <input type="number" id="hours-training" min="0" max="23" placeholder="0" class="dynamic-input w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200 text-sm">
+                            </div>
+                            <div id="minutes-container-training">
+                                <label class="block text-[10px] uppercase text-gray-500 mb-1">Minutes</label>
+                                <input type="number" id="mins-training" min="0" placeholder="0" class="dynamic-input w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200 text-sm">
+                            </div>
+                        </div>
+                        <input type="hidden" name="speedups-training" id="speedups-training" value="0">
                     </div>
                     <div id="slot-grid-training" class="grid grid-cols-7 gap-1 mb-4">
                         {% for i in range(49) %}<div class="slot" data-index="{{ i }}"><div class="slot-content">{{ slot_labels[i] }}</div></div>{% endfor %}
@@ -159,8 +197,27 @@
                     <p class="text-xs text-gray-400 mb-4 italic">Enter resources and select <strong>all feasible</strong> time slots. More slots give the system more flexibility to match you.</p>
                      <div class="space-y-4 mb-4">
                         <div>
-                            <label for="speedups-research" class="block text-sm font-medium text-gray-300">Speedups (Minutes)</label>
-                            <input type="number" name="speedups-research" id="speedups-research" min="0" class="mt-1 block w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200">
+                            <label class="block text-sm font-medium text-gray-300 mb-2">Speedups</label>
+                            <div class="flex gap-2 mb-2">
+                                <button type="button" data-unit="days" data-section="research" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gray-700 bg-kvk-gray-700 text-gray-400 hover:bg-kvk-gray-600 transition">Days</button>
+                                <button type="button" data-unit="hours" data-section="research" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gray-700 bg-kvk-gray-700 text-gray-400 hover:bg-kvk-gray-600 transition">Hours</button>
+                                <button type="button" data-unit="minutes" data-section="research" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gold bg-kvk-gold text-kvk-gray-900 font-bold transition">Minutes</button>
+                            </div>
+                            <div id="input-group-research" class="grid grid-cols-3 gap-2">
+                                <div class="hidden" id="days-container-research">
+                                    <label class="block text-[10px] uppercase text-gray-500 mb-1">Days</label>
+                                    <input type="number" id="days-research" min="0" placeholder="0" class="dynamic-input w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200 text-sm">
+                                </div>
+                                <div class="hidden" id="hours-container-research">
+                                    <label class="block text-[10px] uppercase text-gray-500 mb-1">Hours</label>
+                                    <input type="number" id="hours-research" min="0" max="23" placeholder="0" class="dynamic-input w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200 text-sm">
+                                </div>
+                                <div id="minutes-container-research">
+                                    <label class="block text-[10px] uppercase text-gray-500 mb-1">Minutes</label>
+                                    <input type="number" id="mins-research" min="0" placeholder="0" class="dynamic-input w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200 text-sm">
+                                </div>
+                            </div>
+                            <input type="hidden" name="speedups-research" id="speedups-research" value="0">
                         </div>
                         <div>
                             <label for="truegold_dust" class="block text-sm font-medium text-gray-300">TrueGold Dust</label>
@@ -237,6 +294,80 @@
             initializeGrid('slot-grid-construction');
             initializeGrid('slot-grid-training');
             initializeGrid('slot-grid-research');
+
+            // Speedup Unit Selection and Calculation
+            const sections = ['construction', 'training', 'research'];
+            
+            sections.forEach(section => {
+                const group = document.getElementById(`input-group-${section}`);
+                if (!group) return;
+
+                const unitBtns = document.querySelectorAll(`.unit-btn[data-section="${section}"]`);
+                const daysContainer = document.getElementById(`days-container-${section}`);
+                const hoursContainer = document.getElementById(`hours-container-${section}`);
+                const minutesContainer = document.getElementById(`minutes-container-${section}`);
+                
+                const daysInput = document.getElementById(`days-${section}`);
+                const hoursInput = document.getElementById(`hours-${section}`);
+                const minsInput = document.getElementById(`mins-${section}`);
+                const hiddenInput = document.getElementById(`speedups-${section}`);
+
+                unitBtns.forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const unit = btn.dataset.unit;
+                        
+                        // Update button styles
+                        unitBtns.forEach(b => {
+                            b.classList.remove('bg-kvk-gold', 'text-kvk-gray-900', 'font-bold', 'border-kvk-gold');
+                            b.classList.add('bg-kvk-gray-700', 'text-gray-400', 'border-kvk-gray-700');
+                        });
+                        btn.classList.add('bg-kvk-gold', 'text-kvk-gray-900', 'font-bold', 'border-kvk-gold');
+                        btn.classList.remove('bg-kvk-gray-700', 'text-gray-400', 'border-kvk-gray-700');
+
+                        // Show/Hide containers
+                        if (unit === 'days') {
+                            daysContainer.classList.remove('hidden');
+                            hoursContainer.classList.remove('hidden');
+                            minutesContainer.classList.remove('hidden');
+                        } else if (unit === 'hours') {
+                            daysContainer.classList.add('hidden');
+                            hoursContainer.classList.remove('hidden');
+                            minutesContainer.classList.remove('hidden');
+                            daysInput.value = '';
+                        } else {
+                            daysContainer.classList.add('hidden');
+                            hoursContainer.classList.add('hidden');
+                            minutesContainer.classList.remove('hidden');
+                            daysInput.value = '';
+                            hoursInput.value = '';
+                        }
+                        calculateTotal();
+                    });
+                });
+
+                function calculateTotal() {
+                    const d = parseInt(daysInput.value || 0);
+                    const h = parseInt(hoursInput.value || 0);
+                    const m = parseInt(minsInput.value || 0);
+                    
+                    const total = (d * 1440) + (h * 60) + m;
+                    hiddenInput.value = total;
+                }
+
+                [daysInput, hoursInput, minsInput].forEach(input => {
+                    input.addEventListener('input', () => {
+                        // Basic validation: only cap hours/mins if we are in a higher unit mode
+                        if (input === hoursInput && !daysContainer.classList.contains('hidden')) {
+                            if (parseInt(input.value) > 23) input.value = 23;
+                        }
+                        if (input === minsInput && (!hoursContainer.classList.contains('hidden') || !daysContainer.classList.contains('hidden'))) {
+                            if (parseInt(input.value) > 59) input.value = 59;
+                        }
+                        
+                        calculateTotal();
+                    });
+                });
+            });
 
             // Player Info Fetching Logic
             const idInput = document.getElementById('player_id');
