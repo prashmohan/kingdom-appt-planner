@@ -169,3 +169,12 @@ def test_algorithm_bad_json(app):
         # Should be waitlisted
         status = db.execute("SELECT status FROM submissions WHERE id = 'sub1'").fetchone()[0]
         assert status == 'Waitlisted'
+
+def test_format_minutes():
+    from app.logic import format_minutes
+    assert format_minutes(0) == "0m"
+    assert format_minutes(30) == "30m"
+    assert format_minutes(60) == "1h"
+    assert format_minutes(90) == "1h 30m"
+    assert format_minutes(1440) == "1d"
+    assert format_minutes(1530) == "1d 1h 30m"

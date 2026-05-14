@@ -98,3 +98,19 @@ def run_distribution_algorithm(event_uid, day_type=None):
                 db.execute("UPDATE submissions SET status = 'Waitlisted' WHERE id = ?", (submission['id'],))
 
     db.commit()
+
+def format_minutes(total_minutes):
+    if not total_minutes:
+        return "0m"
+    days = total_minutes // 1440
+    hours = (total_minutes % 1440) // 60
+    minutes = total_minutes % 60
+    
+    parts = []
+    if days > 0:
+        parts.append(f"{days}d")
+    if hours > 0:
+        parts.append(f"{hours}h")
+    if minutes > 0 or not parts:
+        parts.append(f"{minutes}m")
+    return " ".join(parts)
