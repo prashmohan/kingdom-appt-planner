@@ -15,6 +15,7 @@ from werkzeug.utils import secure_filename
 from flask import Flask, render_template, request, redirect, url_for, g, jsonify, Response, send_from_directory
 from flask_wtf.csrf import CSRFProtect
 from . import database, logic
+from .logic import format_minutes
 from config import Config
 
 # Ensure .js files are served with the correct MIME type
@@ -554,15 +555,15 @@ def create_app():
                     parts = []
                     if day == "construction":
                         if raw_resources.get("speedups"):
-                            parts.append(f"Speedups: {raw_resources['speedups']}m")
+                            parts.append(f"Speedups: {format_minutes(raw_resources['speedups'])}")
                         if raw_resources.get("truegold"):
                             parts.append(f"Truegold: {raw_resources['truegold']}")
                     elif day == "training":
                         if raw_resources.get("speedups"):
-                            parts.append(f"Speedups: {raw_resources['speedups']}m")
+                            parts.append(f"Speedups: {format_minutes(raw_resources['speedups'])}")
                     elif day == "research":
                         if raw_resources.get("speedups"):
-                            parts.append(f"Speedups: {raw_resources['speedups']}m")
+                            parts.append(f"Speedups: {format_minutes(raw_resources['speedups'])}")
                         if raw_resources.get("truegold_dust"):
                             parts.append(f"Dust: {raw_resources['truegold_dust']}")
                     sub["resources_text"] = " | ".join(parts) if parts else "No raw data"

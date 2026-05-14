@@ -357,9 +357,9 @@ def test_resource_breakdown_text(client, app):
     assert resp.status_code == 200
     
     # Check breakdown texts in the response (they are in 'title' attributes)
-    assert b"Speedups: 100m | Truegold: 5" in resp.data
-    assert b"Speedups: 200m" in resp.data
-    assert b"Speedups: 300m | Dust: 10" in resp.data
+    assert b"Speedups: 1h 40m | Truegold: 5" in resp.data
+    assert b"Speedups: 3h 20m" in resp.data
+    assert b"Speedups: 5h" in resp.data
 
 def test_overwrite_clears_assignments(client, app):
     # 1. Setup
