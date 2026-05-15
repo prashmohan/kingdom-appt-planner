@@ -511,8 +511,8 @@ def test_heatmap_hover_potential_players(client, app):
     resp = client.get(f"/admin/{uid}?secret={secret}")
     assert resp.status_code == 200
 
-    # Check if the player is listed in the title attribute of the slot
-    assert b'title="Potential Players: [HOV] HoverPlayer"' in resp.data
+    # Check if the player is listed in the title attribute of the slot with points
+    assert b"title=\"Potential Players: [HOV] HoverPlayer (3000 pts)\"" in resp.data
 
 
 def test_overwrite_clears_assignments(client, app):

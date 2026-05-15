@@ -145,9 +145,10 @@
                             {% set day_max_density = max_density.get(day, 1) %}
                             {% set density = (day_slot_density[i] / day_max_density) if day_max_density > 0 else 0 %}
                             {% set potential_players = slot_players.get(day, {}).get(i, []) %}
-                            <div class="slot rounded cursor-help {% if current_assignment %}{% if current_assignment.is_locked %}slot-locked{% else %}slot-pending{% endif %}{% endif %}" 
+                            <div class="slot rounded cursor-help heatmap-slot-{{ day }}-{{ i }} {% if current_assignment %}{% if current_assignment.is_locked %}slot-locked{% else %}slot-pending{% endif %}{% endif %}" 
                                  style="background-color: rgba(30, 64, 175, {{ density }});"
-                                 title="Potential Players: {{ potential_players|join(', ') if potential_players else 'None' }}">
+                                 onclick="selectSlot('{{ day }}', {{ i }})"
+                                 title="Potential Players: {% for p in potential_players %}[{{ p.alliance_name }}] {{ p.player_name }} ({{ '%.0f'|format(p.resources) }} pts){{ ', ' if not loop.last }}{% else %}None{% endfor %}">
                                 <div class="slot-time rounded-t">{{ slot_labels[i] }}</div>
                                 {% if current_assignment %}
                                     <div class="slot-content">
@@ -176,7 +177,24 @@
                             </div>
                         {% endfor %}
                     </div>
+
+                    <!-- Mobile Selection Drawer -->
+                    <div id="drawer-{{ day }}" class="mt-6 p-4 bg-kvk-gray-900 border border-kvk-gray-700 rounded-lg">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 id="drawer-title-{{ day }}" class="text-sm font-bold text-gray-400 uppercase tracking-wider">Slot Details</h3>
+                            <span id="drawer-count-{{ day }}" class="text-[10px] bg-kvk-gold/20 text-kvk-gold px-2 py-0.5 rounded font-bold">Select a slot</span>
+                        </div>
+                        <div id="drawer-content-{{ day }}" class="space-y-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar text-sm text-gray-500 italic">
+                            Tap a slot in the heatmap to see potential players and their points.
+                        </div>
+                    </div>
                 </div>
+
+                <script>
+                    // Store slot player data for this day
+                    if (typeof allSlotPlayers === 'undefined') window.allSlotPlayers = {};
+                    window.allSlotPlayers['{{ day }}'] = {{ slot_players[day]|tojson }};
+                </script>
                 
                 <!-- Alliance Summary -->
                 <div class="bg-kvk-gray-800 p-6 rounded-xl shadow-md border border-kvk-gray-700">
@@ -513,6 +531,50 @@
         initializeTabs();
         document.addEventListener('submit', handleFormSubmit);
     });
+
+    const slotLabels = {{ slot_labels|tojson }};
+
+    function selectSlot(day, index) {
+        const players = window.allSlotPlayers[day][index] || [];
+        const titleEl = document.getElementById(`drawer-title-${day}`);
+        const countEl = document.getElementById(`drawer-count-${day}`);
+        const contentEl = document.getElementById(`drawer-content-${day}`);
+
+        // Update Header
+        titleEl.textContent = `DETAIL: ${slotLabels[index]}`;
+        countEl.textContent = `${players.length} Potential`;
+        countEl.className = players.length > 0 
+            ? "text-[10px] bg-kvk-gold/20 text-kvk-gold px-2 py-0.5 rounded font-bold"
+            : "text-[10px] bg-gray-700 text-gray-400 px-2 py-0.5 rounded font-bold";
+
+        // Update Content
+        if (players.length === 0) {
+            contentEl.innerHTML = '<p class="text-gray-500 italic py-2">No players selected this slot as a fit.</p>';
+        } else {
+            // Sort by points descending
+            const sorted = [...players].sort((a, b) => b.resources - a.resources);
+            
+            contentEl.innerHTML = sorted.map(p => `
+                <div class="flex justify-between items-center p-2 bg-kvk-gray-800 rounded border border-kvk-gray-700 hover:border-kvk-gold/50 transition-colors">
+                    <div class="flex flex-col">
+                        <span class="font-bold text-gray-200">[${p.alliance_name || 'N/A'}] ${p.player_name}</span>
+                        <span class="text-[10px] text-gray-400 uppercase tracking-tighter">Alliance Member</span>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-kvk-gold font-mono font-bold">${Math.round(p.resources).toLocaleString()}</span>
+                        <span class="text-[9px] text-gray-500 block -mt-1">POINTS</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Highlight selected slot
+        document.querySelectorAll(`.slot`).forEach(s => s.classList.remove('ring-2', 'ring-amber-400', 'z-20'));
+        const selectedSlot = document.querySelector(`.heatmap-slot-${day}-${index}`);
+        if (selectedSlot) {
+            selectedSlot.classList.add('ring-2', 'ring-amber-400', 'z-20');
+        }
+    }
 </script>
 </body>
 </html>

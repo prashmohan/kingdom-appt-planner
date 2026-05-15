@@ -584,7 +584,11 @@ def create_app():
                         if 0 <= slot_index < 49:
                             slot_density[day][slot_index] += 1
                             slot_players[day][slot_index].append(
-                                f"[{sub['alliance_name']}] {sub['player_name']}"
+                                {
+                                    "player_name": sub["player_name"],
+                                    "alliance_name": sub["alliance_name"],
+                                    "resources": sub["resources"],
+                                }
                             )
 
                 except (json.JSONDecodeError, TypeError, KeyError):
