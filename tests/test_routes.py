@@ -4,14 +4,16 @@ import io
 from unittest.mock import patch, MagicMock
 from app import database
 
+
 def test_index_route(client):
-    response = client.get('/')
+    response = client.get("/")
     assert response.status_code == 200
     assert b"Kingdom Appointment Planner" in response.data
 
+
 def test_guide_route(client):
     # 1. Success
-    response = client.get('/guide')
+    response = client.get("/guide")
     assert response.status_code == 200
     assert b"User Guide" in response.data or b"Tutorial" in response.data
 
@@ -19,634 +21,904 @@ def test_guide_route(client):
     if os.path.exists("README.md"):
         os.rename("README.md", "README.md.tmp")
         try:
-            response = client.get('/guide')
+            response = client.get("/guide")
             assert response.status_code == 404
         finally:
             os.rename("README.md.tmp", "README.md")
 
+
 def test_favicon(client):
-    response = client.get('/favicon.ico')
+    response = client.get("/favicon.ico")
     assert response.status_code == 200
     assert response.mimetype == "image/svg+xml"
 
+
 def test_submission_success_route(client):
-    response = client.get('/submission-success')
+    response = client.get("/submission-success")
     assert response.status_code == 200
     assert b"Submission Recorded" in response.data
 
+
 def test_create_event(client, app):
-    response = client.post('/create', data={'event_name': 'Test KvK'}, follow_redirects=True)
+    response = client.post(
+        "/create", data={"event_name": "Test KvK"}, follow_redirects=True
+    )
     assert response.status_code == 200
-    
+
     with app.app_context():
         db = database.get_db()
         db.row_factory = sqlite3.Row
         event = db.execute("SELECT * FROM events WHERE name = 'Test KvK'").fetchone()
         assert event is not None
 
+
 def test_player_form_page(client, app):
-    client.post('/create', data={'event_name': 'Form Test'})
+    client.post("/create", data={"event_name": "Form Test"})
     with app.app_context():
         db = database.get_db()
         db.row_factory = sqlite3.Row
         event = db.execute("SELECT uid FROM events").fetchone()
-        event_uid = event['uid']
+        event_uid = event["uid"]
 
     # Test success
-    resp = client.get(f'/event/{event_uid}')
+    resp = client.get(f"/event/{event_uid}")
     assert resp.status_code == 200
-    
+
     # Test 404
-    assert client.get('/event/nonexistent').status_code == 404
+    assert client.get("/event/nonexistent").status_code == 404
+
 
 def test_player_info_proxy(client):
     # 1. Success
-    with patch('requests.post') as mock_post:
+    with patch("requests.post") as mock_post:
         mock_resp = MagicMock()
-        mock_resp.json.return_value = {"code": 0, "data": {"nickname": "Mock", "avatar_image": "img.jpg"}}
+        mock_resp.json.return_value = {
+            "code": 0,
+            "data": {"nickname": "Mock", "avatar_image": "img.jpg"},
+        }
         mock_post.return_value = mock_resp
-        response = client.post('/api/proxy/player', json={"fid": "123"})
+        response = client.post("/api/proxy/player", json={"fid": "123"})
         assert response.status_code == 200
         data = response.get_json()
-        assert data['nickname'] == "Mock"
+        assert data["nickname"] == "Mock"
 
     # 2. Missing FID
-    response = client.post('/api/proxy/player', json={})
+    response = client.post("/api/proxy/player", json={})
     assert response.status_code == 400
 
     # 3. Not found
-    with patch('requests.post') as mock_post:
+    with patch("requests.post") as mock_post:
         mock_resp = MagicMock()
         mock_resp.json.return_value = {"code": 1, "msg": "Fail"}
         mock_post.return_value = mock_resp
-        response = client.post('/api/proxy/player', json={"fid": "123"})
+        response = client.post("/api/proxy/player", json={"fid": "123"})
         assert response.status_code == 404
 
     # 4. Exception
-    with patch('requests.post', side_effect=Exception("Error")):
-        response = client.post('/api/proxy/player', json={"fid": "123"})
+    with patch("requests.post", side_effect=Exception("Error")):
+        response = client.post("/api/proxy/player", json={"fid": "123"})
         assert response.status_code == 404
+
 
 def test_refresh_players(client, app):
     # Setup event and submission
-    client.post('/create', data={'event_name': 'Refresh Test'})
+    client.post("/create", data={"event_name": "Refresh Test"})
     with app.app_context():
         db = database.get_db()
         db.row_factory = sqlite3.Row
         event = db.execute("SELECT uid, admin_secret FROM events").fetchone()
-        uid, secret = event['uid'], event['admin_secret']
-    
-    client.post(f'/event/{uid}/submit', data={
-        'player_name': 'Old Name', 'player_id': '123', 'alliance_name': 'A',
-        'speedups-construction': '10', 'slots-construction': '[0]'
-    })
+        uid, secret = event["uid"], event["admin_secret"]
+
+    client.post(
+        f"/event/{uid}/submit",
+        data={
+            "player_name": "Old Name",
+            "player_id": "123",
+            "alliance_name": "A",
+            "speedups-construction": "10",
+            "slots-construction": "[0]",
+        },
+    )
 
     # Mock API for refresh
-    with patch('requests.post') as mock_post:
+    with patch("requests.post") as mock_post:
         mock_resp = MagicMock()
-        mock_resp.json.return_value = {"code": 0, "data": {"nickname": "New Name", "avatar_image": "new.jpg"}}
+        mock_resp.json.return_value = {
+            "code": 0,
+            "data": {"nickname": "New Name", "avatar_image": "new.jpg"},
+        }
         mock_post.return_value = mock_resp
-        
+
         # Unauthorized
-        resp = client.post(f'/admin/{uid}/refresh_players', data={'secret': 'wrong'})
+        resp = client.post(f"/admin/{uid}/refresh_players", data={"secret": "wrong"})
         assert resp.status_code == 403
 
         # Success
-        resp = client.post(f'/admin/{uid}/refresh_players', data={'secret': secret}, follow_redirects=True)
+        resp = client.post(
+            f"/admin/{uid}/refresh_players",
+            data={"secret": secret},
+            follow_redirects=True,
+        )
         assert resp.status_code == 200
-        
+
         with app.app_context():
             db = database.get_db()
             db.row_factory = sqlite3.Row
-            sub = db.execute("SELECT player_name, avatar_url FROM submissions WHERE player_id = '123'").fetchone()
-            assert sub['player_name'] == "New Name"
-            assert sub['avatar_url'] == "new.jpg"
+            sub = db.execute(
+                "SELECT player_name, avatar_url FROM submissions WHERE player_id = '123'"
+            ).fetchone()
+            assert sub["player_name"] == "New Name"
+            assert sub["avatar_url"] == "new.jpg"
+
 
 def test_full_flow(client, app):
     # 1. Setup
-    client.post('/create', data={'event_name': 'Flow'})
+    client.post("/create", data={"event_name": "Flow"})
     with app.app_context():
         db = database.get_db()
         db.row_factory = sqlite3.Row
         event = db.execute("SELECT uid, admin_secret FROM events").fetchone()
-        uid, secret = event['uid'], event['admin_secret']
+        uid, secret = event["uid"], event["admin_secret"]
 
     # 2. Submit for all days
-    client.post(f'/event/{uid}/submit', data={
-        'player_name': 'P1', 'player_id': '12345', 'avatar_url': 'a.jpg', 'alliance_name': 'A',
-        'speedups-construction': '10', 'truegold': '1', 'slots-construction': '[0]',
-        'speedups-training': '10', 'slots-training': '[1]',
-        'speedups-research': '10', 'truegold_dust': '1', 'slots-research': '[2]'
-    })
+    client.post(
+        f"/event/{uid}/submit",
+        data={
+            "player_name": "P1",
+            "player_id": "12345",
+            "avatar_url": "a.jpg",
+            "alliance_name": "A",
+            "speedups-construction": "10",
+            "truegold": "1",
+            "slots-construction": "[0]",
+            "speedups-training": "10",
+            "slots-training": "[1]",
+            "speedups-research": "10",
+            "truegold_dust": "1",
+            "slots-research": "[2]",
+        },
+    )
 
     # 3. Distribution
-    client.post(f'/admin/{uid}/distribute', data={'secret': secret})
+    client.post(f"/admin/{uid}/distribute", data={"secret": secret})
 
     # 4. Admin Dashboard (Check if assignments render with names)
-    resp = client.get(f'/admin/{uid}?secret={secret}')
+    resp = client.get(f"/admin/{uid}?secret={secret}")
     assert resp.status_code == 200
     assert b"P1" in resp.data
 
     # 5. Manual Assign (Locks by default)
     submission_id = f"{uid}_12345_construction"
-    client.post(f'/admin/{uid}/manual_assign', data={
-        'secret': secret, 'submission_id': submission_id, 'slot_index': '5'
-    })
+    client.post(
+        f"/admin/{uid}/manual_assign",
+        data={"secret": secret, "submission_id": submission_id, "slot_index": "5"},
+    )
 
     # 6. Confirm (Keep it locked)
-    client.post(f'/admin/{uid}/confirm', data={'secret': secret, 'day_type': 'construction', 'slot_index': '5'})
+    client.post(
+        f"/admin/{uid}/confirm",
+        data={"secret": secret, "day_type": "construction", "slot_index": "5"},
+    )
 
     # 7. Public Pages (Now with locked assignments)
-    assert client.get(f'/event/{uid}/schedule').status_code == 200
-    resp = client.get(f'/event/{uid}/finalized')
+    assert client.get(f"/event/{uid}/schedule").status_code == 200
+    resp = client.get(f"/event/{uid}/finalized")
     assert resp.status_code == 200
     assert b"CONFIRMED" in resp.data
-    assert b"P1" in resp.data # Should be visible now
+    assert b"P1" in resp.data  # Should be visible now
 
     # 8. Unlock
-    client.post(f'/admin/{uid}/unlock', data={'secret': secret, 'day_type': 'construction', 'slot_index': '5'})
+    client.post(
+        f"/admin/{uid}/unlock",
+        data={"secret": secret, "day_type": "construction", "slot_index": "5"},
+    )
 
     # 9. Delete
-    client.post(f'/admin/{uid}/delete', data={'secret': secret, 'submission_id': f"{uid}_12345_construction"})
+    client.post(
+        f"/admin/{uid}/delete",
+        data={"secret": secret, "submission_id": f"{uid}_12345_construction"},
+    )
+
 
 def test_finalized_schedule_states(client, app):
     # 1. Setup
-    client.post('/create', data={'event_name': 'States Test'})
+    client.post("/create", data={"event_name": "States Test"})
     with app.app_context():
         db = database.get_db()
         db.row_factory = sqlite3.Row
         event = db.execute("SELECT uid, admin_secret FROM events").fetchone()
-        uid, secret = event['uid'], event['admin_secret']
+        uid, secret = event["uid"], event["admin_secret"]
 
     # 2. Submit for construction and training
-    client.post(f'/event/{uid}/submit', data={
-        'player_name': 'P1', 'player_id': '123', 'alliance_name': 'A',
-        'speedups-construction': '10', 'slots-construction': '[0]',
-        'speedups-training': '10', 'slots-training': '[0]'
-    })
+    client.post(
+        f"/event/{uid}/submit",
+        data={
+            "player_name": "P1",
+            "player_id": "123",
+            "alliance_name": "A",
+            "speedups-construction": "10",
+            "slots-construction": "[0]",
+            "speedups-training": "10",
+            "slots-training": "[0]",
+        },
+    )
 
     # 3. Distribution (results in TENTATIVE status)
-    client.post(f'/admin/{uid}/distribute', data={'secret': secret})
+    client.post(f"/admin/{uid}/distribute", data={"secret": secret})
 
     # 4. Lock only construction
-    client.post(f'/admin/{uid}/confirm', data={'secret': secret, 'day_type': 'construction', 'slot_index': '0'})
+    client.post(
+        f"/admin/{uid}/confirm",
+        data={"secret": secret, "day_type": "construction", "slot_index": "0"},
+    )
 
     # 5. Check Finalized Schedule
-    resp = client.get(f'/event/{uid}/finalized')
+    resp = client.get(f"/event/{uid}/finalized")
     assert resp.status_code == 200
     assert b"CONFIRMED" in resp.data
     assert b"TENTATIVE" in resp.data
 
+
 def test_export_csv(client, app):
     # 1. Setup
-    client.post('/create', data={'event_name': 'Export Test'})
+    client.post("/create", data={"event_name": "Export Test"})
     with app.app_context():
         db = database.get_db()
         db.row_factory = sqlite3.Row
         event = db.execute("SELECT uid, admin_secret FROM events").fetchone()
-        uid, secret = event['uid'], event['admin_secret']
+        uid, secret = event["uid"], event["admin_secret"]
 
     # 2. Submit, assign and lock
-    client.post(f'/event/{uid}/submit', data={
-        'player_name': 'P1', 'player_id': '123', 'alliance_name': 'A',
-        'speedups-construction': '10', 'slots-construction': '[10]'
-    })
-    client.post(f'/admin/{uid}/manual_assign', data={
-        'secret': secret, 'submission_id': f"{uid}_123_construction", 'slot_index': '10'
-    })
+    client.post(
+        f"/event/{uid}/submit",
+        data={
+            "player_name": "P1",
+            "player_id": "123",
+            "alliance_name": "A",
+            "speedups-construction": "10",
+            "slots-construction": "[10]",
+        },
+    )
+    client.post(
+        f"/admin/{uid}/manual_assign",
+        data={
+            "secret": secret,
+            "submission_id": f"{uid}_123_construction",
+            "slot_index": "10",
+        },
+    )
     # manual_assign locks by default in this app's logic
 
     # 3. Export
-    resp = client.get(f'/admin/{uid}/export/construction?secret={secret}')
+    resp = client.get(f"/admin/{uid}/export/construction?secret={secret}")
     assert resp.status_code == 200
     assert resp.mimetype == "text/csv"
     assert b"Event Type,Player ID,Player Name,Appointment Slot" in resp.data
     assert b"construction,123,P1" in resp.data
 
     # 4. Unauthorized
-    assert client.get(f'/admin/{uid}/export/construction?secret=bad').status_code == 403
+    assert client.get(f"/admin/{uid}/export/construction?secret=bad").status_code == 403
+
 
 def test_submit_no_slots(client, app):
     # 1. Setup
-    client.post('/create', data={'event_name': 'No Slots Test'})
+    client.post("/create", data={"event_name": "No Slots Test"})
     with app.app_context():
         db = database.get_db()
         db.row_factory = sqlite3.Row
         event = db.execute("SELECT uid, admin_secret FROM events").fetchone()
-        uid = event['uid']
+        uid = event["uid"]
 
     # 2. Submit with resources but NO slots
-    client.post(f'/event/{uid}/submit', data={
-        'player_name': 'P1', 'player_id': '123', 'alliance_name': 'A',
-        'speedups-construction': '10', 'slots-construction': '[]'
-    })
+    client.post(
+        f"/event/{uid}/submit",
+        data={
+            "player_name": "P1",
+            "player_id": "123",
+            "alliance_name": "A",
+            "speedups-construction": "10",
+            "slots-construction": "[]",
+        },
+    )
 
     # 3. Verify NOT in DB
     with app.app_context():
         db = database.get_db()
-        count = db.execute("SELECT count(*) FROM submissions WHERE player_id = '123'").fetchone()[0]
+        count = db.execute(
+            "SELECT count(*) FROM submissions WHERE player_id = '123'"
+        ).fetchone()[0]
         assert count == 0
+
 
 def test_submit_invalid_id(client, app):
     # 1. Setup
-    client.post('/create', data={'event_name': 'ID Test'})
+    client.post("/create", data={"event_name": "ID Test"})
     with app.app_context():
         db = database.get_db()
         db.row_factory = sqlite3.Row
         event = db.execute("SELECT uid FROM events").fetchone()
-        uid = event['uid']
+        uid = event["uid"]
 
     # 2. Non-numeric ID
-    resp = client.post(f'/event/{uid}/submit', data={
-        'player_id': 'abc', 'player_name': 'P1', 'alliance_name': 'A',
-        'speedups-construction': '10', 'slots-construction': '[0]'
-    })
+    resp = client.post(
+        f"/event/{uid}/submit",
+        data={
+            "player_id": "abc",
+            "player_name": "P1",
+            "alliance_name": "A",
+            "speedups-construction": "10",
+            "slots-construction": "[0]",
+        },
+    )
     assert resp.status_code == 400
     assert b"numeric" in resp.data
 
     # 3. Missing name
-    resp = client.post(f'/event/{uid}/submit', data={
-        'player_id': '123', 'player_name': '', 'alliance_name': 'A',
-        'speedups-construction': '10', 'slots-construction': '[0]'
-    })
+    resp = client.post(
+        f"/event/{uid}/submit",
+        data={
+            "player_id": "123",
+            "player_name": "",
+            "alliance_name": "A",
+            "speedups-construction": "10",
+            "slots-construction": "[0]",
+        },
+    )
     assert resp.status_code == 400
     assert b"name" in resp.data
 
+
 def test_submit_with_backpack(client, app):
     # 1. Setup
-    client.post('/create', data={'event_name': 'Backpack Test'})
+    client.post("/create", data={"event_name": "Backpack Test"})
     with app.app_context():
         db = database.get_db()
         db.row_factory = sqlite3.Row
         event = db.execute("SELECT uid, admin_secret FROM events").fetchone()
-        uid, _secret = event['uid'], event['admin_secret']
+        uid, _secret = event["uid"], event["admin_secret"]
 
     # 2. Submit with file (Mock ENABLE_SCREENSHOT_UPLOAD as True)
     data = {
-        'player_name': 'P1', 'player_id': '123', 'alliance_name': 'A',
-        'speedups-construction': '10', 'slots-construction': '[0]',
-        'backpack_screenshot': (io.BytesIO(b"dummy image data"), 'test.jpg')
+        "player_name": "P1",
+        "player_id": "123",
+        "alliance_name": "A",
+        "speedups-construction": "10",
+        "slots-construction": "[0]",
+        "backpack_screenshot": (io.BytesIO(b"dummy image data"), "test.jpg"),
     }
-    
-    with patch('config.Config.ENABLE_SCREENSHOT_UPLOAD', True):
-        resp = client.post(f'/event/{uid}/submit', data=data, content_type='multipart/form-data', follow_redirects=True)
+
+    with patch("config.Config.ENABLE_SCREENSHOT_UPLOAD", True):
+        resp = client.post(
+            f"/event/{uid}/submit",
+            data=data,
+            content_type="multipart/form-data",
+            follow_redirects=True,
+        )
     assert resp.status_code == 200
 
     # 3. Verify in DB
     with app.app_context():
         db = database.get_db()
         db.row_factory = sqlite3.Row
-        sub = db.execute("SELECT backpack_url FROM submissions WHERE player_id = '123'").fetchone()
-        assert sub['backpack_url'] is not None
-        assert '/static/uploads/' in sub['backpack_url']
-        
+        sub = db.execute(
+            "SELECT backpack_url FROM submissions WHERE player_id = '123'"
+        ).fetchone()
+        assert sub["backpack_url"] is not None
+        assert "/static/uploads/" in sub["backpack_url"]
+
         # Verify file exists on disk
-        filename = sub['backpack_url'].split('/')[-1]
-        filepath = os.path.join(app.static_folder, 'uploads', filename)
+        filename = sub["backpack_url"].split("/")[-1]
+        filepath = os.path.join(app.static_folder, "uploads", filename)
         assert os.path.exists(filepath)
-        
+
         # Cleanup
         os.remove(filepath)
 
+
 def test_submit_with_backpack_disabled(client, app):
     # 1. Setup
-    client.post('/create', data={'event_name': 'Backpack Disabled Test'})
+    client.post("/create", data={"event_name": "Backpack Disabled Test"})
     with app.app_context():
         db = database.get_db()
         db.row_factory = sqlite3.Row
         event = db.execute("SELECT uid, admin_secret FROM events").fetchone()
-        uid, _secret = event['uid'], event['admin_secret']
+        uid, _secret = event["uid"], event["admin_secret"]
 
     # 2. Submit with file (Mock ENABLE_SCREENSHOT_UPLOAD as False)
     data = {
-        'player_name': 'P1', 'player_id': '12345', 'alliance_name': 'A',
-        'speedups-construction': '10', 'slots-construction': '[0]',
-        'backpack_screenshot': (io.BytesIO(b"dummy image data"), 'test.jpg')
+        "player_name": "P1",
+        "player_id": "12345",
+        "alliance_name": "A",
+        "speedups-construction": "10",
+        "slots-construction": "[0]",
+        "backpack_screenshot": (io.BytesIO(b"dummy image data"), "test.jpg"),
     }
 
-    with patch('config.Config.ENABLE_SCREENSHOT_UPLOAD', False):
-        resp = client.post(f'/event/{uid}/submit', data=data, content_type='multipart/form-data', follow_redirects=True)
+    with patch("config.Config.ENABLE_SCREENSHOT_UPLOAD", False):
+        resp = client.post(
+            f"/event/{uid}/submit",
+            data=data,
+            content_type="multipart/form-data",
+            follow_redirects=True,
+        )
     assert resp.status_code == 200
 
     # 3. Verify NOT in DB (backpack_url should be None)
     with app.app_context():
         db = database.get_db()
         db.row_factory = sqlite3.Row
-        sub = db.execute("SELECT backpack_url FROM submissions WHERE player_id = '12345'").fetchone()
-        assert sub['backpack_url'] is None
+        sub = db.execute(
+            "SELECT backpack_url FROM submissions WHERE player_id = '12345'"
+        ).fetchone()
+        assert sub["backpack_url"] is None
+
 
 def test_resource_breakdown_text(client, app):
-    client.post('/create', data={'event_name': 'Breakdown Test'})
+    client.post("/create", data={"event_name": "Breakdown Test"})
     with app.app_context():
         db = database.get_db()
         db.row_factory = sqlite3.Row
         event = db.execute("SELECT uid, admin_secret FROM events").fetchone()
-        uid, secret = event['uid'], event['admin_secret']
+        uid, secret = event["uid"], event["admin_secret"]
 
     # Submit for all days with different resources
-    client.post(f'/event/{uid}/submit', data={
-        'player_name': 'P1', 'player_id': '123', 'alliance_name': 'A',
-        'speedups-construction': '100', 'truegold': '5', 'slots-construction': '[0]',
-        'speedups-training': '200', 'slots-training': '[0]',
-        'speedups-research': '300', 'truegold_dust': '10', 'slots-research': '[0]'
-    })
+    client.post(
+        f"/event/{uid}/submit",
+        data={
+            "player_name": "P1",
+            "player_id": "123",
+            "alliance_name": "A",
+            "speedups-construction": "100",
+            "truegold": "5",
+            "slots-construction": "[0]",
+            "speedups-training": "200",
+            "slots-training": "[0]",
+            "speedups-research": "300",
+            "truegold_dust": "10",
+            "slots-research": "[0]",
+        },
+    )
 
-    resp = client.get(f'/admin/{uid}?secret={secret}')
+    resp = client.get(f"/admin/{uid}?secret={secret}")
     assert resp.status_code == 200
-    
+
     # Check breakdown texts in the response (they are in 'title' attributes)
     assert b"Speedups: 1h 40m | Truegold: 5" in resp.data
     assert b"Speedups: 3h 20m" in resp.data
     assert b"Speedups: 5h" in resp.data
 
+
 def test_overwrite_clears_assignments(client, app):
     # 1. Setup
-    client.post('/create', data={'event_name': 'Overwrite Test'})
+    client.post("/create", data={"event_name": "Overwrite Test"})
     with app.app_context():
         db = database.get_db()
         db.row_factory = sqlite3.Row
         event = db.execute("SELECT uid, admin_secret FROM events").fetchone()
-        uid, secret = event['uid'], event['admin_secret']
+        uid, secret = event["uid"], event["admin_secret"]
 
     # 2. Submit for construction and training
-    client.post(f'/event/{uid}/submit', data={
-        'player_name': 'P1', 'player_id': '123', 'alliance_name': 'A',
-        'speedups-construction': '10', 'slots-construction': '[0]',
-        'speedups-training': '10', 'slots-training': '[0]'
-    })
+    client.post(
+        f"/event/{uid}/submit",
+        data={
+            "player_name": "P1",
+            "player_id": "123",
+            "alliance_name": "A",
+            "speedups-construction": "10",
+            "slots-construction": "[0]",
+            "speedups-training": "10",
+            "slots-training": "[0]",
+        },
+    )
 
     # 3. Assign them
-    client.post(f'/admin/{uid}/manual_assign', data={
-        'secret': secret, 'submission_id': f"{uid}_123_construction", 'slot_index': '0'
-    })
-    client.post(f'/admin/{uid}/manual_assign', data={
-        'secret': secret, 'submission_id': f"{uid}_123_training", 'slot_index': '0'
-    })
+    client.post(
+        f"/admin/{uid}/manual_assign",
+        data={
+            "secret": secret,
+            "submission_id": f"{uid}_123_construction",
+            "slot_index": "0",
+        },
+    )
+    client.post(
+        f"/admin/{uid}/manual_assign",
+        data={
+            "secret": secret,
+            "submission_id": f"{uid}_123_training",
+            "slot_index": "0",
+        },
+    )
 
     # 4. Verify assigned for both
     with app.app_context():
         db = database.get_db()
-        count = db.execute("SELECT count(*) FROM assignments WHERE event_uid = ? AND player_id = '123'", (uid,)).fetchone()[0]
+        count = db.execute(
+            "SELECT count(*) FROM assignments WHERE event_uid = ? AND player_id = '123'",
+            (uid,),
+        ).fetchone()[0]
         assert count == 2
 
     # 5. Overwrite with ONLY training
-    client.post(f'/event/{uid}/submit', data={
-        'player_name': 'P1', 'player_id': '123', 'alliance_name': 'A',
-        'speedups-training': '10', 'slots-training': '[0]'
-    })
+    client.post(
+        f"/event/{uid}/submit",
+        data={
+            "player_name": "P1",
+            "player_id": "123",
+            "alliance_name": "A",
+            "speedups-training": "10",
+            "slots-training": "[0]",
+        },
+    )
 
     # 6. Verify BOTH assignments are gone (since we clear all on resubmit)
     with app.app_context():
         db = database.get_db()
-        count = db.execute("SELECT count(*) FROM assignments WHERE event_uid = ? AND player_id = '123'", (uid,)).fetchone()[0]
+        count = db.execute(
+            "SELECT count(*) FROM assignments WHERE event_uid = ? AND player_id = '123'",
+            (uid,),
+        ).fetchone()[0]
         assert count == 0
+
 
 def test_tab_specific_distribute(client, app):
     # 1. Setup
-    client.post('/create', data={'event_name': 'Tab Dist Test'})
+    client.post("/create", data={"event_name": "Tab Dist Test"})
     with app.app_context():
         db = database.get_db()
         db.row_factory = sqlite3.Row
         event = db.execute("SELECT uid, admin_secret FROM events").fetchone()
-        uid, secret = event['uid'], event['admin_secret']
+        uid, secret = event["uid"], event["admin_secret"]
 
     # Submit for construction and training in ONE call
-    client.post(f'/event/{uid}/submit', data={
-        'player_name': 'P1', 'player_id': '12345', 'alliance_name': 'A',
-        'speedups-construction': '10', 'slots-construction': '[0]',
-        'speedups-training': '10', 'slots-training': '[0]'
-    })
+    client.post(
+        f"/event/{uid}/submit",
+        data={
+            "player_name": "P1",
+            "player_id": "12345",
+            "alliance_name": "A",
+            "speedups-construction": "10",
+            "slots-construction": "[0]",
+            "speedups-training": "10",
+            "slots-training": "[0]",
+        },
+    )
 
     # 2. Run distribute only for construction
-    client.post(f'/admin/{uid}/distribute', data={'secret': secret, 'day_type': 'construction'})
+    client.post(
+        f"/admin/{uid}/distribute", data={"secret": secret, "day_type": "construction"}
+    )
 
     # 3. Verify construction is assigned, training is not
     with app.app_context():
         db = database.get_db()
         db.row_factory = sqlite3.Row
-        
+
         # Construction should be assigned
-        cons_ass = db.execute("SELECT * FROM assignments WHERE event_uid = ? AND day_type = ?", (uid, 'construction')).fetchone()
+        cons_ass = db.execute(
+            "SELECT * FROM assignments WHERE event_uid = ? AND day_type = ?",
+            (uid, "construction"),
+        ).fetchone()
         assert cons_ass is not None
-        
+
         # Training should NOT be assigned
-        train_ass = db.execute("SELECT * FROM assignments WHERE event_uid = ? AND day_type = ?", (uid, 'training')).fetchone()
+        train_ass = db.execute(
+            "SELECT * FROM assignments WHERE event_uid = ? AND day_type = ?",
+            (uid, "training"),
+        ).fetchone()
         assert train_ass is None
-        
+
         # Construction status should be Confirmed
-        cons_sub = db.execute("SELECT status FROM submissions WHERE event_uid = ? AND day_type = ?", (uid, 'construction')).fetchone()
-        assert cons_sub['status'] == 'Confirmed'
-        
+        cons_sub = db.execute(
+            "SELECT status FROM submissions WHERE event_uid = ? AND day_type = ?",
+            (uid, "construction"),
+        ).fetchone()
+        assert cons_sub["status"] == "Confirmed"
+
         # Training status should still be Pending
-        train_sub = db.execute("SELECT status FROM submissions WHERE event_uid = ? AND day_type = ?", (uid, 'training')).fetchone()
-        assert train_sub['status'] == 'Pending'
+        train_sub = db.execute(
+            "SELECT status FROM submissions WHERE event_uid = ? AND day_type = ?",
+            (uid, "training"),
+        ).fetchone()
+        assert train_sub["status"] == "Pending"
+
 
 def test_unset_assignment(client, app):
     # 1. Setup
-    client.post('/create', data={'event_name': 'Unset Test'})
+    client.post("/create", data={"event_name": "Unset Test"})
     with app.app_context():
         db = database.get_db()
         db.row_factory = sqlite3.Row
         event = db.execute("SELECT uid, admin_secret FROM events").fetchone()
-        uid, secret = event['uid'], event['admin_secret']
+        uid, secret = event["uid"], event["admin_secret"]
 
-    client.post(f'/event/{uid}/submit', data={
-        'player_name': 'P1', 'player_id': '12345', 'alliance_name': 'A',
-        'speedups-construction': '10', 'slots-construction': '[0]'
-    })
+    client.post(
+        f"/event/{uid}/submit",
+        data={
+            "player_name": "P1",
+            "player_id": "12345",
+            "alliance_name": "A",
+            "speedups-construction": "10",
+            "slots-construction": "[0]",
+        },
+    )
     submission_id = f"{uid}_12345_construction"
 
     # 2. Manually assign
-    client.post(f'/admin/{uid}/manual_assign', data={
-        'secret': secret, 'submission_id': submission_id, 'slot_index': '10'
-    })
+    client.post(
+        f"/admin/{uid}/manual_assign",
+        data={"secret": secret, "submission_id": submission_id, "slot_index": "10"},
+    )
 
     # 3. Verify assigned
     with app.app_context():
         db = database.get_db()
         db.row_factory = sqlite3.Row
-        count = db.execute("SELECT count(*) FROM assignments WHERE event_uid = ? AND player_id = '12345'", (uid,)).fetchone()[0]
+        count = db.execute(
+            "SELECT count(*) FROM assignments WHERE event_uid = ? AND player_id = '12345'",
+            (uid,),
+        ).fetchone()[0]
         assert count == 1
 
     # 4. Unset
-    resp = client.post(f'/admin/{uid}/unset', data={
-        'secret': secret, 'submission_id': submission_id
-    }, follow_redirects=True)
+    resp = client.post(
+        f"/admin/{uid}/unset",
+        data={"secret": secret, "submission_id": submission_id},
+        follow_redirects=True,
+    )
     assert resp.status_code == 200
 
     # 5. Verify unassigned and status reset
     with app.app_context():
         db = database.get_db()
         db.row_factory = sqlite3.Row
-        count = db.execute("SELECT count(*) FROM assignments WHERE event_uid = ? AND player_id = '12345'", (uid,)).fetchone()[0]
+        count = db.execute(
+            "SELECT count(*) FROM assignments WHERE event_uid = ? AND player_id = '12345'",
+            (uid,),
+        ).fetchone()[0]
         assert count == 0
-        
-        sub = db.execute("SELECT status FROM submissions WHERE id = ?", (submission_id,)).fetchone()
-        assert sub['status'] == 'Pending'
+
+        sub = db.execute(
+            "SELECT status FROM submissions WHERE id = ?", (submission_id,)
+        ).fetchone()
+        assert sub["status"] == "Pending"
+
 
 def test_update_alliance(client, app):
     # 1. Setup
-    client.post('/create', data={'event_name': 'Alliance Test'})
+    client.post("/create", data={"event_name": "Alliance Test"})
     with app.app_context():
         db = database.get_db()
         db.row_factory = sqlite3.Row
         event = db.execute("SELECT uid, admin_secret FROM events").fetchone()
-        uid, secret = event['uid'], event['admin_secret']
+        uid, secret = event["uid"], event["admin_secret"]
 
-    client.post(f'/event/{uid}/submit', data={
-        'player_name': 'P1', 'player_id': '12345', 'alliance_name': 'Old',
-        'speedups-construction': '10', 'slots-construction': '[0]'
-    })
+    client.post(
+        f"/event/{uid}/submit",
+        data={
+            "player_name": "P1",
+            "player_id": "12345",
+            "alliance_name": "Old",
+            "speedups-construction": "10",
+            "slots-construction": "[0]",
+        },
+    )
     submission_id = f"{uid}_12345_construction"
 
     # 2. Success
-    resp = client.post(f'/admin/{uid}/update_alliance', data={
-        'secret': secret, 'submission_id': submission_id, 'alliance_name': 'New'
-    }, follow_redirects=True)
+    resp = client.post(
+        f"/admin/{uid}/update_alliance",
+        data={"secret": secret, "submission_id": submission_id, "alliance_name": "New"},
+        follow_redirects=True,
+    )
     assert resp.status_code == 200
     with app.app_context():
         db = database.get_db()
         db.row_factory = sqlite3.Row
-        sub = db.execute("SELECT alliance_name FROM submissions WHERE id = ?", (submission_id,)).fetchone()
-        assert sub['alliance_name'] == 'New'
+        sub = db.execute(
+            "SELECT alliance_name FROM submissions WHERE id = ?", (submission_id,)
+        ).fetchone()
+        assert sub["alliance_name"] == "New"
+
 
 def test_error_routes(client, app):
     # 404s
-    assert client.get('/event/none').status_code == 404
-    assert client.get('/event/none/schedule').status_code == 404
-    assert client.get('/event/none/finalized').status_code == 404
-    assert client.get('/admin/none?secret=any').status_code == 404
-    
+    assert client.get("/event/none").status_code == 404
+    assert client.get("/event/none/schedule").status_code == 404
+    assert client.get("/event/none/finalized").status_code == 404
+    assert client.get("/admin/none?secret=any").status_code == 404
+
     # POST routes 404s
-    assert client.post('/admin/none/manual_assign', data={'secret': 'any'}).status_code == 404
-    assert client.post('/admin/none/distribute', data={'secret': 'any'}).status_code == 404
-    assert client.post('/admin/none/confirm', data={'secret': 'any'}).status_code == 404
-    assert client.post('/admin/none/unlock', data={'secret': 'any'}).status_code == 404
-    assert client.post('/admin/none/delete', data={'secret': 'any'}).status_code == 404
-    assert client.post('/admin/none/refresh_players', data={'secret': 'any'}).status_code == 404
-    assert client.post('/admin/none/unset', data={'secret': 'any'}).status_code == 404
-    assert client.post('/admin/none/update_alliance', data={'secret': 'any'}).status_code == 404
-    assert client.get('/admin/none/export/construction?secret=any').status_code == 404
+    assert (
+        client.post("/admin/none/manual_assign", data={"secret": "any"}).status_code
+        == 404
+    )
+    assert (
+        client.post("/admin/none/distribute", data={"secret": "any"}).status_code == 404
+    )
+    assert client.post("/admin/none/confirm", data={"secret": "any"}).status_code == 404
+    assert client.post("/admin/none/unlock", data={"secret": "any"}).status_code == 404
+    assert client.post("/admin/none/delete", data={"secret": "any"}).status_code == 404
+    assert (
+        client.post("/admin/none/refresh_players", data={"secret": "any"}).status_code
+        == 404
+    )
+    assert client.post("/admin/none/unset", data={"secret": "any"}).status_code == 404
+    assert (
+        client.post("/admin/none/update_alliance", data={"secret": "any"}).status_code
+        == 404
+    )
+    assert client.get("/admin/none/export/construction?secret=any").status_code == 404
 
     # 403s
-    client.post('/create', data={'event_name': 'E'})
+    client.post("/create", data={"event_name": "E"})
     with app.app_context():
         db = database.get_db()
         uid = db.execute("SELECT uid FROM events").fetchone()[0]
         secret = db.execute("SELECT admin_secret FROM events").fetchone()[0]
-    
-    assert client.get(f'/admin/{uid}?secret=bad').status_code == 403
-    assert client.post(f'/admin/{uid}/distribute', data={'secret': 'bad'}).status_code == 403
-    assert client.post(f'/admin/{uid}/manual_assign', data={'secret': 'bad'}).status_code == 403
-    assert client.post(f'/admin/{uid}/confirm', data={'secret': 'bad'}).status_code == 403
-    assert client.post(f'/admin/{uid}/unlock', data={'secret': 'bad'}).status_code == 403
-    assert client.post(f'/admin/{uid}/delete', data={'secret': 'bad'}).status_code == 403
-    assert client.post(f'/admin/{uid}/unset', data={'secret': 'bad'}).status_code == 403
-    assert client.post(f'/admin/{uid}/update_alliance', data={'secret': 'bad'}).status_code == 403
-    assert client.get(f'/admin/{uid}/export/construction?secret=bad').status_code == 403
-    assert client.get(f'/admin/{uid}/logs?secret=bad').status_code == 403
-    assert client.post(f'/admin/{uid}/manual_assign', data={'secret': secret, 'slot_index': ''}).status_code == 302
+
+    assert client.get(f"/admin/{uid}?secret=bad").status_code == 403
+    assert (
+        client.post(f"/admin/{uid}/distribute", data={"secret": "bad"}).status_code
+        == 403
+    )
+    assert (
+        client.post(f"/admin/{uid}/manual_assign", data={"secret": "bad"}).status_code
+        == 403
+    )
+    assert (
+        client.post(f"/admin/{uid}/confirm", data={"secret": "bad"}).status_code == 403
+    )
+    assert (
+        client.post(f"/admin/{uid}/unlock", data={"secret": "bad"}).status_code == 403
+    )
+    assert (
+        client.post(f"/admin/{uid}/delete", data={"secret": "bad"}).status_code == 403
+    )
+    assert client.post(f"/admin/{uid}/unset", data={"secret": "bad"}).status_code == 403
+    assert (
+        client.post(f"/admin/{uid}/update_alliance", data={"secret": "bad"}).status_code
+        == 403
+    )
+    assert client.get(f"/admin/{uid}/export/construction?secret=bad").status_code == 403
+    assert client.get(f"/admin/{uid}/logs?secret=bad").status_code == 403
+    assert (
+        client.post(
+            f"/admin/{uid}/manual_assign", data={"secret": secret, "slot_index": ""}
+        ).status_code
+        == 302
+    )
+
 
 def test_view_logs(client, app):
     # 1. Setup
-    client.post('/create', data={'event_name': 'Log Test'})
+    client.post("/create", data={"event_name": "Log Test"})
     with app.app_context():
         db = database.get_db()
         db.row_factory = sqlite3.Row
         event = db.execute("SELECT uid, admin_secret FROM events").fetchone()
-        uid, secret = event['uid'], event['admin_secret']
+        uid, secret = event["uid"], event["admin_secret"]
 
     # 2. Trigger some logs
-    client.post(f'/event/{uid}/submit', data={
-        'player_name': 'P1', 'player_id': '123', 'alliance_name': 'A',
-        'speedups-construction': '10', 'slots-construction': '[0]'
-    })
+    client.post(
+        f"/event/{uid}/submit",
+        data={
+            "player_name": "P1",
+            "player_id": "123",
+            "alliance_name": "A",
+            "speedups-construction": "10",
+            "slots-construction": "[0]",
+        },
+    )
 
     # 3. View Logs (Success)
-    resp = client.get(f'/admin/{uid}/logs?secret={secret}')
+    resp = client.get(f"/admin/{uid}/logs?secret={secret}")
     assert resp.status_code == 200
     assert b"SUBMISSION" in resp.data
     assert b"123" in resp.data
 
     # 4. Not Found (Invalid event)
-    assert client.get('/admin/none/logs?secret=any').status_code == 404
+    assert client.get("/admin/none/logs?secret=any").status_code == 404
+
 
 def test_view_logs_missing_file(client, app):
-    client.post('/create', data={'event_name': 'No Log'})
+    client.post("/create", data={"event_name": "No Log"})
     with app.app_context():
         db = database.get_db()
         db.row_factory = sqlite3.Row
         event = db.execute("SELECT uid, admin_secret FROM events").fetchone()
-        uid, secret = event['uid'], event['admin_secret']
+        uid, secret = event["uid"], event["admin_secret"]
 
-    with patch('os.path.exists', return_value=False):
-        resp = client.get(f'/admin/{uid}/logs?secret={secret}')
+    with patch("os.path.exists", return_value=False):
+        resp = client.get(f"/admin/{uid}/logs?secret={secret}")
         assert resp.status_code == 404
         assert b"Log file not found" in resp.data
 
+
 def test_submit_invalid_extension(client, app):
-    client.post('/create', data={'event_name': 'Ext Test'})
+    client.post("/create", data={"event_name": "Ext Test"})
     with app.app_context():
         db = database.get_db()
         db.row_factory = sqlite3.Row
         event = db.execute("SELECT uid FROM events").fetchone()
-        uid = event['uid']
+        uid = event["uid"]
 
     data = {
-        'player_name': 'P1', 'player_id': '123', 'alliance_name': 'A',
-        'speedups-construction': '10', 'slots-construction': '[0]',
-        'backpack_screenshot': (io.BytesIO(b"data"), 'test.exe')
+        "player_name": "P1",
+        "player_id": "123",
+        "alliance_name": "A",
+        "speedups-construction": "10",
+        "slots-construction": "[0]",
+        "backpack_screenshot": (io.BytesIO(b"data"), "test.exe"),
     }
 
-    with patch('config.Config.ENABLE_SCREENSHOT_UPLOAD', True):
-        resp = client.post(f'/event/{uid}/submit', data=data, content_type='multipart/form-data')
+    with patch("config.Config.ENABLE_SCREENSHOT_UPLOAD", True):
+        resp = client.post(
+            f"/event/{uid}/submit", data=data, content_type="multipart/form-data"
+        )
         assert resp.status_code == 400
         assert b"Invalid file type" in resp.data
 
+
 def test_json_and_orphans(client, app):
-    client.post('/create', data={'event_name': 'Orphan'})
+    client.post("/create", data={"event_name": "Orphan"})
     with app.app_context():
         db = database.get_db()
         db.row_factory = sqlite3.Row
         event = db.execute("SELECT uid, admin_secret FROM events").fetchone()
-        uid, secret = event['uid'], event['admin_secret']
-        
+        uid, secret = event["uid"], event["admin_secret"]
+
         # Empty slots
-        db.execute("INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?)",
-                   ("empty", uid, "construction", "P", "1", "A", 0, "{}", ""))
+        db.execute(
+            "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?)",
+            ("empty", uid, "construction", "P", "1", "A", 0, "{}", ""),
+        )
         # Bad JSON slots
-        db.execute("INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?)",
-                   ("bad_slots", uid, "training", "P", "1", "A", 0, "{}", "not-json"))
+        db.execute(
+            "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?)",
+            ("bad_slots", uid, "training", "P", "1", "A", 0, "{}", "not-json"),
+        )
         # Bad JSON raw_data
-        db.execute("INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?)",
-                   ("bad_raw", uid, "research", "P", "1", "A", 0, "not-json", "[]"))
-        
+        db.execute(
+            "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?)",
+            ("bad_raw", uid, "research", "P", "1", "A", 0, "not-json", "[]"),
+        )
+
         # Orphaned assignment (submission missing)
-        db.execute("INSERT INTO assignments (event_uid, day_type, slot_index, player_id, is_locked) VALUES (?, ?, ?, ?, ?)",
-                   (uid, "construction", 15, "nobody", 1))
+        db.execute(
+            "INSERT INTO assignments (event_uid, day_type, slot_index, player_id, is_locked) VALUES (?, ?, ?, ?, ?)",
+            (uid, "construction", 15, "nobody", 1),
+        )
         db.commit()
 
-    resp = client.get(f'/admin/{uid}?secret={secret}')
+    resp = client.get(f"/admin/{uid}?secret={secret}")
     assert resp.status_code == 200
     assert b"Error parsing resources" in resp.data
-    assert client.get(f'/event/{uid}/finalized').status_code == 200
+    assert client.get(f"/event/{uid}/finalized").status_code == 200
+
 
 def test_submit_creates_dir(client, app):
-    client.post('/create', data={'event_name': 'Dir Test'})
+    client.post("/create", data={"event_name": "Dir Test"})
     with app.app_context():
         db = database.get_db()
         db.row_factory = sqlite3.Row
         event = db.execute("SELECT uid FROM events").fetchone()
-        uid = event['uid']
+        uid = event["uid"]
 
     data = {
-        'player_name': 'P1', 'player_id': '123', 'alliance_name': 'A',
-        'speedups-construction': '10', 'slots-construction': '[0]',
-        'backpack_screenshot': (io.BytesIO(b"data"), 'test.jpg')
+        "player_name": "P1",
+        "player_id": "123",
+        "alliance_name": "A",
+        "speedups-construction": "10",
+        "slots-construction": "[0]",
+        "backpack_screenshot": (io.BytesIO(b"data"), "test.jpg"),
     }
 
-    with patch('config.Config.ENABLE_SCREENSHOT_UPLOAD', True):
-        with patch('os.path.exists', return_value=False):
-            with patch('os.makedirs') as mock_makedirs:
-                client.post(f'/event/{uid}/submit', data=data, content_type='multipart/form-data')
+    with patch("config.Config.ENABLE_SCREENSHOT_UPLOAD", True):
+        with patch("os.path.exists", return_value=False):
+            with patch("os.makedirs") as mock_makedirs:
+                client.post(
+                    f"/event/{uid}/submit",
+                    data=data,
+                    content_type="multipart/form-data",
+                )
                 mock_makedirs.assert_called()

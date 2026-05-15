@@ -12,7 +12,16 @@ import io
 import logging
 from logging.handlers import RotatingFileHandler
 from werkzeug.utils import secure_filename
-from flask import Flask, render_template, request, redirect, url_for, jsonify, Response, send_from_directory
+from flask import (
+    Flask,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    jsonify,
+    Response,
+    send_from_directory,
+)
 from flask_wtf.csrf import CSRFProtect
 from . import database, logic
 from .logic import format_minutes
@@ -43,7 +52,9 @@ def generate_slot_labels():
         end_hour = (end_total_minutes // 60) % 24
         end_min = end_total_minutes % 60
 
-        labels.append(f"{start_hour:02d}:{start_min:02d}-\u200b{end_hour:02d}:{end_min:02d}")
+        labels.append(
+            f"{start_hour:02d}:{start_min:02d}-\u200b{end_hour:02d}:{end_min:02d}"
+        )
     return labels
 
 
@@ -83,13 +94,13 @@ def create_app():
     # Setup Audit Logging
     log_dir = os.path.join(app.root_path, "..", "logs")
     os.makedirs(log_dir, exist_ok=True)
-    
+
     audit_handler = RotatingFileHandler(
         os.path.join(log_dir, "audit.log"), maxBytes=1000000, backupCount=5
     )
-    audit_handler.setFormatter(logging.Formatter(
-        '%(asctime)s - %(levelname)s - %(message)s'
-    ))
+    audit_handler.setFormatter(
+        logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+    )
     audit_logger = logging.getLogger("audit")
     audit_logger.setLevel(logging.INFO)
     audit_logger.addHandler(audit_handler)
@@ -101,7 +112,7 @@ def create_app():
         return dict(
             slot_labels=generate_slot_labels(),
             enable_screenshot_upload=Config.ENABLE_SCREENSHOT_UPLOAD,
-            ga_measurement_id=Config.GA_MEASUREMENT_ID
+            ga_measurement_id=Config.GA_MEASUREMENT_ID,
         )
 
     @app.after_request
@@ -127,14 +138,18 @@ def create_app():
         try:
             with open("README.md", "r", encoding="utf-8") as f:
                 lines = f.readlines()
-            
+
             # Filter out technical badges for the in-app guide
-            filtered_lines = [line for line in lines if not line.strip().startswith("[![")]
+            filtered_lines = [
+                line for line in lines if not line.strip().startswith("[![")
+            ]
             content = "".join(filtered_lines)
 
             # Replace local file paths with web-accessible static paths for the in-app guide
             content = content.replace("app/static/images/", "/static/images/")
-            html_content = markdown.markdown(content, extensions=["extra", "toc", "fenced_code"])
+            html_content = markdown.markdown(
+                content, extensions=["extra", "toc", "fenced_code"]
+            )
             return render_template("guide.html", content=html_content)
         except FileNotFoundError:
             return "Guide not found", 404
@@ -165,13 +180,17 @@ def create_app():
         secret = request.form.get("secret")
         db = database.get_db()
         db.row_factory = sqlite3.Row
-        event = db.execute("SELECT * FROM events WHERE uid = ?", (event_uid,)).fetchone()
+        event = db.execute(
+            "SELECT * FROM events WHERE uid = ?", (event_uid,)
+        ).fetchone()
         if event is None:
             return "Event not found", 404
         if event["admin_secret"] != secret:
             return "Forbidden", 403
 
-        app.audit_logger.info(f"ADMIN: Refresh player data triggered for event {event_uid}")
+        app.audit_logger.info(
+            f"ADMIN: Refresh player data triggered for event {event_uid}"
+        )
 
         # Get all unique player IDs for this event
         players = db.execute(
@@ -199,10 +218,10 @@ def create_app():
         # All events will now have all 3 days active by default.
         # Store the research day preference in the JSON
         active_days = {
-            "construction": True, 
-            "training": True, 
+            "construction": True,
+            "training": True,
             "research": True,
-            "research_day": int(research_day)
+            "research_day": int(research_day),
         }
 
         uid = str(uuid.uuid4())
@@ -240,7 +259,9 @@ def create_app():
     def locked_appointments(event_uid):
         db = database.get_db()
         db.row_factory = sqlite3.Row
-        event = db.execute("SELECT * FROM events WHERE uid = ?", (event_uid,)).fetchone()
+        event = db.execute(
+            "SELECT * FROM events WHERE uid = ?", (event_uid,)
+        ).fetchone()
 
         if event is None:
             return "Event not found", 404
@@ -325,11 +346,13 @@ def create_app():
         # Server-side validation
         if not player_id.isdigit():
             return "Invalid Player ID: Must be numeric", 400
-        
+
         if not player_name:
             return "Invalid Player ID: Could not resolve to a name", 400
 
-        app.audit_logger.info(f"SUBMISSION: Player {player_name} ({player_id}) submitted resources for event {event_uid}")
+        app.audit_logger.info(
+            f"SUBMISSION: Player {player_name} ({player_id}) submitted resources for event {event_uid}"
+        )
 
         # Handle backpack screenshot upload
         backpack_url = None
@@ -345,9 +368,11 @@ def create_app():
                 # Create upload directory if it doesn't exist
                 upload_dir = os.path.join(app.static_folder, "uploads")
                 os.makedirs(upload_dir, exist_ok=True)
-                
+
                 # Generate unique filename: event_uid + player_id + timestamp + original filename
-                filename = secure_filename(f"{event_uid}_{player_id}_{int(time.time())}_{file.filename}")
+                filename = secure_filename(
+                    f"{event_uid}_{player_id}_{int(time.time())}_{file.filename}"
+                )
                 file.save(os.path.join(upload_dir, filename))
                 backpack_url = url_for("static", filename=f"uploads/{filename}")
 
@@ -371,13 +396,19 @@ def create_app():
         truegold = int(request.form.get("truegold") or 0)
         tempered_truegold = int(request.form.get("tempered_truegold") or 0)
         feasible_slots = request.form.get("slots-construction", "[]")
-        if (construction_speedups > 0 or truegold > 0 or tempered_truegold > 0) and feasible_slots != "[]":
+        if (
+            construction_speedups > 0 or truegold > 0 or tempered_truegold > 0
+        ) and feasible_slots != "[]":
             day_type = "construction"
-            score = (construction_speedups * 30) + (truegold * 2000) + (tempered_truegold * 30000)
+            score = (
+                (construction_speedups * 30)
+                + (truegold * 2000)
+                + (tempered_truegold * 30000)
+            )
             raw_data = {
-                "speedups": construction_speedups, 
+                "speedups": construction_speedups,
                 "truegold": truegold,
-                "tempered_truegold": tempered_truegold
+                "tempered_truegold": tempered_truegold,
             }
             submission_id = f"{event_uid}_{player_id}_{day_type}"
             db.execute(
@@ -462,7 +493,9 @@ def create_app():
         db.row_factory = sqlite3.Row
 
         secret = request.args.get("secret")
-        event = db.execute("SELECT * FROM events WHERE uid = ?", (event_uid,)).fetchone()
+        event = db.execute(
+            "SELECT * FROM events WHERE uid = ?", (event_uid,)
+        ).fetchone()
 
         if event is None:
             return "Event not found", 404
@@ -560,20 +593,30 @@ def create_app():
                     parts = []
                     if day == "construction":
                         if raw_resources.get("speedups"):
-                            parts.append(f"Speedups: {format_minutes(raw_resources['speedups'])}")
+                            parts.append(
+                                f"Speedups: {format_minutes(raw_resources['speedups'])}"
+                            )
                         if raw_resources.get("truegold"):
                             parts.append(f"Truegold: {raw_resources['truegold']}")
                         if raw_resources.get("tempered_truegold"):
-                            parts.append(f"Tempered Gold: {raw_resources['tempered_truegold']}")
+                            parts.append(
+                                f"Tempered Gold: {raw_resources['tempered_truegold']}"
+                            )
                     elif day == "training":
                         if raw_resources.get("speedups"):
-                            parts.append(f"Speedups: {format_minutes(raw_resources['speedups'])}")
+                            parts.append(
+                                f"Speedups: {format_minutes(raw_resources['speedups'])}"
+                            )
                     elif day == "research":
                         if raw_resources.get("speedups"):
-                            parts.append(f"Speedups: {format_minutes(raw_resources['speedups'])}")
+                            parts.append(
+                                f"Speedups: {format_minutes(raw_resources['speedups'])}"
+                            )
                         if raw_resources.get("truegold_dust"):
                             parts.append(f"Dust: {raw_resources['truegold_dust']}")
-                    sub["resources_text"] = " | ".join(parts) if parts else "No raw data"
+                    sub["resources_text"] = (
+                        " | ".join(parts) if parts else "No raw data"
+                    )
                 except (json.JSONDecodeError, TypeError):
                     sub["resources_text"] = "Error parsing resources"
 
@@ -630,7 +673,9 @@ def create_app():
     def public_schedule(event_uid):
         db = database.get_db()
         db.row_factory = sqlite3.Row
-        event = db.execute("SELECT * FROM events WHERE uid = ?", (event_uid,)).fetchone()
+        event = db.execute(
+            "SELECT * FROM events WHERE uid = ?", (event_uid,)
+        ).fetchone()
 
         if event is None:
             return "Event not found", 404
@@ -671,7 +716,9 @@ def create_app():
         secret = request.form.get("secret")
         db = database.get_db()
         db.row_factory = sqlite3.Row
-        event = db.execute("SELECT * FROM events WHERE uid = ?", (event_uid,)).fetchone()
+        event = db.execute(
+            "SELECT * FROM events WHERE uid = ?", (event_uid,)
+        ).fetchone()
         if event is None:
             return "Event not found", 404
         if event["admin_secret"] != secret:
@@ -687,7 +734,9 @@ def create_app():
 
         _, player_id, day_type = submission_id.split("_", 2)
 
-        app.audit_logger.info(f"ADMIN: Manual assign - Player {player_id} to slot {slot_index} for day {day_type} in event {event_uid}")
+        app.audit_logger.info(
+            f"ADMIN: Manual assign - Player {player_id} to slot {slot_index} for day {day_type} in event {event_uid}"
+        )
 
         # Delete any pre-existing assignment for this player on this day
         db.execute(
@@ -703,8 +752,8 @@ def create_app():
 
         # Update submission status to 'Locked'
         db.execute(
-            "UPDATE submissions SET status = 'Locked' WHERE event_uid = ? AND player_id = ? AND day_type = ?", 
-            (event_uid, player_id, day_type)
+            "UPDATE submissions SET status = 'Locked' WHERE event_uid = ? AND player_id = ? AND day_type = ?",
+            (event_uid, player_id, day_type),
         )
 
         db.commit()
@@ -716,14 +765,18 @@ def create_app():
         secret = request.form.get("secret")
         db = database.get_db()
         db.row_factory = sqlite3.Row
-        event = db.execute("SELECT * FROM events WHERE uid = ?", (event_uid,)).fetchone()
+        event = db.execute(
+            "SELECT * FROM events WHERE uid = ?", (event_uid,)
+        ).fetchone()
         if event is None:
             return "Event not found", 404
         if event["admin_secret"] != secret:
             return "Forbidden", 403
 
         day_type = request.form.get("day_type")
-        app.audit_logger.info(f"ADMIN: Automatic distribution triggered for event {event_uid}, day {day_type or 'all'}")
+        app.audit_logger.info(
+            f"ADMIN: Automatic distribution triggered for event {event_uid}, day {day_type or 'all'}"
+        )
         logic.run_distribution_algorithm(event_uid, day_type)
 
         return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
@@ -733,7 +786,9 @@ def create_app():
         secret = request.args.get("secret")
         db = database.get_db()
         db.row_factory = sqlite3.Row
-        event = db.execute("SELECT * FROM events WHERE uid = ?", (event_uid,)).fetchone()
+        event = db.execute(
+            "SELECT * FROM events WHERE uid = ?", (event_uid,)
+        ).fetchone()
         if event is None:
             return "Event not found", 404
         if event["admin_secret"] != secret:
@@ -781,7 +836,9 @@ def create_app():
         secret = request.form.get("secret")
         db = database.get_db()
         db.row_factory = sqlite3.Row
-        event = db.execute("SELECT * FROM events WHERE uid = ?", (event_uid,)).fetchone()
+        event = db.execute(
+            "SELECT * FROM events WHERE uid = ?", (event_uid,)
+        ).fetchone()
         if event is None:
             return "Event not found", 404
         if event["admin_secret"] != secret:
@@ -789,26 +846,28 @@ def create_app():
 
         slot_index = request.form.get("slot_index")
         day_type = request.form.get("day_type")
-        
+
         # Get the player_id for this assignment
         assignment = db.execute(
             "SELECT player_id FROM assignments WHERE event_uid = ? AND day_type = ? AND slot_index = ?",
-            (event_uid, day_type, slot_index)
+            (event_uid, day_type, slot_index),
         ).fetchone()
 
         db.execute(
             "UPDATE assignments SET is_locked = 1 WHERE event_uid = ? AND day_type = ? AND slot_index = ?",
             (event_uid, day_type, slot_index),
         )
-        
-        app.audit_logger.info(f"ADMIN: Lock - Slot {slot_index} for day {day_type} in event {event_uid}")
+
+        app.audit_logger.info(
+            f"ADMIN: Lock - Slot {slot_index} for day {day_type} in event {event_uid}"
+        )
 
         if assignment:
             db.execute(
                 "UPDATE submissions SET status = 'Locked' WHERE event_uid = ? AND day_type = ? AND player_id = ?",
-                (event_uid, day_type, assignment["player_id"])
+                (event_uid, day_type, assignment["player_id"]),
             )
-            
+
         db.commit()
 
         return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
@@ -818,7 +877,9 @@ def create_app():
         secret = request.form.get("secret")
         db = database.get_db()
         db.row_factory = sqlite3.Row
-        event = db.execute("SELECT * FROM events WHERE uid = ?", (event_uid,)).fetchone()
+        event = db.execute(
+            "SELECT * FROM events WHERE uid = ?", (event_uid,)
+        ).fetchone()
         if event is None:
             return "Event not found", 404
         if event["admin_secret"] != secret:
@@ -826,11 +887,11 @@ def create_app():
 
         slot_index = request.form.get("slot_index")
         day_type = request.form.get("day_type")
-        
+
         # Get the player_id for this assignment
         assignment = db.execute(
             "SELECT player_id FROM assignments WHERE event_uid = ? AND day_type = ? AND slot_index = ?",
-            (event_uid, day_type, slot_index)
+            (event_uid, day_type, slot_index),
         ).fetchone()
 
         db.execute(
@@ -838,15 +899,16 @@ def create_app():
             (event_uid, day_type, slot_index),
         )
 
-        app.audit_logger.info(f"ADMIN: Unlock - Slot {slot_index} for day {day_type} in event {event_uid}")
+        app.audit_logger.info(
+            f"ADMIN: Unlock - Slot {slot_index} for day {day_type} in event {event_uid}"
+        )
 
         if assignment:
-
             db.execute(
                 "UPDATE submissions SET status = 'Confirmed' WHERE event_uid = ? AND day_type = ? AND player_id = ?",
-                (event_uid, day_type, assignment["player_id"])
+                (event_uid, day_type, assignment["player_id"]),
             )
-            
+
         db.commit()
 
         return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
@@ -856,15 +918,19 @@ def create_app():
         secret = request.form.get("secret")
         db = database.get_db()
         db.row_factory = sqlite3.Row
-        event = db.execute("SELECT * FROM events WHERE uid = ?", (event_uid,)).fetchone()
+        event = db.execute(
+            "SELECT * FROM events WHERE uid = ?", (event_uid,)
+        ).fetchone()
         if event is None:
             return "Event not found", 404
         if event["admin_secret"] != secret:
             return "Forbidden", 403
 
         submission_id = request.form.get("submission_id")
-        
-        app.audit_logger.info(f"ADMIN: Delete submission {submission_id} in event {event_uid}")
+
+        app.audit_logger.info(
+            f"ADMIN: Delete submission {submission_id} in event {event_uid}"
+        )
 
         # Find player_id and day_type from submission_id
         _, player_id, day_type = submission_id.split("_", 2)
@@ -887,7 +953,9 @@ def create_app():
         secret = request.form.get("secret")
         db = database.get_db()
         db.row_factory = sqlite3.Row
-        event = db.execute("SELECT * FROM events WHERE uid = ?", (event_uid,)).fetchone()
+        event = db.execute(
+            "SELECT * FROM events WHERE uid = ?", (event_uid,)
+        ).fetchone()
         if event is None:
             return "Event not found", 404
         if event["admin_secret"] != secret:
@@ -896,7 +964,9 @@ def create_app():
         submission_id = request.form.get("submission_id")
         new_alliance_name = request.form.get("alliance_name").strip()
 
-        app.audit_logger.info(f"ADMIN: Update alliance for submission {submission_id} to {new_alliance_name} in event {event_uid}")
+        app.audit_logger.info(
+            f"ADMIN: Update alliance for submission {submission_id} to {new_alliance_name} in event {event_uid}"
+        )
 
         db.execute(
             "UPDATE submissions SET alliance_name = ? WHERE id = ? AND event_uid = ?",
@@ -911,7 +981,9 @@ def create_app():
         secret = request.form.get("secret")
         db = database.get_db()
         db.row_factory = sqlite3.Row
-        event = db.execute("SELECT * FROM events WHERE uid = ?", (event_uid,)).fetchone()
+        event = db.execute(
+            "SELECT * FROM events WHERE uid = ?", (event_uid,)
+        ).fetchone()
         if event is None:
             return "Event not found", 404
         if event["admin_secret"] != secret:
@@ -920,7 +992,9 @@ def create_app():
         submission_id = request.form.get("submission_id")
         _, player_id, day_type = submission_id.split("_", 2)
 
-        app.audit_logger.info(f"ADMIN: Unset assignment for Player {player_id} on day {day_type} in event {event_uid}")
+        app.audit_logger.info(
+            f"ADMIN: Unset assignment for Player {player_id} on day {day_type} in event {event_uid}"
+        )
 
         # Delete the assignment for this player on this day
         db.execute(
@@ -931,7 +1005,7 @@ def create_app():
         # Update submission status back to 'Pending'
         db.execute(
             "UPDATE submissions SET status = 'Pending' WHERE event_uid = ? AND player_id = ? AND day_type = ?",
-            (event_uid, player_id, day_type)
+            (event_uid, player_id, day_type),
         )
 
         db.commit()
@@ -943,7 +1017,9 @@ def create_app():
         secret = request.args.get("secret")
         db = database.get_db()
         db.row_factory = sqlite3.Row
-        event = db.execute("SELECT * FROM events WHERE uid = ?", (event_uid,)).fetchone()
+        event = db.execute(
+            "SELECT * FROM events WHERE uid = ?", (event_uid,)
+        ).fetchone()
         if event is None:
             return "Event not found", 404
         if event["admin_secret"] != secret:
