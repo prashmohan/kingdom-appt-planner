@@ -369,11 +369,16 @@ def create_app():
         # --- Process Construction Submission ---
         construction_speedups = int(request.form.get("speedups-construction") or 0)
         truegold = int(request.form.get("truegold") or 0)
+        tempered_truegold = int(request.form.get("tempered_truegold") or 0)
         feasible_slots = request.form.get("slots-construction", "[]")
-        if (construction_speedups > 0 or truegold > 0) and feasible_slots != "[]":
+        if (construction_speedups > 0 or truegold > 0 or tempered_truegold > 0) and feasible_slots != "[]":
             day_type = "construction"
-            score = (construction_speedups * 30) + (truegold * 2000)
-            raw_data = {"speedups": construction_speedups, "truegold": truegold}
+            score = (construction_speedups * 30) + (truegold * 2000) + (tempered_truegold * 30000)
+            raw_data = {
+                "speedups": construction_speedups, 
+                "truegold": truegold,
+                "tempered_truegold": tempered_truegold
+            }
             submission_id = f"{event_uid}_{player_id}_{day_type}"
             db.execute(
                 "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, avatar_url, backpack_url, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
@@ -558,6 +563,8 @@ def create_app():
                             parts.append(f"Speedups: {format_minutes(raw_resources['speedups'])}")
                         if raw_resources.get("truegold"):
                             parts.append(f"Truegold: {raw_resources['truegold']}")
+                        if raw_resources.get("tempered_truegold"):
+                            parts.append(f"Tempered Gold: {raw_resources['tempered_truegold']}")
                     elif day == "training":
                         if raw_resources.get("speedups"):
                             parts.append(f"Speedups: {format_minutes(raw_resources['speedups'])}")

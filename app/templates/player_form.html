@@ -149,6 +149,10 @@
                             <label for="truegold" class="block text-sm font-medium text-gray-300">TrueGold</label>
                             <input type="number" name="truegold" id="truegold" min="0" class="mt-1 block w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200">
                         </div>
+                        <div>
+                            <label for="tempered_truegold" class="block text-sm font-medium text-gray-300">Tempered TrueGold</label>
+                            <input type="number" name="tempered_truegold" id="tempered_truegold" min="0" class="mt-1 block w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200">
+                        </div>
                     </div>
                     <div id="slot-grid-construction" class="grid grid-cols-7 gap-1 mb-4">
                         {% for i in range(49) %}<div class="slot" data-index="{{ i }}"><div class="slot-content">{{ slot_labels[i] }}</div></div>{% endfor %}
@@ -452,7 +456,7 @@
                 }
 
                 const days = [
-                    { id: 'construction', name: 'Construction', speedups: 'speedups-construction', gold: 'truegold', slots: 'slots-input-construction' },
+                    { id: 'construction', name: 'Construction', speedups: 'speedups-construction', gold: 'truegold', gold2: 'tempered_truegold', slots: 'slots-input-construction' },
                     { id: 'training', name: 'Training', speedups: 'speedups-training', slots: 'slots-input-training' },
                     { id: 'research', name: 'Research', speedups: 'speedups-research', gold: 'truegold_dust', slots: 'slots-input-research' }
                 ];
@@ -466,10 +470,11 @@
 
                     const speedups = parseInt(speedupsInput.value || 0);
                     const gold = day.gold ? parseInt(document.getElementById(day.gold).value || 0) : 0;
+                    const gold2 = day.gold2 ? parseInt(document.getElementById(day.gold2).value || 0) : 0;
                     const slotsVal = document.getElementById(day.slots).value || "[]";
                     const slots = JSON.parse(slotsVal);
 
-                    if (speedups > 0 || gold > 0) {
+                    if (speedups > 0 || gold > 0 || gold2 > 0) {
                         daysAttempted++;
                         if (slots.length === 0) {
                             daysInvalid.push(day.name);
