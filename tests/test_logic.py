@@ -1,6 +1,4 @@
-import pytest
 import json
-import sqlite3
 from app import database, logic
 
 def test_algorithm_prioritization(app):

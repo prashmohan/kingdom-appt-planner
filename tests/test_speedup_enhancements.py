@@ -1,4 +1,3 @@
-import pytest
 import sqlite3
 import json
 from app.logic import format_minutes

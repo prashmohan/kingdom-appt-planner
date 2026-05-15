@@ -45,7 +45,8 @@ def run_distribution_algorithm(event_uid, day_type=None):
         slot_demand = {i: 0 for i in range(49)}
         for sub in submissions:
             try:
-                if not sub['feasible_slots']: continue
+                if not sub['feasible_slots']:
+                    continue
                 f_slots = json.loads(sub['feasible_slots'])
                 for s in f_slots:
                     if 0 <= s < 49:

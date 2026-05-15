@@ -53,11 +53,12 @@ This document provides essential context for AI models interacting with this pro
 ## 6. Development & Testing Workflow
 
 * **Local Development Environment:** [Summarize the standard procedure for setting up and running the project locally. Note key tools or commands (e.g., `skaffold dev`, `docker-compose up`).]
-* **Testing:** [Describe how tests are run. Note any specific commands or frameworks. Example: "Run tests via `npm test`. New code requires corresponding unit tests."]
+* **Testing:** [Describe how tests are run. Note any specific commands or frameworks. Example: "Run tests via `pytest`. New code requires corresponding unit tests. Use `ruff check .` for linting."]
 * **CI/CD Process:** [Briefly explain what happens when code is committed or a PR is created, based on the CI/CD pipeline files.]
 
 ## 7. Specific Instructions for AI Collaboration
 
+* **Linting:** [The project uses `ruff` for linting. Ensure all changes pass `ruff check .` before committing.]
 * **Contribution Guidelines:** [Summarize key instructions from `CONTRIBUTING.md` or similar files. Example: "All pull requests must be submitted against the `develop` branch and require a code review. Sign the CLA."]
 * **Infrastructure (IaC):** [Note if an Infrastructure as Code directory (e.g., `/iac`) exists. Add a warning. Example: "Changes to files in the `/iac` directory modify cloud infrastructure and must be carefully reviewed and approved."]
 * **Security:** [Add a general reminder about security best practices. Example: "Be mindful of security. Do not hardcode secrets or keys. Ensure any changes to authentication logic (e.g., JWTs) are secure and vetted."]

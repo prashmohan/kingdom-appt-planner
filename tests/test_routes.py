@@ -1,5 +1,3 @@
-import pytest
-import json
 import sqlite3
 import os
 import io
@@ -281,7 +279,7 @@ def test_submit_with_backpack(client, app):
         db = database.get_db()
         db.row_factory = sqlite3.Row
         event = db.execute("SELECT uid, admin_secret FROM events").fetchone()
-        uid, secret = event['uid'], event['admin_secret']
+        uid, _secret = event['uid'], event['admin_secret']
 
     # 2. Submit with file (Mock ENABLE_SCREENSHOT_UPLOAD as True)
     data = {
@@ -317,7 +315,7 @@ def test_submit_with_backpack_disabled(client, app):
         db = database.get_db()
         db.row_factory = sqlite3.Row
         event = db.execute("SELECT uid, admin_secret FROM events").fetchone()
-        uid, secret = event['uid'], event['admin_secret']
+        uid, _secret = event['uid'], event['admin_secret']
 
     # 2. Submit with file (Mock ENABLE_SCREENSHOT_UPLOAD as False)
     data = {

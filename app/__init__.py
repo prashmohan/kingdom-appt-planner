@@ -12,7 +12,7 @@ import io
 import logging
 from logging.handlers import RotatingFileHandler
 from werkzeug.utils import secure_filename
-from flask import Flask, render_template, request, redirect, url_for, g, jsonify, Response, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, jsonify, Response, send_from_directory
 from flask_wtf.csrf import CSRFProtect
 from . import database, logic
 from .logic import format_minutes

@@ -2,7 +2,7 @@ import os
 import shutil
 import tempfile
 import sqlite3
-from unittest.mock import patch, MagicMock, PropertyMock
+from unittest.mock import patch, MagicMock
 from flask import Flask, g
 import pytest
 from app import generate_slot_labels, database
@@ -58,7 +58,8 @@ def test_create_app_creates_log_dir():
             with patch('os.makedirs') as mock_mkdir:
                 # Setup exists to return False for the logs dir
                 def exists_side_effect(path):
-                    if "logs" in path: return False
+                    if "logs" in path:
+                        return False
                     return True
                 mock_exists.side_effect = exists_side_effect
                 
@@ -156,9 +157,11 @@ def test_database_init_submissions_race():
         database.DATABASE_PATH = db_path
         with app.app_context():
             database.init_db()
-            if hasattr(g, '_database'): del g._database
+            if hasattr(g, '_database'):
+                del g._database
             with patch('app.database.get_db') as mock_get_db:
-                mock_conn = MagicMock(); mock_cursor = MagicMock()
+                mock_conn = MagicMock()
+                mock_cursor = MagicMock()
                 mock_get_db.return_value = mock_conn
                 mock_conn.cursor.return_value = mock_cursor
                 mock_cursor.fetchone.return_value = ("exists",)
@@ -180,7 +183,8 @@ def test_database_init_submissions_race():
                 database.init_db()
                 assert mock_cursor.execute.called
     finally:
-        os.close(db_fd); os.unlink(db_path)
+        os.close(db_fd)
+        os.unlink(db_path)
 
 def test_database_init_backpack_race():
     db_fd, db_path = tempfile.mkstemp()
@@ -189,9 +193,11 @@ def test_database_init_backpack_race():
         database.DATABASE_PATH = db_path
         with app.app_context():
             database.init_db()
-            if hasattr(g, '_database'): del g._database
+            if hasattr(g, '_database'):
+                del g._database
             with patch('app.database.get_db') as mock_get_db:
-                mock_conn = MagicMock(); mock_cursor = MagicMock()
+                mock_conn = MagicMock()
+                mock_cursor = MagicMock()
                 mock_get_db.return_value = mock_conn
                 mock_conn.cursor.return_value = mock_cursor
                 mock_cursor.fetchone.return_value = ("exists",)
@@ -214,7 +220,8 @@ def test_database_init_backpack_race():
                 database.init_db()
                 assert mock_cursor.execute.called
     finally:
-        os.close(db_fd); os.unlink(db_path)
+        os.close(db_fd)
+        os.unlink(db_path)
 
 def test_database_init_backpack_error():
     db_fd, db_path = tempfile.mkstemp()
@@ -223,9 +230,11 @@ def test_database_init_backpack_error():
         database.DATABASE_PATH = db_path
         with app.app_context():
             database.init_db()
-            if hasattr(g, '_database'): del g._database
+            if hasattr(g, '_database'):
+                del g._database
             with patch('app.database.get_db') as mock_get_db:
-                mock_conn = MagicMock(); mock_cursor = MagicMock()
+                mock_conn = MagicMock()
+                mock_cursor = MagicMock()
                 mock_get_db.return_value = mock_conn
                 mock_conn.cursor.return_value = mock_cursor
                 mock_cursor.fetchone.return_value = ("exists",)
@@ -248,7 +257,8 @@ def test_database_init_backpack_error():
                 with pytest.raises(sqlite3.OperationalError):
                     database.init_db()
     finally:
-        os.close(db_fd); os.unlink(db_path)
+        os.close(db_fd)
+        os.unlink(db_path)
 
 def test_database_migration_failed_verification():
     db_fd, db_path = tempfile.mkstemp()
@@ -257,9 +267,11 @@ def test_database_migration_failed_verification():
         database.DATABASE_PATH = db_path
         with app.app_context():
             database.init_db()
-            if hasattr(g, '_database'): del g._database
+            if hasattr(g, '_database'):
+                del g._database
             with patch('app.database.get_db') as mock_get_db:
-                mock_conn = MagicMock(); mock_cursor = MagicMock()
+                mock_conn = MagicMock()
+                mock_cursor = MagicMock()
                 mock_get_db.return_value = mock_conn
                 mock_conn.cursor.return_value = mock_cursor
                 mock_cursor.fetchone.return_value = ("exists",)
@@ -282,7 +294,8 @@ def test_database_migration_failed_verification():
                 with pytest.raises(sqlite3.OperationalError):
                     database.init_db()
     finally:
-        os.close(db_fd); os.unlink(db_path)
+        os.close(db_fd)
+        os.unlink(db_path)
 
 def test_database_migration_worker_halfway():
     db_fd, db_path = tempfile.mkstemp()
@@ -291,9 +304,11 @@ def test_database_migration_worker_halfway():
         database.DATABASE_PATH = db_path
         with app.app_context():
             database.init_db()
-            if hasattr(g, '_database'): del g._database
+            if hasattr(g, '_database'):
+                del g._database
             with patch('app.database.get_db') as mock_get_db:
-                mock_conn = MagicMock(); mock_cursor = MagicMock()
+                mock_conn = MagicMock()
+                mock_cursor = MagicMock()
                 mock_get_db.return_value = mock_conn
                 mock_conn.cursor.return_value = mock_cursor
                 mock_cursor.fetchone.return_value = ("exists",)
@@ -317,7 +332,8 @@ def test_database_migration_worker_halfway():
                 
                 database.init_db()
     finally:
-        os.close(db_fd); os.unlink(db_path)
+        os.close(db_fd)
+        os.unlink(db_path)
 
 def test_database_migration_already_dropped():
     db_fd, db_path = tempfile.mkstemp()
@@ -326,9 +342,11 @@ def test_database_migration_already_dropped():
         database.DATABASE_PATH = db_path
         with app.app_context():
             database.init_db()
-            if hasattr(g, '_database'): del g._database
+            if hasattr(g, '_database'):
+                del g._database
             with patch('app.database.get_db') as mock_get_db:
-                mock_conn = MagicMock(); mock_cursor = MagicMock()
+                mock_conn = MagicMock()
+                mock_cursor = MagicMock()
                 mock_get_db.return_value = mock_conn
                 mock_conn.cursor.return_value = mock_cursor
                 mock_cursor.fetchone.return_value = ("exists",)
@@ -346,7 +364,8 @@ def test_database_migration_already_dropped():
                 
                 database.init_db()
     finally:
-        os.close(db_fd); os.unlink(db_path)
+        os.close(db_fd)
+        os.unlink(db_path)
 
 def test_database_concurrency_error_re_raised_submissions():
     db_fd, db_path = tempfile.mkstemp()
@@ -355,9 +374,11 @@ def test_database_concurrency_error_re_raised_submissions():
         database.DATABASE_PATH = db_path
         with app.app_context():
             database.init_db()
-            if hasattr(g, '_database'): del g._database
+            if hasattr(g, '_database'):
+                del g._database
             with patch('app.database.get_db') as mock_get_db:
-                mock_conn = MagicMock(); mock_cursor = MagicMock()
+                mock_conn = MagicMock()
+                mock_cursor = MagicMock()
                 mock_get_db.return_value = mock_conn
                 mock_conn.cursor.return_value = mock_cursor
                 mock_cursor.fetchone.return_value = ("exists",)
@@ -378,7 +399,8 @@ def test_database_concurrency_error_re_raised_submissions():
                 with pytest.raises(sqlite3.OperationalError):
                     database.init_db()
     finally:
-        os.close(db_fd); os.unlink(db_path)
+        os.close(db_fd)
+        os.unlink(db_path)
 
 def test_database_concurrency_error_re_raised_assignments():
     db_fd, db_path = tempfile.mkstemp()
@@ -387,9 +409,11 @@ def test_database_concurrency_error_re_raised_assignments():
         database.DATABASE_PATH = db_path
         with app.app_context():
             database.init_db()
-            if hasattr(g, '_database'): del g._database
+            if hasattr(g, '_database'):
+                del g._database
             with patch('app.database.get_db') as mock_get_db:
-                mock_conn = MagicMock(); mock_cursor = MagicMock()
+                mock_conn = MagicMock()
+                mock_cursor = MagicMock()
                 mock_get_db.return_value = mock_conn
                 mock_conn.cursor.return_value = mock_cursor
                 mock_cursor.fetchone.return_value = ("exists",)
@@ -411,4 +435,5 @@ def test_database_concurrency_error_re_raised_assignments():
                 with pytest.raises(sqlite3.OperationalError):
                     database.init_db()
     finally:
-        os.close(db_fd); os.unlink(db_path)
+        os.close(db_fd)
+        os.unlink(db_path)
