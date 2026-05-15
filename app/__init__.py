@@ -555,6 +555,7 @@ def create_app():
 
         # 3. Group everything else by day_type
         slot_density = {day: [0] * 49 for day in active_days}
+        slot_players = {day: {i: [] for i in range(49)} for day in active_days}
         max_density = {day: 1 for day in active_days}
         available_slots = {day: [] for day in active_days}
         alliance_summary = {day: {} for day in active_days}
@@ -582,6 +583,9 @@ def create_app():
                     for slot_index in feasible_slots:
                         if 0 <= slot_index < 49:
                             slot_density[day][slot_index] += 1
+                            slot_players[day][slot_index].append(
+                                f"[{sub['alliance_name']}] {sub['player_name']}"
+                            )
 
                 except (json.JSONDecodeError, TypeError, KeyError):
                     sub["requested_slots_text"] = "Error parsing slots"
@@ -663,6 +667,7 @@ def create_app():
             available_slots=available_slots,
             secret=secret,
             slot_density=slot_density,
+            slot_players=slot_players,
             max_density=max_density,
             alliance_summary=alliance_summary,
             player_url=player_url,

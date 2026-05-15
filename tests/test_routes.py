@@ -488,6 +488,33 @@ def test_resource_breakdown_text(client, app):
     assert b"Speedups: 5h" in resp.data
 
 
+def test_heatmap_hover_potential_players(client, app):
+    client.post("/create", data={"event_name": "Hover Test"})
+    with app.app_context():
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        event = db.execute("SELECT uid, admin_secret FROM events").fetchone()
+        uid, secret = event["uid"], event["admin_secret"]
+
+    # Submit for construction with slot 10
+    client.post(
+        f"/event/{uid}/submit",
+        data={
+            "player_name": "HoverPlayer",
+            "player_id": "11111",
+            "alliance_name": "HOV",
+            "speedups-construction": "100",
+            "slots-construction": "[10]",
+        },
+    )
+
+    resp = client.get(f"/admin/{uid}?secret={secret}")
+    assert resp.status_code == 200
+
+    # Check if the player is listed in the title attribute of the slot
+    assert b'title="Potential Players: [HOV] HoverPlayer"' in resp.data
+
+
 def test_overwrite_clears_assignments(client, app):
     # 1. Setup
     client.post("/create", data={"event_name": "Overwrite Test"})

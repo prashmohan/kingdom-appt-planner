@@ -144,7 +144,10 @@
                             {% set day_slot_density = slot_density.get(day, []) %}
                             {% set day_max_density = max_density.get(day, 1) %}
                             {% set density = (day_slot_density[i] / day_max_density) if day_max_density > 0 else 0 %}
-                            <div class="slot rounded {% if current_assignment %}{% if current_assignment.is_locked %}slot-locked{% else %}slot-pending{% endif %}{% endif %}" style="background-color: rgba(30, 64, 175, {{ density }});">
+                            {% set potential_players = slot_players.get(day, {}).get(i, []) %}
+                            <div class="slot rounded cursor-help {% if current_assignment %}{% if current_assignment.is_locked %}slot-locked{% else %}slot-pending{% endif %}{% endif %}" 
+                                 style="background-color: rgba(30, 64, 175, {{ density }});"
+                                 title="Potential Players: {{ potential_players|join(', ') if potential_players else 'None' }}">
                                 <div class="slot-time rounded-t">{{ slot_labels[i] }}</div>
                                 {% if current_assignment %}
                                     <div class="slot-content">
