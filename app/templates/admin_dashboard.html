@@ -356,6 +356,13 @@
         </div>
         {% endfor %}
 
+        <form id="hidden-assign-form" action="{{ url_for('manual_assign', event_uid=event.uid) }}" method="POST" style="display: none;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="secret" value="{{ secret }}">
+            <input type="hidden" name="submission_id" id="hidden-submission-id">
+            <input type="hidden" name="slot_index" id="hidden-slot-index">
+            <button type="submit">Submit</button>
+        </form>
         </div>
 
         <footer class="mt-12 pb-8 text-center border-t border-kvk-gray-700 pt-8">
@@ -587,6 +594,22 @@
         if (selectedSlot) {
             selectedSlot.classList.add('ring-2', 'ring-amber-400', 'z-20');
         }
+    }
+
+    function assignFromDrawer(day, slotIndex, submissionId, playerName) {
+        const currentAssignment = window.currentAssignments[day][slotIndex];
+        if (currentAssignment) {
+            const currentName = currentAssignment.player_name;
+            if (!confirm(`This slot is already assigned to ${currentName}. Replace with ${playerName}?`)) {
+                return;
+            }
+        }
+
+        document.getElementById('hidden-submission-id').value = submissionId;
+        document.getElementById('hidden-slot-index').value = slotIndex;
+        
+        const form = document.getElementById('hidden-assign-form');
+        handleFormSubmit({ target: form, preventDefault: () => {} });
     }
 </script>
 </body>
