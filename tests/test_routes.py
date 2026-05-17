@@ -514,6 +514,10 @@ def test_heatmap_hover_potential_players(client, app):
     # Check if the player is listed in the title attribute of the slot with points
     assert b"title=\"Potential Players: [HOV] HoverPlayer (3000 pts)\"" in resp.data
 
+    # Check if submission_id is in the allSlotPlayers JSON
+    expected_id = f"{uid}_11111_construction"
+    assert f'"submission_id": "{expected_id}"'.encode() in resp.data
+
 
 def test_overwrite_clears_assignments(client, app):
     # 1. Setup

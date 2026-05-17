@@ -588,6 +588,7 @@ def create_app():
                                     "player_name": sub["player_name"],
                                     "alliance_name": sub["alliance_name"],
                                     "resources": sub["resources"],
+                                    "submission_id": sub["id"],
                                 }
                             )
 
