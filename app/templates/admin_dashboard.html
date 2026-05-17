@@ -179,7 +179,9 @@
                     </div>
 
                     <!-- Mobile Selection Drawer -->
-                    <div id="drawer-{{ day }}" class="mt-6 p-4 bg-kvk-gray-900 border border-kvk-gray-700 rounded-lg">
+                    <div id="drawer-{{ day }}" class="mt-6 p-4 bg-kvk-gray-900 border border-kvk-gray-700 rounded-lg"
+                         data-slot-players="{{ slot_players[day]|tojson|forceescape }}"
+                         data-current-assignments="{{ assignments[day]|tojson|forceescape }}">
                         <div class="flex justify-between items-center mb-3">
                             <h3 id="drawer-title-{{ day }}" class="text-sm font-bold text-gray-400 uppercase tracking-wider">Slot Details</h3>
                             <span id="drawer-count-{{ day }}" class="text-[10px] bg-kvk-gold/20 text-kvk-gold px-2 py-0.5 rounded font-bold">Select a slot</span>
@@ -189,15 +191,6 @@
                         </div>
                     </div>
                 </div>
-
-                <script>
-                    // Store slot player data for this day
-                    if (typeof allSlotPlayers === 'undefined') window.allSlotPlayers = {};
-                    window.allSlotPlayers['{{ day }}'] = {{ slot_players[day]|tojson }};
-
-                    if (typeof currentAssignments === 'undefined') window.currentAssignments = {};
-                    window.currentAssignments['{{ day }}'] = {{ assignments[day]|tojson }};
-                </script>
                 
                 <!-- Alliance Summary -->
                 <div class="bg-kvk-gray-800 p-6 rounded-xl shadow-md border border-kvk-gray-700">
@@ -544,8 +537,17 @@
 
     const slotLabels = {{ slot_labels|tojson }};
 
+    function getDayData(day) {
+        const drawer = document.getElementById(`drawer-${day}`);
+        return {
+            slotPlayers: JSON.parse(drawer.dataset.slotPlayers || "[]"),
+            currentAssignments: JSON.parse(drawer.dataset.currentAssignments || "{}")
+        };
+    }
+
     function selectSlot(day, index) {
-        const players = window.allSlotPlayers[day][index] || [];
+        const data = getDayData(day);
+        const players = data.slotPlayers[index] || [];
         const titleEl = document.getElementById(`drawer-title-${day}`);
         const countEl = document.getElementById(`drawer-count-${day}`);
         const contentEl = document.getElementById(`drawer-content-${day}`);
@@ -597,7 +599,8 @@
     }
 
     function assignFromDrawer(day, slotIndex, submissionId, playerName) {
-        const currentAssignment = window.currentAssignments[day][slotIndex];
+        const data = getDayData(day);
+        const currentAssignment = data.currentAssignments[slotIndex];
         if (currentAssignment) {
             const currentName = currentAssignment.player_name;
             if (!confirm(`This slot is already assigned to ${currentName}. Replace with ${playerName}?`)) {
