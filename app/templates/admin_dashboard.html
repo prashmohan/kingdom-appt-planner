@@ -194,6 +194,9 @@
                     // Store slot player data for this day
                     if (typeof allSlotPlayers === 'undefined') window.allSlotPlayers = {};
                     window.allSlotPlayers['{{ day }}'] = {{ slot_players[day]|tojson }};
+
+                    if (typeof currentAssignments === 'undefined') window.currentAssignments = {};
+                    window.currentAssignments['{{ day }}'] = {{ assignments[day]|tojson }};
                 </script>
                 
                 <!-- Alliance Summary -->
@@ -560,9 +563,19 @@
                         <span class="font-bold text-gray-200">[${p.alliance_name || 'N/A'}] ${p.player_name}</span>
                         <span class="text-[10px] text-gray-400 uppercase tracking-tighter">Alliance Member</span>
                     </div>
-                    <div class="text-right">
-                        <span class="text-kvk-gold font-mono font-bold">${Math.round(p.resources).toLocaleString()}</span>
-                        <span class="text-[9px] text-gray-500 block -mt-1">POINTS</span>
+                    <div class="flex items-center gap-2">
+                        <button 
+                            onclick="assignFromDrawer('${day}', ${index}, '${p.submission_id}', '${p.player_name}')"
+                            data-submission-id="${p.submission_id}"
+                            data-player-name="${p.player_name}"
+                            class="bg-blue-600 text-white px-2 py-1 rounded text-[10px]"
+                        >
+                            Assign
+                        </button>
+                        <div class="text-right">
+                            <span class="text-kvk-gold font-mono font-bold">${Math.round(p.resources).toLocaleString()}</span>
+                            <span class="text-[9px] text-gray-500 block -mt-1">POINTS</span>
+                        </div>
                     </div>
                 </div>
             `).join('');
