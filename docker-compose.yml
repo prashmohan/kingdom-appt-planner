@@ -8,5 +8,8 @@ services:
       - planner_data:/app/data
     environment:
       - DATABASE_PATH=/app/data/planner.db
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
 volumes:
   planner_data:
