@@ -953,3 +953,165 @@ def test_submit_creates_dir(client, app):
                     content_type="multipart/form-data",
                 )
                 mock_makedirs.assert_called()
+
+
+def test_override_resources(client, app):
+    # Setup event
+    client.post("/create", data={"event_name": "Override Test"})
+    with app.app_context():
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        event = db.execute("SELECT uid, admin_secret FROM events").fetchone()
+        uid, secret = event["uid"], event["admin_secret"]
+
+    # Submit a construction submission
+    client.post(
+        f"/event/{uid}/submit",
+        data={
+            "player_name": "P1",
+            "player_id": "123",
+            "alliance_name": "A",
+            "speedups-construction": "10",
+            "slots-construction": "[0]",
+        },
+    )
+
+    sub_id = f"{uid}_123_construction"
+
+    # 1. Unauthorized override (wrong secret)
+    resp = client.post(
+        f"/admin/{uid}/override_resources",
+        data={
+            "secret": "wrong",
+            "submission_id": sub_id,
+            "speedups": "20",
+            "truegold": "2",
+            "tempered_truegold": "1",
+        },
+    )
+    assert resp.status_code == 403
+
+    # 2. Non-existent event override
+    resp = client.post(
+        "/admin/nonexistent/override_resources",
+        data={
+            "secret": secret,
+            "submission_id": sub_id,
+            "speedups": "20",
+            "truegold": "2",
+            "tempered_truegold": "1",
+        },
+    )
+    assert resp.status_code == 404
+
+    # 3. Successful Construction override
+    resp = client.post(
+        f"/admin/{uid}/override_resources",
+        data={
+            "secret": secret,
+            "submission_id": sub_id,
+            "speedups": "20",
+            "truegold": "2",
+            "tempered_truegold": "1",
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+
+    # Verify score & raw_data recalculation
+    with app.app_context():
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        sub = db.execute("SELECT * FROM submissions WHERE id = ?", (sub_id,)).fetchone()
+        assert sub is not None
+        # Construction formula: (speedups * 30) + (truegold * 2000) + (tempered_truegold * 30000)
+        # 20 * 30 + 2 * 2000 + 1 * 30000 = 600 + 4000 + 30000 = 34600
+        assert sub["resources"] == 34600
+        import json
+
+        raw = json.loads(sub["raw_data"])
+        assert raw["speedups"] == 20
+        assert raw["truegold"] == 2
+        assert raw["tempered_truegold"] == 1
+
+    # 4. Successful Training submission & override
+    client.post(
+        f"/event/{uid}/submit",
+        data={
+            "player_name": "P1",
+            "player_id": "123",
+            "alliance_name": "A",
+            "speedups-training": "15",
+            "slots-training": "[1]",
+        },
+    )
+    training_sub_id = f"{uid}_123_training"
+    resp = client.post(
+        f"/admin/{uid}/override_resources",
+        data={
+            "secret": secret,
+            "submission_id": training_sub_id,
+            "speedups": "30",
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    with app.app_context():
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        sub = db.execute(
+            "SELECT * FROM submissions WHERE id = ?", (training_sub_id,)
+        ).fetchone()
+        assert sub is not None
+        # Training formula: speedups * 90 = 30 * 90 = 2700
+        assert sub["resources"] == 2700
+        raw = json.loads(sub["raw_data"])
+        assert raw["speedups"] == 30
+
+    # 5. Successful Research submission & override
+    client.post(
+        f"/event/{uid}/submit",
+        data={
+            "player_name": "P1",
+            "player_id": "123",
+            "alliance_name": "A",
+            "speedups-research": "5",
+            "slots-research": "[2]",
+        },
+    )
+    research_sub_id = f"{uid}_123_research"
+    resp = client.post(
+        f"/admin/{uid}/override_resources",
+        data={
+            "secret": secret,
+            "submission_id": research_sub_id,
+            "speedups": "10",
+            "truegold_dust": "3",
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    with app.app_context():
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        sub = db.execute(
+            "SELECT * FROM submissions WHERE id = ?", (research_sub_id,)
+        ).fetchone()
+        assert sub is not None
+        # Research formula: (speedups * 30) + (truegold_dust * 1000) = 10 * 30 + 3 * 1000 = 3300
+        assert sub["resources"] == 3300
+        raw = json.loads(sub["raw_data"])
+        assert raw["speedups"] == 10
+        assert raw["truegold_dust"] == 3
+
+    # 6. Invalid values input handling
+    resp = client.post(
+        f"/admin/{uid}/override_resources",
+        data={
+            "secret": secret,
+            "submission_id": research_sub_id,
+            "speedups": "not-a-number",
+            "truegold_dust": "3",
+        },
+    )
+    assert resp.status_code == 400

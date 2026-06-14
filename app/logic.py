@@ -86,20 +86,24 @@ def run_distribution_algorithm(event_uid, day_type=None):
                 continue
 
             is_assigned = False
-            if (
-                not submission["feasible_slots"]
-                or len(submission["feasible_slots"]) <= 2
-            ):
-                # No slots selected
+            try:
+                feasible_slots = json.loads(submission["feasible_slots"])
+            except (json.JSONDecodeError, TypeError):
+                feasible_slots = None
+
+            if not isinstance(feasible_slots, list) or not feasible_slots:
                 db.execute(
                     "UPDATE submissions SET status = 'Waitlisted' WHERE id = ?",
                     (submission["id"],),
                 )
                 continue
 
-            try:
-                feasible_slots = json.loads(submission["feasible_slots"])
-            except (json.JSONDecodeError, TypeError):
+            # Filter out invalid indices or non-integers to avoid KeyError/TypeError
+            feasible_slots = [
+                s for s in feasible_slots if isinstance(s, int) and 0 <= s < 49
+            ]
+
+            if not feasible_slots:
                 db.execute(
                     "UPDATE submissions SET status = 'Waitlisted' WHERE id = ?",
                     (submission["id"],),

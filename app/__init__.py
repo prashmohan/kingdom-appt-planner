@@ -526,6 +526,10 @@ def create_app():
             if row["day_type"] in submissions_by_day:
                 # Convert sqlite3.Row to a dictionary to allow item assignment
                 sub_dict = dict(row)
+                try:
+                    sub_dict["raw_resources"] = json.loads(row["raw_data"])
+                except (json.JSONDecodeError, TypeError):
+                    sub_dict["raw_resources"] = {}
                 submissions_by_day[row["day_type"]].append(sub_dict)
 
         # 2. Group assignments and related data by day_type
@@ -981,6 +985,69 @@ def create_app():
         db.execute(
             "UPDATE submissions SET alliance_name = ? WHERE id = ? AND event_uid = ?",
             (new_alliance_name, submission_id, event_uid),
+        )
+        db.commit()
+
+        return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
+
+    @app.route("/admin/<event_uid>/override_resources", methods=["POST"])
+    def override_resources(event_uid):
+        secret = request.form.get("secret")
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        event = db.execute(
+            "SELECT * FROM events WHERE uid = ?", (event_uid,)
+        ).fetchone()
+        if event is None:
+            return "Event not found", 404
+        if event["admin_secret"] != secret:
+            return "Forbidden", 403
+
+        submission_id = request.form.get("submission_id")
+        submission = db.execute(
+            "SELECT * FROM submissions WHERE id = ? AND event_uid = ?",
+            (submission_id, event_uid),
+        ).fetchone()
+
+        if submission is None:
+            return "Submission not found", 404
+
+        day_type = submission["day_type"]
+
+        try:
+            if day_type == "construction":
+                speedups = int(request.form.get("speedups") or 0)
+                truegold = int(request.form.get("truegold") or 0)
+                tempered_truegold = int(request.form.get("tempered_truegold") or 0)
+                score = (
+                    (speedups * 30) + (truegold * 2000) + (tempered_truegold * 30000)
+                )
+                raw_data = {
+                    "speedups": speedups,
+                    "truegold": truegold,
+                    "tempered_truegold": tempered_truegold,
+                }
+            elif day_type == "training":
+                speedups = int(request.form.get("speedups") or 0)
+                score = speedups * 90
+                raw_data = {"speedups": speedups}
+            elif day_type == "research":
+                speedups = int(request.form.get("speedups") or 0)
+                truegold_dust = int(request.form.get("truegold_dust") or 0)
+                score = (speedups * 30) + (truegold_dust * 1000)
+                raw_data = {"speedups": speedups, "truegold_dust": truegold_dust}
+            else:
+                return "Invalid day type", 400
+        except ValueError:
+            return "Invalid resource values", 400
+
+        app.audit_logger.info(
+            f"ADMIN: Override resources for submission {submission_id} (day_type={day_type}) - score={score}, raw_data={raw_data} in event {event_uid}"
+        )
+
+        db.execute(
+            "UPDATE submissions SET resources = ?, raw_data = ? WHERE id = ? AND event_uid = ?",
+            (score, json.dumps(raw_data), submission_id, event_uid),
         )
         db.commit()
 
