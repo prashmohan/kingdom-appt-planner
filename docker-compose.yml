@@ -7,6 +7,7 @@ services:
       - "12348:5000"
     volumes:
       - planner_data:/app/data
+      - planner_uploads:/app/app/static/uploads
     environment:
       - DATABASE_PATH=/app/data/planner.db
     dns:
@@ -14,3 +15,4 @@ services:
       - 1.1.1.1
 volumes:
   planner_data:
+  planner_uploads:
