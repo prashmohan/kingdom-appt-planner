@@ -21,6 +21,7 @@ from flask import (
     jsonify,
     Response,
     send_from_directory,
+    flash,  # noqa: F401
 )
 from flask_wtf.csrf import CSRFProtect
 from . import database, logic
@@ -894,6 +895,58 @@ def create_app():
             headers={
                 "Content-Disposition": f"attachment; filename=schedule_{event['uid']}_{day_type}.csv"
             },
+        )
+
+    @app.route("/admin/<event_uid>/export_submissions", methods=["GET"])
+    def export_submissions(event_uid):
+        secret = request.args.get("secret")
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        event = db.execute(
+            "SELECT * FROM events WHERE uid = ?", (event_uid,)
+        ).fetchone()
+        if event is None:
+            return "Event not found", 404
+        if event["admin_secret"] != secret:
+            return "Forbidden", 403
+
+        submissions = db.execute(
+            """
+            SELECT day_type, player_name, player_id, avatar_url, backpack_url, 
+                   alliance_name, resources, raw_data, feasible_slots, status 
+            FROM submissions 
+            WHERE event_uid = ?
+            """,
+            (event_uid,),
+        ).fetchall()
+
+        # Build array of dictionaries
+        sub_list = []
+        for s in submissions:
+            sub_list.append(
+                {
+                    "day_type": s["day_type"],
+                    "player_name": s["player_name"],
+                    "player_id": s["player_id"],
+                    "avatar_url": s["avatar_url"],
+                    "backpack_url": s["backpack_url"],
+                    "alliance_name": s["alliance_name"],
+                    "resources": s["resources"],
+                    "raw_data": s["raw_data"],
+                    "feasible_slots": s["feasible_slots"],
+                    "status": s["status"],
+                }
+            )
+
+        import datetime
+
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"submissions_{event_uid}_{timestamp}.json"
+
+        return Response(
+            json.dumps(sub_list, indent=2),
+            mimetype="application/json",
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
 
     @app.route("/admin/<event_uid>/confirm", methods=["POST"])

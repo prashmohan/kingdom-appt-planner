@@ -1410,3 +1410,53 @@ def test_manual_assign_bounds_validation(client, app):
         ).fetchone()
         assert s1["status"] == "Pending"
         assert s2["status"] == "Locked"
+
+
+def test_export_submissions_route(client, app):
+    import json
+
+    # Setup: Create an event and add some submissions
+    client.post("/create", data={"event_name": "Export Test"})
+    with app.app_context():
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        event = db.execute("SELECT uid, admin_secret FROM events").fetchone()
+        event_uid = event["uid"]
+        secret = event["admin_secret"]
+
+        # Insert a submission
+        db.execute(
+            "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, resources, raw_data, feasible_slots, status) VALUES (?,?,?,?,?,?,?,?,?)",
+            (
+                f"{event_uid}_p1_construction",
+                event_uid,
+                "construction",
+                "Player One",
+                "p1",
+                100.0,
+                '{"speedups": 10}',
+                '["0", "1"]',
+                "Pending",
+            ),
+        )
+        db.commit()
+
+    # Test wrong secret
+    resp = client.get(f"/admin/{event_uid}/export_submissions?secret=wrong")
+    assert resp.status_code == 403
+
+    # Test event not found
+    resp = client.get(f"/admin/nonexistent/export_submissions?secret={secret}")
+    assert resp.status_code == 404
+
+    # Test successful export
+    resp = client.get(f"/admin/{event_uid}/export_submissions?secret={secret}")
+    assert resp.status_code == 200
+    assert resp.mimetype == "application/json"
+    assert "attachment" in resp.headers.get("Content-Disposition", "")
+
+    data = json.loads(resp.data)
+    assert len(data) == 1
+    assert data[0]["player_name"] == "Player One"
+    assert data[0]["day_type"] == "construction"
+    assert data[0]["player_id"] == "p1"
