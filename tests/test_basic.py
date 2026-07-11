@@ -124,6 +124,11 @@ def test_database_migrations():
             assert "avatar_url" in cols
             assert "backpack_url" in cols
 
+            # Create an event first to satisfy the FOREIGN KEY constraint now that PRAGMA foreign_keys = ON is enforced
+            db.execute(
+                "INSERT INTO events (uid, name, active_days, admin_secret) VALUES ('e1', 'Test Event', '[\"construction\"]', 'secret')"
+            )
+
             # FUNCTIONAL TEST: Try to insert same slot for different days
             db.execute(
                 "INSERT INTO assignments (event_uid, day_type, slot_index, player_id) VALUES ('e1', 'construction', 10, 'p1')"
@@ -531,6 +536,32 @@ def test_database_concurrency_error_re_raised_assignments():
 
                 with pytest.raises(sqlite3.OperationalError):
                     database.init_db()
+    finally:
+        os.close(db_fd)
+        os.unlink(db_path)
+
+
+def test_database_migration_slot_count(app):
+    db_fd, db_path = tempfile.mkstemp()
+    try:
+        conn = sqlite3.connect(db_path)
+        # Create events table with legacy schema (missing slot_count)
+        conn.execute(
+            "CREATE TABLE events (id INTEGER PRIMARY KEY, uid TEXT UNIQUE, name TEXT, active_days TEXT, admin_secret TEXT)"
+        )
+        conn.commit()
+        conn.close()
+
+        # Run init_db with this existing database
+        database.DATABASE_PATH = db_path
+        with app.app_context():
+            database.init_db()
+
+            # Verify slot_count column exists
+            db = database.get_db()
+            cursor = db.execute("PRAGMA table_info(events)")
+            cols = [c[1] for c in cursor.fetchall()]
+            assert "slot_count" in cols
     finally:
         os.close(db_fd)
         os.unlink(db_path)

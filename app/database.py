@@ -11,6 +11,8 @@ def get_db():
         db = g._database = sqlite3.connect(DATABASE_PATH, timeout=30.0)
         # Enable WAL mode for significantly better concurrency
         db.execute("PRAGMA journal_mode=WAL")
+        # Enforce foreign key constraints
+        db.execute("PRAGMA foreign_keys = ON")
     return db
 
 
@@ -26,9 +28,22 @@ def init_db():
             name TEXT NOT NULL,
             active_days TEXT NOT NULL,
             admin_secret TEXT NOT NULL,
+            slot_count INTEGER DEFAULT 49,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+
+    # Check if 'slot_count' column exists in existing database
+    cursor.execute("PRAGMA table_info(events)")
+    columns = [column[1] for column in cursor.fetchall()]
+    if "slot_count" not in columns:
+        try:
+            cursor.execute(
+                "ALTER TABLE events ADD COLUMN slot_count INTEGER DEFAULT 49"
+            )
+        except sqlite3.OperationalError as e:
+            if "duplicate column name" not in str(e):
+                raise
 
     # 2. Ensure 'submissions' table exists and has the correct schema
     cursor.execute("""
