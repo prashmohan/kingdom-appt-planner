@@ -1460,3 +1460,87 @@ def test_export_submissions_route(client, app):
     assert data[0]["player_name"] == "Player One"
     assert data[0]["day_type"] == "construction"
     assert data[0]["player_id"] == "p1"
+
+
+def test_import_submissions_route(client, app):
+    import json
+
+    # Setup: Create an event
+    client.post("/create", data={"event_name": "Import Test"})
+    with app.app_context():
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        event = db.execute("SELECT uid, admin_secret FROM events").fetchone()
+        event_uid = event["uid"]
+        secret = event["admin_secret"]
+
+    # Test wrong secret
+    resp = client.post(
+        f"/admin/{event_uid}/import_submissions",
+        data={"secret": "wrong", "submissions_file": (io.BytesIO(b"[]"), "subs.json")},
+        follow_redirects=True,
+    )
+    assert resp.status_code == 403
+
+    # Test invalid JSON format
+    resp = client.post(
+        f"/admin/{event_uid}/import_submissions",
+        data={
+            "secret": secret,
+            "submissions_file": (io.BytesIO(b"invalid-json"), "subs.json"),
+        },
+        follow_redirects=True,
+    )
+    assert b"Invalid file format" in resp.data
+
+    # Test missing fields in JSON objects
+    invalid_data = json.dumps([{"player_name": "Incomplete"}])
+    resp = client.post(
+        f"/admin/{event_uid}/import_submissions",
+        data={
+            "secret": secret,
+            "submissions_file": (io.BytesIO(invalid_data.encode()), "subs.json"),
+        },
+        follow_redirects=True,
+    )
+    assert b"Missing required field" in resp.data
+
+    # Test successful import (happy path)
+    valid_data = json.dumps(
+        [
+            {
+                "day_type": "construction",
+                "player_name": "Imported Player",
+                "player_id": "imported_p1",
+                "avatar_url": "/static/uploads/avatar.png",
+                "backpack_url": None,
+                "alliance_name": "IMP",
+                "resources": 200.0,
+                "raw_data": '{"speedups": 20}',
+                "feasible_slots": '["0", "2"]',
+                "status": "Pending",
+            }
+        ]
+    )
+
+    resp = client.post(
+        f"/admin/{event_uid}/import_submissions",
+        data={
+            "secret": secret,
+            "submissions_file": (io.BytesIO(valid_data.encode()), "subs.json"),
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert b"Successfully imported 1 submissions for 1 players." in resp.data
+
+    # Verify submission is in DB
+    with app.app_context():
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        sub = db.execute(
+            "SELECT * FROM submissions WHERE player_id = 'imported_p1'"
+        ).fetchone()
+        assert sub is not None
+        assert sub["player_name"] == "Imported Player"
+        assert sub["event_uid"] == event_uid
