@@ -1169,3 +1169,168 @@ def test_null_slot_count_handling(client, app):
     # which should safely fallback to defaulting slot_count to 49 when it finds NULL (None).
     resp = client.get(f"/event/{uid}")
     assert resp.status_code == 200
+
+
+def test_manual_assign_bounds_validation(client, app):
+    # Create an event with 48 slots
+    resp = client.post(
+        "/create",
+        data={
+            "event_name": "Test Bounds Event",
+            "research_day": "5",
+            "slot_count": "48",
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+
+    with app.app_context():
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        row = db.execute(
+            "SELECT uid, admin_secret FROM events WHERE name = ?",
+            ("Test Bounds Event",),
+        ).fetchone()
+        assert row is not None
+        uid = row["uid"]
+        secret = row["admin_secret"]
+
+        # Insert a submission to target for manual assignment
+        db.execute(
+            "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                "sub_12345_construction",
+                uid,
+                "construction",
+                "P1",
+                "12345",
+                "ALL",
+                10.0,
+                "{}",
+                "[0]",
+            ),
+        )
+        db.commit()
+
+    # Try manual assignment with valid slot (0)
+    resp = client.post(
+        f"/admin/{uid}/manual_assign",
+        data={
+            "secret": secret,
+            "submission_id": "sub_12345_construction",
+            "slot_index": "0",
+        },
+    )
+    assert resp.status_code == 302  # redirects on success
+
+    # Try manual assignment with out-of-bounds slot (48) for 48-slot event
+    resp = client.post(
+        f"/admin/{uid}/manual_assign",
+        data={
+            "secret": secret,
+            "submission_id": "sub_12345_construction",
+            "slot_index": "48",
+        },
+    )
+    assert resp.status_code == 400
+    assert b"Invalid slot index range" in resp.data
+
+    # Try manual assignment with negative out-of-bounds slot (-1) for 48-slot event
+    resp = client.post(
+        f"/admin/{uid}/manual_assign",
+        data={
+            "secret": secret,
+            "submission_id": "sub_12345_construction",
+            "slot_index": "-1",
+        },
+    )
+    assert resp.status_code == 400
+    assert b"Invalid slot index range" in resp.data
+
+    # Try manual assignment with invalid format (abc)
+    resp = client.post(
+        f"/admin/{uid}/manual_assign",
+        data={
+            "secret": secret,
+            "submission_id": "sub_12345_construction",
+            "slot_index": "abc",
+        },
+    )
+    assert resp.status_code == 400
+    assert b"Invalid slot index format" in resp.data
+
+    # Try manual assignment with malformed submission_id
+    resp = client.post(
+        f"/admin/{uid}/manual_assign",
+        data={
+            "secret": secret,
+            "submission_id": "malformed_id",
+            "slot_index": "0",
+        },
+    )
+    assert resp.status_code == 400
+    assert b"Invalid submission_id format" in resp.data
+
+    # Create a 49-slot event and test boundaries
+    resp = client.post(
+        "/create",
+        data={
+            "event_name": "Test Bounds Event 49",
+            "research_day": "5",
+            "slot_count": "49",
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+
+    with app.app_context():
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        row = db.execute(
+            "SELECT uid, admin_secret FROM events WHERE name = ?",
+            ("Test Bounds Event 49",),
+        ).fetchone()
+        assert row is not None
+        uid_49 = row["uid"]
+        secret_49 = row["admin_secret"]
+
+        db.execute(
+            "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                "sub_12345_construction_49",
+                uid_49,
+                "construction",
+                "P1",
+                "12345",
+                "ALL",
+                10.0,
+                "{}",
+                "[0]",
+            ),
+        )
+        db.commit()
+
+    # Try manual assignment with valid slot 48 for 49-slot event
+    resp = client.post(
+        f"/admin/{uid_49}/manual_assign",
+        data={
+            "secret": secret_49,
+            "submission_id": "sub_12345_construction_49",
+            "slot_index": "48",
+        },
+    )
+    assert resp.status_code == 302  # redirects on success
+
+    # Try manual assignment with out-of-bounds slot 49 for 49-slot event
+    resp = client.post(
+        f"/admin/{uid_49}/manual_assign",
+        data={
+            "secret": secret_49,
+            "submission_id": "sub_12345_construction_49",
+            "slot_index": "49",
+        },
+    )
+    assert resp.status_code == 400
+    assert b"Invalid slot index range" in resp.data

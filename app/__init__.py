@@ -765,10 +765,23 @@ def create_app():
                 url_for("admin_dashboard", event_uid=event_uid, secret=secret)
             )
 
-        _, player_id, day_type = submission_id.split("_", 2)
+        try:
+            slot_idx_val = int(slot_index)
+            slot_count = event["slot_count"] if event["slot_count"] is not None else 49
+            if not (0 <= slot_idx_val < slot_count):
+                return "Invalid slot index range", 400
+        except (ValueError, TypeError):
+            return "Invalid slot index format", 400
+
+        if not submission_id:
+            return "Missing submission_id", 400
+        try:
+            _, player_id, day_type = submission_id.split("_", 2)
+        except (ValueError, AttributeError):
+            return "Invalid submission_id format", 400
 
         app.audit_logger.info(
-            f"ADMIN: Manual assign - Player {player_id} to slot {slot_index} for day {day_type} in event {event_uid}"
+            f"ADMIN: Manual assign - Player {player_id} to slot {slot_idx_val} for day {day_type} in event {event_uid}"
         )
 
         # Delete any pre-existing assignment for this player on this day
@@ -780,7 +793,7 @@ def create_app():
         # Overwrite whatever was in the target slot and lock it
         db.execute(
             "REPLACE INTO assignments (event_uid, day_type, slot_index, player_id, is_locked) VALUES (?, ?, ?, ?, ?)",
-            (event_uid, day_type, slot_index, player_id, 1),
+            (event_uid, day_type, slot_idx_val, player_id, 1),
         )
 
         # Update submission status to 'Locked'
