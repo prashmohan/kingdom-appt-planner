@@ -791,6 +791,17 @@ def create_app():
             f"ADMIN: Manual assign - Player {player_id} to slot {slot_idx_val} for day {day_type} in event {event_uid}"
         )
 
+        # Check if there is an existing assignment in this slot that will be overridden
+        existing_assignment = db.execute(
+            "SELECT player_id FROM assignments WHERE event_uid = ? AND day_type = ? AND slot_index = ?",
+            (event_uid, day_type, slot_idx_val),
+        ).fetchone()
+        if existing_assignment and existing_assignment["player_id"] != player_id:
+            db.execute(
+                "UPDATE submissions SET status = 'Pending' WHERE event_uid = ? AND player_id = ? AND day_type = ?",
+                (event_uid, existing_assignment["player_id"], day_type),
+            )
+
         # Delete any pre-existing assignment for this player on this day
         db.execute(
             "DELETE FROM assignments WHERE event_uid = ? AND player_id = ? AND day_type = ?",

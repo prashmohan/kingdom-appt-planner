@@ -1299,7 +1299,7 @@ def test_manual_assign_bounds_validation(client, app):
             "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
-                "sub_12345_construction_49",
+                "sub49_12345_construction",
                 uid_49,
                 "construction",
                 "P1",
@@ -1317,7 +1317,7 @@ def test_manual_assign_bounds_validation(client, app):
         f"/admin/{uid_49}/manual_assign",
         data={
             "secret": secret_49,
-            "submission_id": "sub_12345_construction_49",
+            "submission_id": "sub49_12345_construction",
             "slot_index": "48",
         },
     )
@@ -1328,7 +1328,7 @@ def test_manual_assign_bounds_validation(client, app):
         f"/admin/{uid_49}/manual_assign",
         data={
             "secret": secret_49,
-            "submission_id": "sub_12345_construction_49",
+            "submission_id": "sub49_12345_construction",
             "slot_index": "49",
         },
     )
@@ -1346,3 +1346,67 @@ def test_manual_assign_bounds_validation(client, app):
     )
     assert resp.status_code == 404
     assert b"Submission not found" in resp.data
+
+    # Test override revert of status
+    with app.app_context():
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        # Insert a second player submission
+        db.execute(
+            "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots, status) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                "sub49_67890_construction",
+                uid_49,
+                "construction",
+                "P2",
+                "67890",
+                "ALL",
+                12.0,
+                "{}",
+                "[0]",
+                "Pending",
+            ),
+        )
+        db.commit()
+
+    # Verify initial statuses: sub_12345 (from previous steps) is Locked, sub_67890 is Pending
+    with app.app_context():
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        s1 = db.execute(
+            "SELECT status FROM submissions WHERE id = ?",
+            ("sub49_12345_construction",),
+        ).fetchone()
+        s2 = db.execute(
+            "SELECT status FROM submissions WHERE id = ?",
+            ("sub49_67890_construction",),
+        ).fetchone()
+        assert s1["status"] == "Locked"
+        assert s2["status"] == "Pending"
+
+    # Overwrite slot 48 with sub_67890 (overrides sub_12345)
+    resp = client.post(
+        f"/admin/{uid_49}/manual_assign",
+        data={
+            "secret": secret_49,
+            "submission_id": "sub49_67890_construction",
+            "slot_index": "48",
+        },
+    )
+    assert resp.status_code == 302
+
+    # Verify that sub_12345's status reverted to Pending and sub_67890 is Locked
+    with app.app_context():
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        s1 = db.execute(
+            "SELECT status FROM submissions WHERE id = ?",
+            ("sub49_12345_construction",),
+        ).fetchone()
+        s2 = db.execute(
+            "SELECT status FROM submissions WHERE id = ?",
+            ("sub49_67890_construction",),
+        ).fetchone()
+        assert s1["status"] == "Pending"
+        assert s2["status"] == "Locked"
