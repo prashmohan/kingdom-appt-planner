@@ -338,87 +338,77 @@ def test_format_minutes():
 
 
 def test_distribution_algorithm_both_slot_lengths(app):
-    import os
-    import tempfile
+    with app.app_context():
+        db = database.get_db()
 
-    db_fd, db_path = tempfile.mkstemp()
-    try:
-        database.DATABASE_PATH = db_path
-        with app.app_context():
-            database.init_db()
-            db = database.get_db()
+        for sc in [48, 49]:
+            event_uid = f"event-test-{sc}"
+            db.execute(
+                "INSERT INTO events (uid, name, active_days, admin_secret, slot_count) VALUES (?, ?, ?, ?, ?)",
+                (
+                    event_uid,
+                    f"Test {sc}",
+                    json.dumps({"construction": True}),
+                    "secret",
+                    sc,
+                ),
+            )
+            # Player 1 wants the first slot (0)
+            db.execute(
+                "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?)",
+                (
+                    f"sub1-{sc}",
+                    event_uid,
+                    "construction",
+                    "Player 1",
+                    f"p1-{sc}",
+                    "Alliance",
+                    100.0,
+                    "{}",
+                    json.dumps([0]),
+                ),
+            )
+            # Player 2 wants the 49th slot (index 48) - which is only valid if sc == 49
+            db.execute(
+                "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?)",
+                (
+                    f"sub2-{sc}",
+                    event_uid,
+                    "construction",
+                    "Player 2",
+                    f"p2-{sc}",
+                    "Alliance",
+                    90.0,
+                    "{}",
+                    json.dumps([48]),
+                ),
+            )
+            # Run algorithm
+            logic.run_distribution_algorithm(event_uid)
 
-            for sc in [48, 49]:
-                event_uid = f"event-test-{sc}"
-                db.execute(
-                    "INSERT INTO events (uid, name, active_days, admin_secret, slot_count) VALUES (?, ?, ?, ?, ?)",
-                    (
-                        event_uid,
-                        f"Test {sc}",
-                        json.dumps({"construction": True}),
-                        "secret",
-                        sc,
-                    ),
-                )
-                # Player 1 wants the first slot (0)
-                db.execute(
-                    "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?)",
-                    (
-                        f"sub1-{sc}",
-                        event_uid,
-                        "construction",
-                        "Player 1",
-                        f"p1-{sc}",
-                        "Alliance",
-                        100.0,
-                        "{}",
-                        json.dumps([0]),
-                    ),
-                )
-                # Player 2 wants the 49th slot (index 48) - which is only valid if sc == 49
-                db.execute(
-                    "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?)",
-                    (
-                        f"sub2-{sc}",
-                        event_uid,
-                        "construction",
-                        "Player 2",
-                        f"p2-{sc}",
-                        "Alliance",
-                        90.0,
-                        "{}",
-                        json.dumps([48]),
-                    ),
-                )
-                # Run algorithm
-                logic.run_distribution_algorithm(event_uid)
+            # Check assignment Player 1
+            assignment1 = db.execute(
+                "SELECT slot_index FROM assignments WHERE event_uid = ? AND player_id = ?",
+                (event_uid, f"p1-{sc}"),
+            ).fetchone()
+            assert assignment1 is not None
+            assert assignment1["slot_index"] == 0
 
-                # Check assignment Player 1
-                assignment1 = db.execute(
-                    "SELECT slot_index FROM assignments WHERE event_uid = ? AND player_id = ?",
-                    (event_uid, f"p1-{sc}"),
-                ).fetchone()
-                assert assignment1 is not None
-                assert assignment1["slot_index"] == 0
+            # Check assignment Player 2
+            assignment2 = db.execute(
+                "SELECT slot_index FROM assignments WHERE event_uid = ? AND player_id = ?",
+                (event_uid, f"p2-{sc}"),
+            ).fetchone()
 
-                # Check assignment Player 2
-                assignment2 = db.execute(
-                    "SELECT slot_index FROM assignments WHERE event_uid = ? AND player_id = ?",
-                    (event_uid, f"p2-{sc}"),
-                ).fetchone()
+            sub2_status = db.execute(
+                "SELECT status FROM submissions WHERE id = ?",
+                (f"sub2-{sc}",),
+            ).fetchone()["status"]
 
-                sub2_status = db.execute(
-                    "SELECT status FROM submissions WHERE id = ?",
-                    (f"sub2-{sc}",),
-                ).fetchone()["status"]
-
-                if sc == 48:
-                    assert assignment2 is None
-                    assert sub2_status == "Waitlisted"
-                else:
-                    assert assignment2 is not None
-                    assert assignment2["slot_index"] == 48
-                    assert sub2_status == "Confirmed"
-    finally:
-        os.close(db_fd)
-        os.unlink(db_path)
+            if sc == 48:
+                assert assignment2 is None
+                assert sub2_status == "Waitlisted"
+            else:
+                assert assignment2 is not None
+                assert assignment2["slot_index"] == 48
+                assert sub2_status == "Confirmed"

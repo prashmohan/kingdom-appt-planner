@@ -14,9 +14,7 @@ def run_distribution_algorithm(event_uid, day_type=None):
     if not event:
         return
 
-    slot_count = event["slot_count"] if "slot_count" in event.keys() else 49
-    if slot_count is None:
-        slot_count = 49
+    slot_count = event["slot_count"] if event["slot_count"] is not None else 49
 
     if day_type:
         active_days = [day_type]
