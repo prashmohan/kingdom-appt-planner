@@ -78,7 +78,7 @@
                     Schedule
                 </h2>
                 <div class="grid grid-cols-7 gap-1">
-                    {% for i in range(49) %}
+                    {% for i in range(slot_labels|length) %}
                     {% set day_assignments = assignments.get(day, {}) %}
                     {% set current_assignment = day_assignments.get(i) %}
                     <div class="slot rounded {% if current_assignment %}{% if current_assignment.is_locked %}slot-locked{% else %}slot-pending{% endif %}{% endif %}">

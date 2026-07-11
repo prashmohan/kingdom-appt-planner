@@ -106,8 +106,23 @@ def create_app():
     # Make the label generator available to all templates
     @app.context_processor
     def inject_global_config():
+        slot_count = 49
+        try:
+            event_uid = (
+                request.view_args.get("event_uid") if request.view_args else None
+            )
+            if event_uid:
+                db = database.get_db()
+                row = db.execute(
+                    "SELECT slot_count FROM events WHERE uid = ?", (event_uid,)
+                ).fetchone()
+                if row:
+                    slot_count = row[0]
+        except (RuntimeError, Exception):
+            pass
+
         return dict(
-            slot_labels=generate_slot_labels(),
+            slot_labels=generate_slot_labels(slot_count),
             enable_screenshot_upload=Config.ENABLE_SCREENSHOT_UPLOAD,
             ga_measurement_id=Config.GA_MEASUREMENT_ID,
         )
@@ -211,6 +226,12 @@ def create_app():
     def create_event():
         event_name = request.form["event_name"]
         research_day = request.form.get("research_day", "5")
+        try:
+            slot_count = int(request.form.get("slot_count", "49"))
+            if slot_count not in [48, 49]:
+                slot_count = 49
+        except ValueError:
+            slot_count = 49
 
         # All events will now have all 3 days active by default.
         # Store the research day preference in the JSON
@@ -226,8 +247,8 @@ def create_app():
 
         db = database.get_db()
         db.execute(
-            "INSERT INTO events (uid, name, active_days, admin_secret) VALUES (?, ?, ?, ?)",
-            (uid, event_name, json.dumps(active_days), admin_secret),
+            "INSERT INTO events (uid, name, active_days, admin_secret, slot_count) VALUES (?, ?, ?, ?, ?)",
+            (uid, event_name, json.dumps(active_days), admin_secret, slot_count),
         )
         db.commit()
 
@@ -555,13 +576,14 @@ def create_app():
             assignments_by_sub_id[(a["day_type"], a["player_id"])] = a
 
         # 3. Group everything else by day_type
-        slot_density = {day: [0] * 49 for day in active_days}
-        slot_players = {day: {i: [] for i in range(49)} for day in active_days}
+        slot_count = event["slot_count"] if event["slot_count"] is not None else 49
+        slot_density = {day: [0] * slot_count for day in active_days}
+        slot_players = {day: {i: [] for i in range(slot_count)} for day in active_days}
         max_density = {day: 1 for day in active_days}
         available_slots = {day: [] for day in active_days}
         alliance_summary = {day: {} for day in active_days}
 
-        slot_labels = generate_slot_labels()
+        slot_labels = generate_slot_labels(slot_count)
 
         for day in active_days:
             # Heatmap & Requested Slots Text
@@ -573,7 +595,7 @@ def create_app():
                     feasible_slots = json.loads(sub["feasible_slots"])
                     # Create human readable labels for hover text
                     requested_labels = [
-                        slot_labels[i] for i in feasible_slots if 0 <= i < 49
+                        slot_labels[i] for i in feasible_slots if 0 <= i < slot_count
                     ]
                     sub["requested_slots_text"] = (
                         ", ".join(requested_labels)
@@ -582,7 +604,7 @@ def create_app():
                     )
 
                     for slot_index in feasible_slots:
-                        if 0 <= slot_index < 49:
+                        if 0 <= slot_index < slot_count:
                             slot_density[day][slot_index] += 1
                             slot_players[day][slot_index].append(
                                 {
@@ -635,7 +657,7 @@ def create_app():
             # Available Slots
             assigned_slots_for_day = rich_assignments[day].keys()
             available_slots[day] = [
-                i for i in range(49) if i not in assigned_slots_for_day
+                i for i in range(slot_count) if i not in assigned_slots_for_day
             ]
 
             # Alliance Summary
@@ -817,7 +839,8 @@ def create_app():
             (event_uid, day_type),
         ).fetchall()
 
-        slot_labels = generate_slot_labels()
+        slot_count = event["slot_count"] if event["slot_count"] is not None else 49
+        slot_labels = generate_slot_labels(slot_count)
 
         output = io.StringIO()
         writer = csv.writer(output)

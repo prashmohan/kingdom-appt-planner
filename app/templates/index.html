@@ -69,6 +69,21 @@
                         </label>
                     </div>
                 </div>
+
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Appointment Slots</label>
+                    <div class="flex gap-4">
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="slot_count" value="48" class="form-radio text-kvk-gold focus:ring-kvk-gold bg-kvk-gray-700 border-kvk-gray-700">
+                            <span class="ml-2 text-gray-300">48 Slots (On the hour/half-hour)</span>
+                        </label>
+                        <label class="inline-flex items-center">
+                            <input type="radio" name="slot_count" value="49" class="form-radio text-kvk-gold focus:ring-kvk-gold bg-kvk-gray-700 border-kvk-gray-700" checked>
+                            <span class="ml-2 text-gray-300">49 Slots (Includes -15m offset)</span>
+                        </label>
+                    </div>
+                </div>
+
                 
                 <button type="submit" class="w-full bg-kvk-gold text-kvk-gray-900 font-bold py-3 px-4 rounded-md hover:bg-amber-500 transition duration-300">Create Event</button>
             </form>

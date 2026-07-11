@@ -155,7 +155,7 @@
                         </div>
                     </div>
                     <div id="slot-grid-construction" class="grid grid-cols-7 gap-1 mb-4">
-                        {% for i in range(49) %}<div class="slot" data-index="{{ i }}"><div class="slot-content">{{ slot_labels[i] }}</div></div>{% endfor %}
+                        {% for i in range(slot_labels|length) %}<div class="slot" data-index="{{ i }}"><div class="slot-content">{{ slot_labels[i] }}</div></div>{% endfor %}
                     </div>
                     <input type="hidden" name="slots-construction" id="slots-input-construction">
                 </div>
@@ -189,7 +189,7 @@
                         <input type="hidden" name="speedups-training" id="speedups-training" value="0">
                     </div>
                     <div id="slot-grid-training" class="grid grid-cols-7 gap-1 mb-4">
-                        {% for i in range(49) %}<div class="slot" data-index="{{ i }}"><div class="slot-content">{{ slot_labels[i] }}</div></div>{% endfor %}
+                        {% for i in range(slot_labels|length) %}<div class="slot" data-index="{{ i }}"><div class="slot-content">{{ slot_labels[i] }}</div></div>{% endfor %}
                     </div>
                     <input type="hidden" name="slots-training" id="slots-input-training">
                 </div>
@@ -229,7 +229,7 @@
                         </div>
                     </div>
                     <div id="slot-grid-research" class="grid grid-cols-7 gap-1 mb-4">
-                        {% for i in range(49) %}<div class="slot" data-index="{{ i }}"><div class="slot-content">{{ slot_labels[i] }}</div></div>{% endfor %}
+                        {% for i in range(slot_labels|length) %}<div class="slot" data-index="{{ i }}"><div class="slot-content">{{ slot_labels[i] }}</div></div>{% endfor %}
                     </div>
                     <input type="hidden" name="slots-research" id="slots-input-research">
                 </div>

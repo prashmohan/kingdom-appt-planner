@@ -1115,3 +1115,26 @@ def test_override_resources(client, app):
         },
     )
     assert resp.status_code == 400
+
+
+def test_create_event_with_slot_count(client, app):
+    for sc in [48, 49]:
+        resp = client.post(
+            "/create",
+            data={
+                "event_name": f"Event {sc}",
+                "research_day": "5",
+                "slot_count": str(sc),
+            },
+            follow_redirects=True,
+        )
+        assert resp.status_code == 200
+        # Check that events database has the correct slot_count
+        with app.app_context():
+            db = database.get_db()
+            db.row_factory = sqlite3.Row
+            event = db.execute(
+                "SELECT slot_count FROM events WHERE name = ?", (f"Event {sc}",)
+            ).fetchone()
+            assert event is not None
+            assert event["slot_count"] == sc

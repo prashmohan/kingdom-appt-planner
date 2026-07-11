@@ -139,7 +139,7 @@
                         </div>
                     </div>
                     <div class="grid grid-cols-7 gap-1">
-                        {% for i in range(49) %}
+                        {% for i in range(slot_labels|length) %}
                             {% set current_assignment = assignments.get(day, {}).get(i) %}
                             {% set day_slot_density = slot_density.get(day, []) %}
                             {% set day_max_density = max_density.get(day, 1) %}

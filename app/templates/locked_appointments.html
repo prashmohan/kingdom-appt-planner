@@ -105,7 +105,7 @@
                     </h2>
                     
                     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2">
-                        {% for i in range(49) %}
+                        {% for i in range(slot_labels|length) %}
                         {% set assignment = assignments.get(day, {}).get(i) %}
                         <div class="slot rounded-lg overflow-hidden {% if assignment %}{% if assignment.is_locked %}slot-locked shadow-lg border-blue-500/50{% else %}slot-tentative shadow-lg border-amber-500/50{% endif %} cursor-copy hover:border-kvk-gold transition-all duration-200{% else %}slot-empty{% endif %}"
                              {% if assignment %}onclick="copyToClipboard('{{ assignment.player_id }}', this)" title="Click to copy Player ID"{% endif %}>
