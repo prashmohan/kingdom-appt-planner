@@ -612,3 +612,24 @@ def test_event_slot_count_constraint_and_defaults(app):
         ).fetchone()
         assert row is not None
         assert row["slot_count"] == 49
+
+        # 4. Verify updating slot_count (from 49 to 48 and vice-versa) persists correctly
+        # Update event_48 (48 -> 49)
+        db.execute("UPDATE events SET slot_count = ? WHERE uid = ?", (49, "event_48"))
+        db.commit()
+
+        row = db.execute(
+            "SELECT slot_count FROM events WHERE uid = ?", ("event_48",)
+        ).fetchone()
+        assert row is not None
+        assert row["slot_count"] == 49
+
+        # Update event_49 (49 -> 48)
+        db.execute("UPDATE events SET slot_count = ? WHERE uid = ?", (48, "event_49"))
+        db.commit()
+
+        row = db.execute(
+            "SELECT slot_count FROM events WHERE uid = ?", ("event_49",)
+        ).fetchone()
+        assert row is not None
+        assert row["slot_count"] == 48
