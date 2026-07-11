@@ -542,6 +542,7 @@ def test_database_concurrency_error_re_raised_assignments():
 
 
 def test_database_migration_slot_count(app):
+    old_db_path = database.DATABASE_PATH
     db_fd, db_path = tempfile.mkstemp()
     try:
         conn = sqlite3.connect(db_path)
@@ -563,5 +564,51 @@ def test_database_migration_slot_count(app):
             cols = [c[1] for c in cursor.fetchall()]
             assert "slot_count" in cols
     finally:
+        database.DATABASE_PATH = old_db_path
         os.close(db_fd)
         os.unlink(db_path)
+
+
+def test_event_slot_count_constraint_and_defaults(app):
+    with app.app_context():
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+
+        # 1. Verify default value is 49 when slot_count is not provided
+        db.execute(
+            "INSERT INTO events (uid, name, active_days, admin_secret) VALUES (?, ?, ?, ?)",
+            ("event_default", "Default Event", "{}", "secret_default"),
+        )
+        db.commit()
+
+        row = db.execute(
+            "SELECT slot_count FROM events WHERE uid = ?", ("event_default",)
+        ).fetchone()
+        assert row is not None
+        assert row["slot_count"] == 49
+
+        # 2. Verify we can store and retrieve slot_count of 48
+        db.execute(
+            "INSERT INTO events (uid, name, active_days, admin_secret, slot_count) VALUES (?, ?, ?, ?, ?)",
+            ("event_48", "Slot 48 Event", "{}", "secret_48", 48),
+        )
+        db.commit()
+
+        row = db.execute(
+            "SELECT slot_count FROM events WHERE uid = ?", ("event_48",)
+        ).fetchone()
+        assert row is not None
+        assert row["slot_count"] == 48
+
+        # 3. Verify we can store and retrieve slot_count of 49
+        db.execute(
+            "INSERT INTO events (uid, name, active_days, admin_secret, slot_count) VALUES (?, ?, ?, ?, ?)",
+            ("event_49", "Slot 49 Event", "{}", "secret_49", 49),
+        )
+        db.commit()
+
+        row = db.execute(
+            "SELECT slot_count FROM events WHERE uid = ?", ("event_49",)
+        ).fetchone()
+        assert row is not None
+        assert row["slot_count"] == 49
