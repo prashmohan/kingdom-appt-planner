@@ -780,6 +780,13 @@ def create_app():
         except (ValueError, AttributeError):
             return "Invalid submission_id format", 400
 
+        sub = db.execute(
+            "SELECT 1 FROM submissions WHERE id = ? AND event_uid = ?",
+            (submission_id, event_uid),
+        ).fetchone()
+        if not sub:
+            return "Submission not found", 404
+
         app.audit_logger.info(
             f"ADMIN: Manual assign - Player {player_id} to slot {slot_idx_val} for day {day_type} in event {event_uid}"
         )

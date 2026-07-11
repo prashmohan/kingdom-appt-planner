@@ -1334,3 +1334,15 @@ def test_manual_assign_bounds_validation(client, app):
     )
     assert resp.status_code == 400
     assert b"Invalid slot index range" in resp.data
+
+    # Try manual assignment with non-existent submission_id (but correct format)
+    resp = client.post(
+        f"/admin/{uid_49}/manual_assign",
+        data={
+            "secret": secret_49,
+            "submission_id": "sub_99999_construction",
+            "slot_index": "0",
+        },
+    )
+    assert resp.status_code == 404
+    assert b"Submission not found" in resp.data
