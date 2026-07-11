@@ -1162,13 +1162,10 @@ def test_null_slot_count_handling(client, app):
         assert row is not None
         uid = row[0]
 
-        db.execute(
-            "UPDATE events SET slot_count = NULL WHERE uid = ?", (uid,)
-        )
+        db.execute("UPDATE events SET slot_count = NULL WHERE uid = ?", (uid,))
         db.commit()
 
     # Accessing the event form should invoke the context processor,
     # which should safely fallback to defaulting slot_count to 49 when it finds NULL (None).
     resp = client.get(f"/event/{uid}")
     assert resp.status_code == 200
-
