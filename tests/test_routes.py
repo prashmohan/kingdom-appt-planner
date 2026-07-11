@@ -1138,3 +1138,37 @@ def test_create_event_with_slot_count(client, app):
             ).fetchone()
             assert event is not None
             assert event["slot_count"] == sc
+
+
+def test_null_slot_count_handling(client, app):
+    # Create an event
+    resp = client.post(
+        "/create",
+        data={
+            "event_name": "Null Slot Count Event",
+            "research_day": "5",
+            "slot_count": "48",
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+
+    # Get event UID and manually set slot_count to NULL in DB
+    with app.app_context():
+        db = database.get_db()
+        row = db.execute(
+            "SELECT uid FROM events WHERE name = ?", ("Null Slot Count Event",)
+        ).fetchone()
+        assert row is not None
+        uid = row[0]
+
+        db.execute(
+            "UPDATE events SET slot_count = NULL WHERE uid = ?", (uid,)
+        )
+        db.commit()
+
+    # Accessing the event form should invoke the context processor,
+    # which should safely fallback to defaulting slot_count to 49 when it finds NULL (None).
+    resp = client.get(f"/event/{uid}")
+    assert resp.status_code == 200
+

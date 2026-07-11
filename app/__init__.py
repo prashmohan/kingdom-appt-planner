@@ -116,7 +116,7 @@ def create_app():
                 row = db.execute(
                     "SELECT slot_count FROM events WHERE uid = ?", (event_uid,)
                 ).fetchone()
-                if row:
+                if row and row[0] is not None:
                     slot_count = row[0]
         except (RuntimeError, Exception):
             pass
