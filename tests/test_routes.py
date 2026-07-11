@@ -1544,3 +1544,35 @@ def test_import_submissions_route(client, app):
         assert sub is not None
         assert sub["player_name"] == "Imported Player"
         assert sub["event_uid"] == event_uid
+
+
+def test_admin_dashboard_template_integration(client, app):
+    # Setup: Create an event
+    client.post("/create", data={"event_name": "Template Test"})
+    with app.app_context():
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        event = db.execute("SELECT uid, admin_secret FROM events").fetchone()
+        event_uid = event["uid"]
+        secret = event["admin_secret"]
+
+    # Fetch admin page (should not have export/import yet if failing, but let's assert to trigger RED step)
+    resp = client.get(f"/admin/{event_uid}?secret={secret}")
+    assert resp.status_code == 200
+    assert b"Export Submissions" in resp.data
+    assert b"Import Submissions" in resp.data
+    assert b'name="submissions_file"' in resp.data
+
+    # Perform an invalid import to trigger a flash message
+    resp = client.post(
+        f"/admin/{event_uid}/import_submissions",
+        data={
+            "secret": secret,
+            "submissions_file": (io.BytesIO(b"invalid-json"), "subs.json"),
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert b"Invalid file format" in resp.data
+    assert b"&times;" in resp.data
+    assert b"this.parentElement.remove()" in resp.data
