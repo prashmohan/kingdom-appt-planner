@@ -9,14 +9,19 @@ from app import generate_slot_labels, database
 
 
 def test_generate_slot_labels():
-    labels = generate_slot_labels()
-    assert len(labels) == 49
-    # Check slot 0 (23:45-00:15)
-    assert labels[0] == "23:45-\u200b00:15"
-    # Check slot 1 (00:15-00:45)
-    assert labels[1] == "00:15-\u200b00:45"
-    # Check wrap around at the end
-    assert labels[48].endswith("23:45") or "23:45" in labels[48]
+    # Test 49 slots (Legacy format starting at 23:45)
+    labels_49 = generate_slot_labels(49)
+    assert len(labels_49) == 49
+    assert labels_49[0] == "23:45-\u200b00:15"
+    assert labels_49[1] == "00:15-\u200b00:45"
+    assert labels_49[48].endswith("23:45") or "23:45" in labels_49[48]
+
+    # Test 48 slots (Standard format starting at 00:00)
+    labels_48 = generate_slot_labels(48)
+    assert len(labels_48) == 48
+    assert labels_48[0] == "00:00-\u200b00:30"
+    assert labels_48[1] == "00:30-\u200b01:00"
+    assert labels_48[47].endswith("00:00") or "00:00" in labels_48[47]
 
 
 def test_init_db_creates_directory():

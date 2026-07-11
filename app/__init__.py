@@ -31,24 +31,21 @@ from config import Config
 mimetypes.add_type("application/javascript", ".js")
 
 
-def generate_slot_labels():
+def generate_slot_labels(slot_count=49):
     labels = []
-    for i in range(49):
-        # Total minutes from midnight for the start of the slot
-        # Slot 0 starts at T-15m (23:45)
-        start_total_minutes = (i * 30) - 15
+    for i in range(slot_count):
+        if slot_count == 48:
+            start_total_minutes = i * 30
+        else:
+            start_total_minutes = (i * 30) - 15
 
-        # Handle negative minutes for slot 0 by wrapping around
         if start_total_minutes < 0:
             start_total_minutes += 24 * 60
 
         start_hour = start_total_minutes // 60
         start_min = start_total_minutes % 60
 
-        # End time is 30 minutes after start time
         end_total_minutes = start_total_minutes + 30
-
-        # Handle wrap around for end time
         end_hour = (end_total_minutes // 60) % 24
         end_min = end_total_minutes % 60
 
