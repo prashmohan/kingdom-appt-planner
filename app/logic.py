@@ -9,10 +9,14 @@ def run_distribution_algorithm(event_uid, day_type=None):
 
     # Get the active day types for the event
     event = db.execute(
-        "SELECT active_days FROM events WHERE uid = ?", (event_uid,)
+        "SELECT active_days, slot_count FROM events WHERE uid = ?", (event_uid,)
     ).fetchone()
     if not event:
         return
+
+    slot_count = event["slot_count"] if "slot_count" in event.keys() else 49
+    if slot_count is None:
+        slot_count = 49
 
     if day_type:
         active_days = [day_type]
@@ -67,14 +71,14 @@ def run_distribution_algorithm(event_uid, day_type=None):
             )
 
         # 2. Calculate Demand for each slot (static demand based on all submissions for this day)
-        slot_demand = {i: 0 for i in range(49)}
+        slot_demand = {i: 0 for i in range(slot_count)}
         for sub in submissions:
             try:
                 if not sub["feasible_slots"]:
                     continue
                 f_slots = json.loads(sub["feasible_slots"])
                 for s in f_slots:
-                    if 0 <= s < 49:
+                    if 0 <= s < slot_count:
                         slot_demand[s] += 1
             except (json.JSONDecodeError, TypeError):
                 continue
@@ -100,7 +104,7 @@ def run_distribution_algorithm(event_uid, day_type=None):
 
             # Filter out invalid indices or non-integers to avoid KeyError/TypeError
             feasible_slots = [
-                s for s in feasible_slots if isinstance(s, int) and 0 <= s < 49
+                s for s in feasible_slots if isinstance(s, int) and 0 <= s < slot_count
             ]
 
             if not feasible_slots:
