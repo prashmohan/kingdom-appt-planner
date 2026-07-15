@@ -7,6 +7,7 @@
 CONTAINER_NAME="kvk-appt-web-1"
 DB_PATH="/app/data/planner.db"
 BACKUP_DIR="./backups"
+RETENTION_DAYS=30
 
 usage() {
     echo "Usage:"
@@ -16,6 +17,7 @@ usage() {
     echo "Options:"
     echo "  -c <name>    Docker container name (default: $CONTAINER_NAME)"
     echo "  -d <dir>     Backup directory (default: $BACKUP_DIR)"
+    echo "  -r <days>    Number of days of backups to retain (default: $RETENTION_DAYS)"
     echo ""
     echo "Examples:"
     echo "  $0 backup                          # Use defaults"
@@ -26,10 +28,11 @@ usage() {
 }
 
 # Parse options
-while getopts "c:d:h" opt; do
+while getopts "c:d:r:h" opt; do
     case $opt in
         c) CONTAINER_NAME="$OPTARG" ;;
         d) BACKUP_DIR="$OPTARG" ;;
+        r) RETENTION_DAYS="$OPTARG" ;;
         h) usage ;;
         *) usage ;;
     esac
@@ -63,6 +66,11 @@ case $COMMAND in
         
         if [ $? -eq 0 ]; then
             echo "Backup successfully saved to: $BACKUP_DIR/$FILENAME"
+            
+            # Retention cleanup
+            echo "Cleaning up backups in $BACKUP_DIR older than $RETENTION_DAYS days..."
+            find "$BACKUP_DIR" -name "planner_backup_*.db" -type f -mtime +"$RETENTION_DAYS" -delete
+            echo "Cleanup complete."
         else
             echo "Error: Failed to copy backup from container."
         fi
