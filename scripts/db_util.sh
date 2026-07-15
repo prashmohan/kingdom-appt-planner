@@ -32,7 +32,13 @@ while getopts "c:d:r:h" opt; do
     case $opt in
         c) CONTAINER_NAME="$OPTARG" ;;
         d) BACKUP_DIR="$OPTARG" ;;
-        r) RETENTION_DAYS="$OPTARG" ;;
+        r) 
+            RETENTION_DAYS="$OPTARG" 
+            if [[ ! "$RETENTION_DAYS" =~ ^[0-9]+$ ]]; then
+                echo "Error: Retention days must be a non-negative integer." >&2
+                exit 1
+            fi
+            ;;
         h) usage ;;
         *) usage ;;
     esac
@@ -62,9 +68,10 @@ case $COMMAND in
         fi
 
         docker cp "$CONTAINER_NAME:/app/data/temp_backup.db" "$BACKUP_DIR/$FILENAME"
+        CP_STATUS=$?
         docker exec "$CONTAINER_NAME" rm "/app/data/temp_backup.db"
         
-        if [ $? -eq 0 ]; then
+        if [ $CP_STATUS -eq 0 ]; then
             echo "Backup successfully saved to: $BACKUP_DIR/$FILENAME"
             
             # Retention cleanup
