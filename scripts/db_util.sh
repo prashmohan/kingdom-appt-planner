@@ -63,7 +63,7 @@ case $COMMAND in
         # Use sqlite3 .backup for a consistent copy of a live database
         docker exec "$CONTAINER_NAME" sqlite3 "$DB_PATH" ".backup '/app/data/temp_backup.db'"
         if [ $? -ne 0 ]; then
-            echo "Error: Failed to create backup inside container."
+            echo "Error: Failed to create backup inside container." >&2
             exit 1
         fi
 
@@ -79,19 +79,21 @@ case $COMMAND in
             find "$BACKUP_DIR" -name "planner_backup_*.db" -type f -mtime +"$RETENTION_DAYS" -delete
             echo "Cleanup complete."
         else
-            echo "Error: Failed to copy backup from container."
+            rm -f "$BACKUP_DIR/$FILENAME"
+            echo "Error: Failed to copy backup from container." >&2
+            exit 1
         fi
         ;;
         
     restore)
         if [ -z "$2" ]; then
-            echo "Error: Please specify the file to restore."
+            echo "Error: Please specify the file to restore." >&2
             usage
         fi
         
         RESTORE_FILE=$2
         if [ ! -f "$RESTORE_FILE" ]; then
-            echo "Error: File $RESTORE_FILE not found."
+            echo "Error: File $RESTORE_FILE not found." >&2
             exit 1
         fi
         
@@ -108,7 +110,8 @@ case $COMMAND in
         if [ $? -eq 0 ]; then
             echo "Restore complete. You may need to restart the container if the schema changed."
         else
-            echo "Error: Restore failed."
+            echo "Error: Restore failed." >&2
+            exit 1
         fi
         ;;
         
