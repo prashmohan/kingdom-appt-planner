@@ -1,7 +1,8 @@
-import sqlite3
-import os
 import io
+import os
+import sqlite3
 from unittest.mock import patch
+
 from app import database
 
 
@@ -953,15 +954,17 @@ def test_submit_creates_dir(client, app):
         "backpack_screenshot": (io.BytesIO(b"data"), "test.jpg"),
     }
 
-    with patch("config.Config.ENABLE_SCREENSHOT_UPLOAD", True):
-        with patch("os.path.exists", return_value=False):
-            with patch("os.makedirs") as mock_makedirs:
-                client.post(
-                    f"/event/{uid}/submit",
-                    data=data,
-                    content_type="multipart/form-data",
-                )
-                mock_makedirs.assert_called()
+    with (
+        patch("config.Config.ENABLE_SCREENSHOT_UPLOAD", True),
+        patch("os.path.exists", return_value=False),
+        patch("os.makedirs") as mock_makedirs,
+    ):
+        client.post(
+            f"/event/{uid}/submit",
+            data=data,
+            content_type="multipart/form-data",
+        )
+        mock_makedirs.assert_called()
 
 
 def test_override_resources(client, app):
@@ -1588,8 +1591,8 @@ def test_admin_dashboard_template_integration(client, app):
 
 
 def test_import_submissions_edge_cases(client, app):
-    import json
     import io
+    import json
 
     # 1. Setup: Create an event
     client.post("/create", data={"event_name": "Edge Cases Test"})

@@ -1,8 +1,9 @@
-import pytest
 import os
 import tempfile
-from app import create_app
-from app import database
+
+import pytest
+
+from app import create_app, database
 
 
 @pytest.fixture

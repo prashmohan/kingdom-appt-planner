@@ -1,5 +1,6 @@
-import sqlite3
 import os
+import sqlite3
+
 from flask import g
 
 DATABASE_PATH = os.environ.get("DATABASE_PATH", "data/planner.db")

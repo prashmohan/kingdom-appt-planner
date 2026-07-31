@@ -1,29 +1,32 @@
-import uuid
-import json
-import sqlite3
-import time
-import os
-import mimetypes
-import markdown
 import csv
 import io
+import json
 import logging
+import mimetypes
+import os
+import sqlite3
+import time
+import uuid
 from logging.handlers import RotatingFileHandler
-from werkzeug.utils import secure_filename
+
+import markdown
 from flask import (
     Flask,
+    Response,
+    flash,
+    redirect,
     render_template,
     request,
-    redirect,
-    url_for,
-    Response,
     send_from_directory,
-    flash,  # noqa: F401
+    url_for,
 )
 from flask_wtf.csrf import CSRFProtect
+from werkzeug.utils import secure_filename
+
+from config import Config
+
 from . import database, logic
 from .logic import format_minutes
-from config import Config
 
 # Ensure .js files are served with the correct MIME type
 mimetypes.add_type("application/javascript", ".js")
@@ -89,14 +92,14 @@ def create_app():
                 ).fetchone()
                 if row and row[0] is not None:
                     slot_count = row[0]
-        except (RuntimeError, Exception):
+        except (RuntimeError, Exception):  # noqa: BLE001, S110
             pass
 
-        return dict(
-            slot_labels=generate_slot_labels(slot_count),
-            enable_screenshot_upload=Config.ENABLE_SCREENSHOT_UPLOAD,
-            ga_measurement_id=Config.GA_MEASUREMENT_ID,
-        )
+        return {
+            "slot_labels": generate_slot_labels(slot_count),
+            "enable_screenshot_upload": Config.ENABLE_SCREENSHOT_UPLOAD,
+            "ga_measurement_id": Config.GA_MEASUREMENT_ID,
+        }
 
     @app.after_request
     def add_security_headers(response):
@@ -539,7 +542,6 @@ def create_app():
 
                 except (json.JSONDecodeError, TypeError, KeyError):
                     sub["requested_slots_text"] = "Error parsing slots"
-                    pass
 
                 # Resources Hover Text
                 try:
@@ -861,7 +863,9 @@ def create_app():
 
         import datetime
 
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.datetime.now(datetime.timezone.utc).strftime(
+            "%Y%m%d_%H%M%S"
+        )
         filename = f"submissions_{event_uid}_{timestamp}.json"
 
         return Response(
@@ -892,7 +896,7 @@ def create_app():
 
         try:
             data = json.load(file)
-        except Exception:
+        except Exception:  # noqa: BLE001
             flash("Invalid file format. Please upload a valid JSON file.", "error")
             return redirect(
                 url_for("admin_dashboard", event_uid=event_uid, secret=secret)
@@ -945,7 +949,7 @@ def create_app():
             if isinstance(fs_val, str):
                 try:
                     fs_val = json.loads(fs_val)
-                except Exception:
+                except Exception:  # noqa: BLE001
                     flash("feasible_slots must be a list.", "error")
                     return redirect(
                         url_for("admin_dashboard", event_uid=event_uid, secret=secret)
@@ -969,7 +973,7 @@ def create_app():
             if isinstance(rd_val, str):
                 try:
                     rd_val = json.loads(rd_val)
-                except Exception:
+                except Exception:  # noqa: BLE001
                     flash("raw_data must be a JSON object.", "error")
                     return redirect(
                         url_for("admin_dashboard", event_uid=event_uid, secret=secret)
@@ -982,7 +986,7 @@ def create_app():
             item["raw_data"] = json.dumps(rd_val)
 
         # Process upserts inside transaction
-        unique_players = list(set(item["player_id"] for item in data))
+        unique_players = list({item["player_id"] for item in data})
 
         # Delete existing matching records (for the specific player_id and day_type)
         for item in data:

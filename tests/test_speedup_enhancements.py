@@ -1,7 +1,8 @@
-import sqlite3
 import json
-from app.logic import format_minutes
+import sqlite3
+
 from app import database
+from app.logic import format_minutes
 
 
 def test_format_minutes():

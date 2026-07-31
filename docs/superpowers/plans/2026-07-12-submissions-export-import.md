@@ -33,6 +33,7 @@
   ```python
   def test_export_submissions_route(client, app):
       import json
+
       # Setup: Create an event and add some submissions
       client.post("/create", data={"event_name": "Export Test"})
       with app.app_context():
@@ -41,11 +42,21 @@
           event = db.execute("SELECT uid, admin_secret FROM events").fetchone()
           event_uid = event["uid"]
           secret = event["admin_secret"]
-          
+
           # Insert a submission
           db.execute(
               "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, resources, raw_data, feasible_slots, status) VALUES (?,?,?,?,?,?,?,?,?)",
-              (f"{event_uid}_p1_construction", event_uid, "construction", "Player One", "p1", 100.0, '{"speedups": 10}', '["0", "1"]', "Pending")
+              (
+                  f"{event_uid}_p1_construction",
+                  event_uid,
+                  "construction",
+                  "Player One",
+                  "p1",
+                  100.0,
+                  '{"speedups": 10}',
+                  '["0", "1"]',
+                  "Pending",
+              ),
           )
           db.commit()
 
@@ -62,7 +73,7 @@
       assert resp.status_code == 200
       assert resp.mimetype == "application/json"
       assert b"attachment" in resp.headers.get("Content-Disposition", b"")
-      
+
       data = json.loads(resp.data)
       assert len(data) == 1
       assert data[0]["player_name"] == "Player One"
@@ -91,33 +102,32 @@
   ```
   Next, add the route inside `create_app()` after the `export_csv` route:
   ```python
-      @app.route("/admin/<event_uid>/export_submissions", methods=["GET"])
-      def export_submissions(event_uid):
-          secret = request.args.get("secret")
-          db = database.get_db()
-          db.row_factory = sqlite3.Row
-          event = db.execute(
-              "SELECT * FROM events WHERE uid = ?", (event_uid,)
-          ).fetchone()
-          if event is None:
-              return "Event not found", 404
-          if event["admin_secret"] != secret:
-              return "Forbidden", 403
+  @app.route("/admin/<event_uid>/export_submissions", methods=["GET"])
+  def export_submissions(event_uid):
+      secret = request.args.get("secret")
+      db = database.get_db()
+      db.row_factory = sqlite3.Row
+      event = db.execute("SELECT * FROM events WHERE uid = ?", (event_uid,)).fetchone()
+      if event is None:
+          return "Event not found", 404
+      if event["admin_secret"] != secret:
+          return "Forbidden", 403
 
-          submissions = db.execute(
-              """
-              SELECT day_type, player_name, player_id, avatar_url, backpack_url, 
-                     alliance_name, resources, raw_data, feasible_slots, status 
-              FROM submissions 
-              WHERE event_uid = ?
-              """,
-              (event_uid,),
-          ).fetchall()
+      submissions = db.execute(
+          """
+          SELECT day_type, player_name, player_id, avatar_url, backpack_url, 
+                 alliance_name, resources, raw_data, feasible_slots, status 
+          FROM submissions 
+          WHERE event_uid = ?
+          """,
+          (event_uid,),
+      ).fetchall()
 
-          # Build array of dictionaries
-          sub_list = []
-          for s in submissions:
-              sub_list.append({
+      # Build array of dictionaries
+      sub_list = []
+      for s in submissions:
+          sub_list.append(
+              {
                   "day_type": s["day_type"],
                   "player_name": s["player_name"],
                   "player_id": s["player_id"],
@@ -127,18 +137,20 @@
                   "resources": s["resources"],
                   "raw_data": s["raw_data"],
                   "feasible_slots": s["feasible_slots"],
-                  "status": s["status"]
-              })
-
-          import datetime
-          timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-          filename = f"submissions_{event_uid}_{timestamp}.json"
-          
-          return Response(
-              json.dumps(sub_list, indent=2),
-              mimetype="application/json",
-              headers={"Content-Disposition": f"attachment; filename={filename}"}
+                  "status": s["status"],
+              }
           )
+
+      import datetime
+
+      timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+      filename = f"submissions_{event_uid}_{timestamp}.json"
+
+      return Response(
+          json.dumps(sub_list, indent=2),
+          mimetype="application/json",
+          headers={"Content-Disposition": f"attachment; filename={filename}"},
+      )
   ```
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -172,6 +184,7 @@
   ```python
   def test_import_submissions_route(client, app):
       import json
+
       # Setup: Create an event
       client.post("/create", data={"event_name": "Import Test"})
       with app.app_context():
@@ -185,15 +198,18 @@
       resp = client.post(
           f"/admin/{event_uid}/import_submissions",
           data={"secret": "wrong", "submissions_file": (io.BytesIO(b"[]"), "subs.json")},
-          follow_redirects=True
+          follow_redirects=True,
       )
       assert resp.status_code == 403
 
       # Test invalid JSON format
       resp = client.post(
           f"/admin/{event_uid}/import_submissions",
-          data={"secret": secret, "submissions_file": (io.BytesIO(b"invalid-json"), "subs.json")},
-          follow_redirects=True
+          data={
+              "secret": secret,
+              "submissions_file": (io.BytesIO(b"invalid-json"), "subs.json"),
+          },
+          follow_redirects=True,
       )
       assert b"Invalid file format" in resp.data
 
@@ -201,31 +217,39 @@
       invalid_data = json.dumps([{"player_name": "Incomplete"}])
       resp = client.post(
           f"/admin/{event_uid}/import_submissions",
-          data={"secret": secret, "submissions_file": (io.BytesIO(invalid_data.encode()), "subs.json")},
-          follow_redirects=True
+          data={
+              "secret": secret,
+              "submissions_file": (io.BytesIO(invalid_data.encode()), "subs.json"),
+          },
+          follow_redirects=True,
       )
       assert b"Missing required field" in resp.data
 
       # Test successful import (happy path)
-      valid_data = json.dumps([
-          {
-              "day_type": "construction",
-              "player_name": "Imported Player",
-              "player_id": "imported_p1",
-              "avatar_url": "/static/uploads/avatar.png",
-              "backpack_url": None,
-              "alliance_name": "IMP",
-              "resources": 200.0,
-              "raw_data": '{"speedups": 20}',
-              "feasible_slots": '["0", "2"]',
-              "status": "Pending"
-          }
-      ])
-      
+      valid_data = json.dumps(
+          [
+              {
+                  "day_type": "construction",
+                  "player_name": "Imported Player",
+                  "player_id": "imported_p1",
+                  "avatar_url": "/static/uploads/avatar.png",
+                  "backpack_url": None,
+                  "alliance_name": "IMP",
+                  "resources": 200.0,
+                  "raw_data": '{"speedups": 20}',
+                  "feasible_slots": '["0", "2"]',
+                  "status": "Pending",
+              }
+          ]
+      )
+
       resp = client.post(
           f"/admin/{event_uid}/import_submissions",
-          data={"secret": secret, "submissions_file": (io.BytesIO(valid_data.encode()), "subs.json")},
-          follow_redirects=True
+          data={
+              "secret": secret,
+              "submissions_file": (io.BytesIO(valid_data.encode()), "subs.json"),
+          },
+          follow_redirects=True,
       )
       assert resp.status_code == 200
       assert b"Successfully imported 1 submissions for 1 players." in resp.data
@@ -234,7 +258,9 @@
       with app.app_context():
           db = database.get_db()
           db.row_factory = sqlite3.Row
-          sub = db.execute("SELECT * FROM submissions WHERE player_id = 'imported_p1'").fetchone()
+          sub = db.execute(
+              "SELECT * FROM submissions WHERE player_id = 'imported_p1'"
+          ).fetchone()
           assert sub is not None
           assert sub["player_name"] == "Imported Player"
           assert sub["event_uid"] == event_uid
@@ -247,96 +273,121 @@
 - [ ] **Step 3: Implement the import route**
   Add the route inside `create_app()` in `app/__init__.py` after `export_submissions`:
   ```python
-      @app.route("/admin/<event_uid>/import_submissions", methods=["POST"])
-      def import_submissions(event_uid):
-          secret = request.form.get("secret")
-          db = database.get_db()
-          db.row_factory = sqlite3.Row
-          event = db.execute(
-              "SELECT * FROM events WHERE uid = ?", (event_uid,)
-          ).fetchone()
-          if event is None:
-              return "Event not found", 404
-          if event["admin_secret"] != secret:
-              return "Forbidden", 403
+  @app.route("/admin/<event_uid>/import_submissions", methods=["POST"])
+  def import_submissions(event_uid):
+      secret = request.form.get("secret")
+      db = database.get_db()
+      db.row_factory = sqlite3.Row
+      event = db.execute("SELECT * FROM events WHERE uid = ?", (event_uid,)).fetchone()
+      if event is None:
+          return "Event not found", 404
+      if event["admin_secret"] != secret:
+          return "Forbidden", 403
 
-          file = request.files.get("submissions_file")
-          if not file or file.filename == "":
-              flash("No file selected.", "error")
-              return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
-
-          try:
-              data = json.load(file)
-          except Exception:
-              flash("Invalid file format. Please upload a valid JSON file.", "error")
-              return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
-
-          if not isinstance(data, list):
-              flash("Invalid JSON schema. Submissions must be formatted as an array.", "error")
-              return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
-
-          required_fields = ["day_type", "player_name", "player_id", "resources", "raw_data", "feasible_slots"]
-          for idx, item in enumerate(data):
-              if not isinstance(item, dict):
-                  flash(f"Item at index {idx} is not a valid submission object.", "error")
-                  return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
-              for field in required_fields:
-                  if field not in item:
-                      flash(f"Missing required field '{field}' at submission index {idx}.", "error")
-                      return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
-
-          # Process upserts inside transaction
-          unique_players = list(set(item["player_id"] for item in data))
-          
-          # Delete existing matching records
-          for player_id in unique_players:
-              db.execute(
-                  "DELETE FROM submissions WHERE event_uid = ? AND player_id = ?",
-                  (event_uid, player_id)
-              )
-              db.execute(
-                  "DELETE FROM assignments WHERE event_uid = ? AND player_id = ?",
-                  (event_uid, player_id)
-              )
-
-          # Insert the imported submissions
-          for item in data:
-              sub_id = f"{event_uid}_{item['player_id']}_{item['day_type']}"
-              # Ensure values are safely parsed (re-encode json strings if they were parsed as dicts/lists)
-              raw_data_str = item["raw_data"] if isinstance(item["raw_data"], str) else json.dumps(item["raw_data"])
-              feasible_slots_str = item["feasible_slots"] if isinstance(item["feasible_slots"], str) else json.dumps(item["feasible_slots"])
-              
-              db.execute(
-                  """
-                  INSERT INTO submissions (
-                      id, event_uid, day_type, player_name, player_id, 
-                      avatar_url, backpack_url, alliance_name, resources, 
-                      raw_data, feasible_slots, status
-                  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                  """,
-                  (
-                      sub_id,
-                      event_uid,
-                      item["day_type"],
-                      item["player_name"],
-                      item["player_id"],
-                      item.get("avatar_url"),
-                      item.get("backpack_url"),
-                      item.get("alliance_name"),
-                      item["resources"],
-                      raw_data_str,
-                      feasible_slots_str,
-                      item.get("status", "Pending")
-                  )
-              )
-          
-          db.commit()
-          app.audit_logger.info(
-              f"ADMIN: Imported {len(data)} submissions for {len(unique_players)} players in event {event_uid}"
-          )
-          flash(f"Successfully imported {len(data)} submissions for {len(unique_players)} players.", "success")
-          
+      file = request.files.get("submissions_file")
+      if not file or file.filename == "":
+          flash("No file selected.", "error")
           return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
+
+      try:
+          data = json.load(file)
+      except Exception:
+          flash("Invalid file format. Please upload a valid JSON file.", "error")
+          return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
+
+      if not isinstance(data, list):
+          flash(
+              "Invalid JSON schema. Submissions must be formatted as an array.", "error"
+          )
+          return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
+
+      required_fields = [
+          "day_type",
+          "player_name",
+          "player_id",
+          "resources",
+          "raw_data",
+          "feasible_slots",
+      ]
+      for idx, item in enumerate(data):
+          if not isinstance(item, dict):
+              flash(f"Item at index {idx} is not a valid submission object.", "error")
+              return redirect(
+                  url_for("admin_dashboard", event_uid=event_uid, secret=secret)
+              )
+          for field in required_fields:
+              if field not in item:
+                  flash(
+                      f"Missing required field '{field}' at submission index {idx}.",
+                      "error",
+                  )
+                  return redirect(
+                      url_for("admin_dashboard", event_uid=event_uid, secret=secret)
+                  )
+
+      # Process upserts inside transaction
+      unique_players = list(set(item["player_id"] for item in data))
+
+      # Delete existing matching records
+      for player_id in unique_players:
+          db.execute(
+              "DELETE FROM submissions WHERE event_uid = ? AND player_id = ?",
+              (event_uid, player_id),
+          )
+          db.execute(
+              "DELETE FROM assignments WHERE event_uid = ? AND player_id = ?",
+              (event_uid, player_id),
+          )
+
+      # Insert the imported submissions
+      for item in data:
+          sub_id = f"{event_uid}_{item['player_id']}_{item['day_type']}"
+          # Ensure values are safely parsed (re-encode json strings if they were parsed as dicts/lists)
+          raw_data_str = (
+              item["raw_data"]
+              if isinstance(item["raw_data"], str)
+              else json.dumps(item["raw_data"])
+          )
+          feasible_slots_str = (
+              item["feasible_slots"]
+              if isinstance(item["feasible_slots"], str)
+              else json.dumps(item["feasible_slots"])
+          )
+
+          db.execute(
+              """
+              INSERT INTO submissions (
+                  id, event_uid, day_type, player_name, player_id, 
+                  avatar_url, backpack_url, alliance_name, resources, 
+                  raw_data, feasible_slots, status
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              """,
+              (
+                  sub_id,
+                  event_uid,
+                  item["day_type"],
+                  item["player_name"],
+                  item["player_id"],
+                  item.get("avatar_url"),
+                  item.get("backpack_url"),
+                  item.get("alliance_name"),
+                  item["resources"],
+                  raw_data_str,
+                  feasible_slots_str,
+                  item.get("status", "Pending"),
+              ),
+          )
+
+      db.commit()
+      app.audit_logger.info(
+          f"ADMIN: Imported {len(data)} submissions for {len(unique_players)} players in event {event_uid}"
+      )
+      flash(
+          f"Successfully imported {len(data)} submissions for {len(unique_players)} players.",
+          "success",
+      )
+
+      return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
   ```
 
 - [ ] **Step 4: Run test to verify it passes**

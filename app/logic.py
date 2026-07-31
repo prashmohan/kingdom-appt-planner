@@ -1,5 +1,6 @@
-import sqlite3
 import json
+import sqlite3
+
 from . import database
 
 
@@ -38,24 +39,24 @@ def run_distribution_algorithm(event_uid, day_type=None):
         )
 
     # Loop through each active day and run the distribution for it
-    for day_type in active_days:
+    for current_day_type in active_days:
         # 1. Preparation for the current day_type
         # Clear all non-locked assignments for this specific day
         db.execute(
             "DELETE FROM assignments WHERE event_uid = ? AND day_type = ? AND is_locked = 0",
-            (event_uid, day_type),
+            (event_uid, current_day_type),
         )
 
         # Fetch submissions specifically for this day_type
         submissions = db.execute(
             "SELECT * FROM submissions WHERE event_uid = ? AND day_type = ? ORDER BY resources DESC, timestamp ASC",
-            (event_uid, day_type),
+            (event_uid, current_day_type),
         ).fetchall()
 
         # Fetch locked assignments specifically for this day_type
         locked_assignments_raw = db.execute(
             "SELECT * FROM assignments WHERE event_uid = ? AND day_type = ? AND is_locked = 1",
-            (event_uid, day_type),
+            (event_uid, current_day_type),
         ).fetchall()
 
         taken_slots = {a["slot_index"] for a in locked_assignments_raw}
@@ -65,7 +66,7 @@ def run_distribution_algorithm(event_uid, day_type=None):
         for pid in assigned_player_ids:
             db.execute(
                 "UPDATE submissions SET status = 'Locked' WHERE event_uid = ? AND day_type = ? AND player_id = ?",
-                (event_uid, day_type, pid),
+                (event_uid, current_day_type, pid),
             )
 
         # 2. Calculate Demand for each slot (static demand based on all submissions for this day)
@@ -127,7 +128,13 @@ def run_distribution_algorithm(event_uid, day_type=None):
                     INSERT INTO assignments (event_uid, day_type, slot_index, player_id, is_locked)
                     VALUES (?, ?, ?, ?, ?)
                 """,
-                    (event_uid, day_type, best_slot, submission["player_id"], 0),
+                    (
+                        event_uid,
+                        current_day_type,
+                        best_slot,
+                        submission["player_id"],
+                        0,
+                    ),
                 )
 
                 # Update submission status

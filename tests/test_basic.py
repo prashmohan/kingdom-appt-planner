@@ -1,11 +1,13 @@
 import os
 import shutil
-import tempfile
 import sqlite3
-from unittest.mock import patch, MagicMock
-from flask import Flask, g
+import tempfile
+from unittest.mock import MagicMock, patch
+
 import pytest
-from app import generate_slot_labels, database
+from flask import Flask, g
+
+from app import database, generate_slot_labels
 
 
 def test_generate_slot_labels():
@@ -62,26 +64,26 @@ def test_create_app_creates_log_dir():
         # We can't easily call create_app() due to its global nature and side effects,
         # but we can test the specific logic by calling a helper or mocking what it uses.
         # Actually, let's just mock os.makedirs and os.path.exists within the context of create_app
-        with patch("os.path.exists") as mock_exists:
-            with patch("os.makedirs") as mock_mkdir:
-                # Setup exists to return False for the logs dir
-                def exists_side_effect(path):
-                    if "logs" in path:
-                        return False
-                    return True
+        with (
+            patch("os.path.exists") as mock_exists,
+            patch("os.makedirs") as mock_mkdir,
+        ):
+            # Setup exists to return False for the logs dir
+            def exists_side_effect(path):
+                return "logs" not in path
 
-                mock_exists.side_effect = exists_side_effect
+            mock_exists.side_effect = exists_side_effect
 
-                from app import create_app
+            from app import create_app
 
-                with patch("app.database.init_app"):
-                    create_app()
+            with patch("app.database.init_app"):
+                create_app()
 
-                # Check if it tried to create a logs directory
-                made_logs = any(
-                    "logs" in str(args[0]) for args, kwargs in mock_mkdir.call_args_list
-                )
-                assert made_logs
+            # Check if it tried to create a logs directory
+            made_logs = any(
+                "logs" in str(args[0]) for args, kwargs in mock_mkdir.call_args_list
+            )
+            assert made_logs
 
 
 def test_database_migrations():
