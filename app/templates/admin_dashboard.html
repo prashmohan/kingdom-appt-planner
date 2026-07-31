@@ -89,12 +89,6 @@
                 <div>
                     <h2 class="text-xl font-bold mb-2 text-gray-100">Global Actions</h2>
                     <div class="flex flex-wrap gap-2 items-center">
-                        <form action="{{ url_for('refresh_players', event_uid=event.uid) }}" method="POST" class="inline">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <input type="hidden" name="secret" value="{{ secret }}">
-                            <button type="submit" class="bg-kvk-blue text-white font-bold py-2 px-4 rounded-md hover:bg-blue-600 transition duration-300">Refresh Player Data</button>
-                        </form>
-
                         <a href="{{ url_for('export_submissions', event_uid=event.uid, secret=secret) }}" 
                            class="bg-kvk-gray-700 text-white font-bold py-2 px-4 rounded-md hover:bg-kvk-gray-600 transition duration-300 flex items-center gap-1 border border-kvk-gray-600">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-kvk-gold" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -1,10 +1,8 @@
 import uuid
 import json
 import sqlite3
-import hashlib
 import time
 import os
-import requests
 import mimetypes
 import markdown
 import csv
@@ -18,7 +16,6 @@ from flask import (
     request,
     redirect,
     url_for,
-    jsonify,
     Response,
     send_from_directory,
     flash,  # noqa: F401
@@ -54,33 +51,6 @@ def generate_slot_labels(slot_count=49):
             f"{start_hour:02d}:{start_min:02d}-\u200b{end_hour:02d}:{end_min:02d}"
         )
     return labels
-
-
-def fetch_player_info(fid):
-    # Generate Signature based on analyzed code
-    t = int(time.time() * 1000)
-    secret = Config.EXTERNAL_API_SECRET
-    sign_str = f"fid={fid}&time={t}{secret}"
-    sign = hashlib.md5(sign_str.encode()).hexdigest()
-
-    try:
-        resp = requests.post(
-            "https://kingshot-giftcode.centurygame.com/api/player",
-            data={"fid": fid, "time": t, "sign": sign},
-            timeout=5,
-        )
-        data = resp.json()
-
-        # The API returns success when "code" is 0
-        if data.get("code") == 0:
-            inner_data = data.get("data", {})
-            return {
-                "nickname": inner_data.get("nickname"),
-                "avatar_url": inner_data.get("avatar_image"),
-            }
-    except Exception:
-        pass
-    return None
 
 
 def create_app():
@@ -174,54 +144,6 @@ def create_app():
             "favicon.svg",
             mimetype="image/svg+xml",
         )
-
-    @app.route("/api/proxy/player", methods=["POST"])
-    def proxy_player():
-        fid = request.json.get("fid")
-        if not fid:
-            return jsonify({"error": "Missing fid"}), 400
-
-        player_info = fetch_player_info(fid)
-
-        if player_info:
-            return jsonify(player_info)
-        else:
-            return jsonify({"error": "Player not found or API error"}), 404
-
-    @app.route("/admin/<event_uid>/refresh_players", methods=["POST"])
-    def refresh_players(event_uid):
-        secret = request.form.get("secret")
-        db = database.get_db()
-        db.row_factory = sqlite3.Row
-        event = db.execute(
-            "SELECT * FROM events WHERE uid = ?", (event_uid,)
-        ).fetchone()
-        if event is None:
-            return "Event not found", 404
-        if event["admin_secret"] != secret:
-            return "Forbidden", 403
-
-        app.audit_logger.info(
-            f"ADMIN: Refresh player data triggered for event {event_uid}"
-        )
-
-        # Get all unique player IDs for this event
-        players = db.execute(
-            "SELECT DISTINCT player_id FROM submissions WHERE event_uid = ?",
-            (event_uid,),
-        ).fetchall()
-
-        for p in players:
-            fid = p["player_id"]
-            info = fetch_player_info(fid)
-            if info:
-                db.execute(
-                    "UPDATE submissions SET player_name = ?, avatar_url = ? WHERE event_uid = ? AND player_id = ?",
-                    (info["nickname"], info["avatar_url"], event_uid, fid),
-                )
-
-        db.commit()
-        return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
 
     @app.route("/create", methods=["POST"])
     def create_event():
@@ -359,15 +281,16 @@ def create_app():
     @app.route("/event/<event_uid>/submit", methods=["POST"])
     def submit(event_uid):
         db = database.get_db()
-        player_id = request.form["player_id"].strip().lower()
+        player_id = request.form.get("player_id", "").strip()
         player_name = request.form.get("player_name", "").strip()
+        alliance_name = request.form.get("alliance_name", "").strip()
 
         # Server-side validation
         if not player_id.isdigit():
             return "Invalid Player ID: Must be numeric", 400
 
         if not player_name:
-            return "Invalid Player ID: Could not resolve to a name", 400
+            return "Invalid Player Name: Cannot be empty", 400
 
         app.audit_logger.info(
             f"SUBMISSION: Player {player_name} ({player_id}) submitted resources for event {event_uid}"
@@ -406,9 +329,7 @@ def create_app():
         )
 
         # Then, insert the new submissions from the form.
-        player_name = request.form["player_name"]
-        alliance_name = request.form["alliance_name"]
-        avatar_url = request.form.get("avatar_url")
+        avatar_url = request.form.get("avatar_url") or None
 
         # --- Process Construction Submission ---
         construction_speedups = int(request.form.get("speedups-construction") or 0)
@@ -1010,18 +931,68 @@ def create_app():
                         url_for("admin_dashboard", event_uid=event_uid, secret=secret)
                     )
 
+            # Validate resources can be parsed to float, convert and save as float
+            try:
+                item["resources"] = float(item["resources"])
+            except (ValueError, TypeError):
+                flash("Must be a number.", "error")
+                return redirect(
+                    url_for("admin_dashboard", event_uid=event_uid, secret=secret)
+                )
+
+            # Validate and normalize feasible_slots to JSON string of list of integers
+            fs_val = item["feasible_slots"]
+            if isinstance(fs_val, str):
+                try:
+                    fs_val = json.loads(fs_val)
+                except Exception:
+                    flash("feasible_slots must be a list.", "error")
+                    return redirect(
+                        url_for("admin_dashboard", event_uid=event_uid, secret=secret)
+                    )
+            if not isinstance(fs_val, list):
+                flash("feasible_slots must be a list.", "error")
+                return redirect(
+                    url_for("admin_dashboard", event_uid=event_uid, secret=secret)
+                )
+            try:
+                fs_val = [int(x) for x in fs_val]
+            except (ValueError, TypeError):
+                flash("feasible_slots must be a list of integers.", "error")
+                return redirect(
+                    url_for("admin_dashboard", event_uid=event_uid, secret=secret)
+                )
+            item["feasible_slots"] = json.dumps(fs_val)
+
+            # Validate and normalize raw_data to JSON string of a dictionary/object
+            rd_val = item["raw_data"]
+            if isinstance(rd_val, str):
+                try:
+                    rd_val = json.loads(rd_val)
+                except Exception:
+                    flash("raw_data must be a JSON object.", "error")
+                    return redirect(
+                        url_for("admin_dashboard", event_uid=event_uid, secret=secret)
+                    )
+            if not isinstance(rd_val, dict):
+                flash("raw_data must be a JSON object.", "error")
+                return redirect(
+                    url_for("admin_dashboard", event_uid=event_uid, secret=secret)
+                )
+            item["raw_data"] = json.dumps(rd_val)
+
         # Process upserts inside transaction
         unique_players = list(set(item["player_id"] for item in data))
 
-        # Delete existing matching records
-        for player_id in unique_players:
+        # Delete existing matching records (for the specific player_id and day_type)
+        for item in data:
             db.execute(
-                "DELETE FROM submissions WHERE event_uid = ? AND player_id = ?",
-                (event_uid, player_id),
+                "DELETE FROM submissions WHERE event_uid = ? AND player_id = ? AND day_type = ?",
+                (event_uid, item["player_id"], item["day_type"]),
             )
             db.execute(
-                "DELETE FROM assignments WHERE event_uid = ? AND player_id = ?",
-                (event_uid, player_id),
+                "DELETE FROM assignments WHERE event_uid = ? AND player_id = ? AND day_type = ?",
+                (event_uid, item["player_id"], item["day_type"]),
             )
 
         # Insert the imported submissions

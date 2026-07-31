@@ -1,7 +1,7 @@
 import sqlite3
 import os
 import io
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from app import database
 
 
@@ -68,87 +68,96 @@ def test_player_form_page(client, app):
     assert client.get("/event/nonexistent").status_code == 404
 
 
-def test_player_info_proxy(client):
-    # 1. Success
-    with patch("requests.post") as mock_post:
-        mock_resp = MagicMock()
-        mock_resp.json.return_value = {
-            "code": 0,
-            "data": {"nickname": "Mock", "avatar_image": "img.jpg"},
-        }
-        mock_post.return_value = mock_resp
-        response = client.post("/api/proxy/player", json={"fid": "123"})
-        assert response.status_code == 200
-        data = response.get_json()
-        assert data["nickname"] == "Mock"
-
-    # 2. Missing FID
-    response = client.post("/api/proxy/player", json={})
-    assert response.status_code == 400
-
-    # 3. Not found
-    with patch("requests.post") as mock_post:
-        mock_resp = MagicMock()
-        mock_resp.json.return_value = {"code": 1, "msg": "Fail"}
-        mock_post.return_value = mock_resp
-        response = client.post("/api/proxy/player", json={"fid": "123"})
-        assert response.status_code == 404
-
-    # 4. Exception
-    with patch("requests.post", side_effect=Exception("Error")):
-        response = client.post("/api/proxy/player", json={"fid": "123"})
-        assert response.status_code == 404
+def test_proxy_player_deleted(client):
+    response = client.post("/api/proxy/player", json={"fid": "123"})
+    assert response.status_code == 404
 
 
-def test_refresh_players(client, app):
-    # Setup event and submission
-    client.post("/create", data={"event_name": "Refresh Test"})
+def test_refresh_players_deleted(client, app):
     with app.app_context():
         db = database.get_db()
-        db.row_factory = sqlite3.Row
-        event = db.execute("SELECT uid, admin_secret FROM events").fetchone()
-        uid, secret = event["uid"], event["admin_secret"]
+        db.execute(
+            "INSERT INTO events (uid, name, active_days, admin_secret) VALUES (?, ?, ?, ?)",
+            ("ref123", "Refresh Test", '{"construction":true}', "secret"),
+        )
+        db.commit()
 
-    client.post(
-        f"/event/{uid}/submit",
+    response = client.post("/admin/ref123/refresh_players", data={"secret": "secret"})
+    assert response.status_code == 404
+
+
+def test_submit_valid(client, app):
+    with app.app_context():
+        db = database.get_db()
+        db.execute(
+            "INSERT INTO events (uid, name, active_days, admin_secret) VALUES (?, ?, ?, ?)",
+            ("sub123", "Submit Test", '{"construction":true}', "secret"),
+        )
+        db.commit()
+
+    response = client.post(
+        "/event/sub123/submit",
         data={
-            "player_name": "Old Name",
-            "player_id": "123",
-            "alliance_name": "A",
-            "speedups-construction": "10",
+            "player_id": "123456",
+            "player_name": "TestPlayer",
+            "alliance_name": "TEST",
+            "speedups-construction": "60",
             "slots-construction": "[0]",
         },
     )
+    assert response.status_code == 302
+    assert "/submission-success" in response.headers["Location"]
 
-    # Mock API for refresh
-    with patch("requests.post") as mock_post:
-        mock_resp = MagicMock()
-        mock_resp.json.return_value = {
-            "code": 0,
-            "data": {"nickname": "New Name", "avatar_image": "new.jpg"},
-        }
-        mock_post.return_value = mock_resp
+    with app.app_context():
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        row = db.execute(
+            "SELECT player_name, avatar_url FROM submissions WHERE event_uid = 'sub123' AND player_id = '123456'"
+        ).fetchone()
+        assert row["player_name"] == "TestPlayer"
+        assert row["avatar_url"] is None
 
-        # Unauthorized
-        resp = client.post(f"/admin/{uid}/refresh_players", data={"secret": "wrong"})
-        assert resp.status_code == 403
 
-        # Success
-        resp = client.post(
-            f"/admin/{uid}/refresh_players",
-            data={"secret": secret},
-            follow_redirects=True,
+def test_submit_invalid_player_id(client, app):
+    with app.app_context():
+        db = database.get_db()
+        db.execute(
+            "INSERT INTO events (uid, name, active_days, admin_secret) VALUES (?, ?, ?, ?)",
+            ("sub456", "Submit Test", '{"construction":true}', "secret"),
         )
-        assert resp.status_code == 200
+        db.commit()
 
-        with app.app_context():
-            db = database.get_db()
-            db.row_factory = sqlite3.Row
-            sub = db.execute(
-                "SELECT player_name, avatar_url FROM submissions WHERE player_id = '123'"
-            ).fetchone()
-            assert sub["player_name"] == "New Name"
-            assert sub["avatar_url"] == "new.jpg"
+    response = client.post(
+        "/event/sub456/submit",
+        data={
+            "player_id": "invalid_abc",
+            "player_name": "TestPlayer",
+            "alliance_name": "TEST",
+        },
+    )
+    assert response.status_code == 400
+    assert b"Must be numeric" in response.data
+
+
+def test_submit_missing_player_name(client, app):
+    with app.app_context():
+        db = database.get_db()
+        db.execute(
+            "INSERT INTO events (uid, name, active_days, admin_secret) VALUES (?, ?, ?, ?)",
+            ("sub789", "Submit Test", '{"construction":true}', "secret"),
+        )
+        db.commit()
+
+    response = client.post(
+        "/event/sub789/submit",
+        data={
+            "player_id": "123456",
+            "player_name": "  ",
+            "alliance_name": "TEST",
+        },
+    )
+    assert response.status_code == 400
+    assert b"Cannot be empty" in response.data
 
 
 def test_full_flow(client, app):
@@ -365,7 +374,7 @@ def test_submit_invalid_id(client, app):
         },
     )
     assert resp.status_code == 400
-    assert b"name" in resp.data
+    assert b"Cannot be empty" in resp.data
 
 
 def test_submit_with_backpack(client, app):
@@ -1576,3 +1585,198 @@ def test_admin_dashboard_template_integration(client, app):
     assert b"Invalid file format" in resp.data
     assert b"&times;" in resp.data
     assert b"this.parentElement.remove()" in resp.data
+
+
+def test_import_submissions_edge_cases(client, app):
+    import json
+    import io
+
+    # 1. Setup: Create an event
+    client.post("/create", data={"event_name": "Edge Cases Test"})
+    with app.app_context():
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        event = db.execute("SELECT uid, admin_secret FROM events").fetchone()
+        event_uid = event["uid"]
+        secret = event["admin_secret"]
+
+        # Insert two submissions for the same player across different days
+        db.execute(
+            "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots, status) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            (
+                f"{event_uid}_p1_construction",
+                event_uid,
+                "construction",
+                "Player One",
+                "p1",
+                "Alliance",
+                10.0,
+                "{}",
+                "[]",
+                "Pending",
+            ),
+        )
+        db.execute(
+            "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots, status) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            (
+                f"{event_uid}_p1_training",
+                event_uid,
+                "training",
+                "Player One",
+                "p1",
+                "Alliance",
+                20.0,
+                "{}",
+                "[]",
+                "Pending",
+            ),
+        )
+        # Add matching assignments for both
+        db.execute(
+            "INSERT INTO assignments (event_uid, day_type, slot_index, player_id, is_locked) VALUES (?, ?, ?, ?, ?)",
+            (event_uid, "construction", 0, "p1", 0),
+        )
+        db.execute(
+            "INSERT INTO assignments (event_uid, day_type, slot_index, player_id, is_locked) VALUES (?, ?, ?, ?, ?)",
+            (event_uid, "training", 1, "p1", 0),
+        )
+        db.commit()
+
+    # Now, import a file that only updates the "construction" day submission/assignment for player "p1"
+    import_data = json.dumps(
+        [
+            {
+                "day_type": "construction",
+                "player_name": "Player One Updated",
+                "player_id": "p1",
+                "resources": "15.5",  # tests resources string parsing to float
+                "raw_data": {"speedups": 5},
+                "feasible_slots": [1, 2],
+            }
+        ]
+    )
+
+    resp = client.post(
+        f"/admin/{event_uid}/import_submissions",
+        data={
+            "secret": secret,
+            "submissions_file": (io.BytesIO(import_data.encode()), "subs.json"),
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert b"Successfully imported 1 submissions" in resp.data
+
+    # Verify that ONLY the "construction" submission and assignment were modified/deleted and replaced
+    # and the "training" submission and assignment were NOT deleted/lost!
+    with app.app_context():
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        # Check construction submission (should be updated)
+        sub_const = db.execute(
+            "SELECT * FROM submissions WHERE event_uid = ? AND player_id = 'p1' AND day_type = 'construction'",
+            (event_uid,),
+        ).fetchone()
+        assert sub_const is not None
+        assert sub_const["player_name"] == "Player One Updated"
+        assert sub_const["resources"] == 15.5  # Verify converted to float
+        assert json.loads(sub_const["feasible_slots"]) == [
+            1,
+            2,
+        ]  # Verify list of integers
+        assert json.loads(sub_const["raw_data"]) == {"speedups": 5}  # Verify dict
+
+        # Check construction assignment (should have been deleted because of deletion logic, so it doesn't exist anymore)
+        assign_const = db.execute(
+            "SELECT * FROM assignments WHERE event_uid = ? AND player_id = 'p1' AND day_type = 'construction'",
+            (event_uid,),
+        ).fetchone()
+        assert assign_const is None
+
+        # Check training submission (should STILL exist - no data loss!)
+        sub_train = db.execute(
+            "SELECT * FROM submissions WHERE event_uid = ? AND player_id = 'p1' AND day_type = 'training'",
+            (event_uid,),
+        ).fetchone()
+        assert sub_train is not None
+        assert sub_train["player_name"] == "Player One"
+        assert sub_train["resources"] == 20.0
+
+        # Check training assignment (should STILL exist - no data loss!)
+        assign_train = db.execute(
+            "SELECT * FROM assignments WHERE event_uid = ? AND player_id = 'p1' AND day_type = 'training'",
+            (event_uid,),
+        ).fetchone()
+        assert assign_train is not None
+
+    # Test Non-numeric resources validation error
+    bad_resources_data = json.dumps(
+        [
+            {
+                "day_type": "construction",
+                "player_name": "Player One",
+                "player_id": "p1",
+                "resources": "not-a-number",
+                "raw_data": {},
+                "feasible_slots": [1, 2],
+            }
+        ]
+    )
+    resp = client.post(
+        f"/admin/{event_uid}/import_submissions",
+        data={
+            "secret": secret,
+            "submissions_file": (io.BytesIO(bad_resources_data.encode()), "subs.json"),
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert b"Must be a number." in resp.data
+
+    # Test Invalid feasible_slots validation error (e.g. not a list)
+    bad_fs_data = json.dumps(
+        [
+            {
+                "day_type": "construction",
+                "player_name": "Player One",
+                "player_id": "p1",
+                "resources": 10.0,
+                "raw_data": {},
+                "feasible_slots": "not-a-list",
+            }
+        ]
+    )
+    resp = client.post(
+        f"/admin/{event_uid}/import_submissions",
+        data={
+            "secret": secret,
+            "submissions_file": (io.BytesIO(bad_fs_data.encode()), "subs.json"),
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert b"feasible_slots must be a list" in resp.data
+
+    # Test Invalid raw_data validation error (e.g. not a JSON object)
+    bad_rd_data = json.dumps(
+        [
+            {
+                "day_type": "construction",
+                "player_name": "Player One",
+                "player_id": "p1",
+                "resources": 10.0,
+                "raw_data": "not-an-object",
+                "feasible_slots": [1, 2],
+            }
+        ]
+    )
+    resp = client.post(
+        f"/admin/{event_uid}/import_submissions",
+        data={
+            "secret": secret,
+            "submissions_file": (io.BytesIO(bad_rd_data.encode()), "subs.json"),
+        },
+        follow_redirects=True,
+    )
+    assert resp.status_code == 200
+    assert b"raw_data must be a JSON object" in resp.data
