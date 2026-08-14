@@ -1783,3 +1783,157 @@ def test_import_submissions_edge_cases(client, app):
     )
     assert resp.status_code == 200
     assert b"raw_data must be a JSON object" in resp.data
+
+
+def test_player_form_chronological_ordering_day_2(client):
+    # Create event with research_day = 2
+    resp = client.post(
+        "/create",
+        data={
+            "event_name": "Day 2 Event",
+            "research_day": "2",
+            "slot_count": "49",
+        },
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    event_uid = resp.location.split("/success/")[1].split("?")[0]
+
+    # Fetch player form
+    form_resp = client.get(f"/event/{event_uid}")
+    assert form_resp.status_code == 200
+    html = form_resp.get_data(as_text=True)
+
+    # Verify order in HTML: Day 1: Construction -> Day 2: Research -> Day 4: Troop Training
+    pos_const = html.find("Day 1: Construction")
+    pos_research = html.find("Day 2: Research")
+    pos_training = html.find("Day 4: Troop Training")
+
+    assert pos_const != -1
+    assert pos_research != -1
+    assert pos_training != -1
+    assert pos_const < pos_research < pos_training
+
+
+def test_player_form_chronological_ordering_day_5(client):
+    # Create event with research_day = 5
+    resp = client.post(
+        "/create",
+        data={
+            "event_name": "Day 5 Event",
+            "research_day": "5",
+            "slot_count": "49",
+        },
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    event_uid = resp.location.split("/success/")[1].split("?")[0]
+
+    # Fetch player form
+    form_resp = client.get(f"/event/{event_uid}")
+    assert form_resp.status_code == 200
+    html = form_resp.get_data(as_text=True)
+
+    # Verify order in HTML: Day 1: Construction -> Day 4: Troop Training -> Day 5: Research
+    pos_const = html.find("Day 1: Construction")
+    pos_training = html.find("Day 4: Troop Training")
+    pos_research = html.find("Day 5: Research")
+
+    assert pos_const != -1
+    assert pos_training != -1
+    assert pos_research != -1
+    assert pos_const < pos_training < pos_research
+
+
+def test_admin_dashboard_chronological_ordering(client):
+    # Create event with research_day = 2
+    resp = client.post(
+        "/create",
+        data={
+            "event_name": "Day 2 Admin Event",
+            "research_day": "2",
+            "slot_count": "49",
+        },
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    event_uid = resp.location.split("/success/")[1].split("?")[0]
+    secret = resp.location.split("secret=")[1]
+
+    # Fetch admin dashboard
+    admin_resp = client.get(f"/admin/{event_uid}?secret={secret}")
+    assert admin_resp.status_code == 200
+    html = admin_resp.get_data(as_text=True)
+
+    # Verify tab button order in nav
+    pos_tab_const = html.find('data-target="tab-construction"')
+    pos_tab_research = html.find('data-target="tab-research"')
+    pos_tab_training = html.find('data-target="tab-training"')
+
+    assert pos_tab_const != -1
+    assert pos_tab_research != -1
+    assert pos_tab_training != -1
+    assert pos_tab_const < pos_tab_research < pos_tab_training
+
+    # Create event with research_day = 5
+    resp5 = client.post(
+        "/create",
+        data={
+            "event_name": "Day 5 Admin Event",
+            "research_day": "5",
+            "slot_count": "49",
+        },
+        follow_redirects=False,
+    )
+    assert resp5.status_code == 302
+    event_uid5 = resp5.location.split("/success/")[1].split("?")[0]
+    secret5 = resp5.location.split("secret=")[1]
+
+    # Fetch admin dashboard Day 5
+    admin_resp5 = client.get(f"/admin/{event_uid5}?secret={secret5}")
+    assert admin_resp5.status_code == 200
+    html5 = admin_resp5.get_data(as_text=True)
+
+    pos_tab_const5 = html5.find('data-target="tab-construction"')
+    pos_tab_training5 = html5.find('data-target="tab-training"')
+    pos_tab_research5 = html5.find('data-target="tab-research"')
+
+    assert pos_tab_const5 != -1
+    assert pos_tab_training5 != -1
+    assert pos_tab_research5 != -1
+    assert pos_tab_const5 < pos_tab_training5 < pos_tab_research5
+
+
+def test_locked_and_public_schedule_chronological_ordering(client):
+    # Create event with research_day = 2
+    resp = client.post(
+        "/create",
+        data={
+            "event_name": "Day 2 Schedule Event",
+            "research_day": "2",
+            "slot_count": "49",
+        },
+        follow_redirects=False,
+    )
+    event_uid = resp.location.split("/success/")[1].split("?")[0]
+
+    # Finalized schedule
+    fin_resp = client.get(f"/event/{event_uid}/finalized")
+    assert fin_resp.status_code == 200
+    fin_html = fin_resp.get_data(as_text=True)
+    pos_fin_const = fin_html.find('data-target="tab-construction"')
+    pos_fin_research = fin_html.find('data-target="tab-research"')
+    pos_fin_training = fin_html.find('data-target="tab-training"')
+    assert pos_fin_const < pos_fin_research < pos_fin_training
+
+    # Public schedule
+    pub_resp = client.get(f"/event/{event_uid}/schedule")
+    assert pub_resp.status_code == 200
+    pub_html = pub_resp.get_data(as_text=True)
+    pos_pub_const = pub_html.find("construction")
+    pos_pub_research = pub_html.find("Research (Day 2)")
+    pos_pub_training = pub_html.find("training")
+    assert pos_pub_const != -1
+    assert pos_pub_research != -1
+    assert pos_pub_training != -1
+    assert pos_pub_const < pos_pub_research < pos_pub_training
