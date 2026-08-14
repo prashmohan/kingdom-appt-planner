@@ -26,7 +26,7 @@ from werkzeug.utils import secure_filename
 from config import Config
 
 from . import database, logic
-from .logic import format_minutes
+from .logic import format_minutes, get_ordered_active_days
 
 # Ensure .js files are served with the correct MIME type
 mimetypes.add_type("application/javascript", ".js")
@@ -211,11 +211,7 @@ def create_app():
             return "Event not found", 404
 
         active_days_config = json.loads(event["active_days"])
-        active_days = [
-            day
-            for day in ["construction", "training", "research"]
-            if active_days_config.get(day)
-        ]
+        active_days = get_ordered_active_days(active_days_config)
 
         # Create a dictionary from the database row for the template
         event_dict = {
@@ -272,14 +268,18 @@ def create_app():
         if event is None:
             return "Event not found", 404
 
+        active_days_config = json.loads(event["active_days"])
+        active_days = get_ordered_active_days(active_days_config)
         # Create a dictionary from the database row
         event_dict = {
             "uid": event["uid"],
             "name": event["name"],
-            "active_days": json.loads(event["active_days"]),
+            "active_days": active_days_config,
         }
 
-        return render_template("player_form.html", event=event_dict)
+        return render_template(
+            "player_form.html", event=event_dict, active_days=active_days
+        )
 
     @app.route("/event/<event_uid>/submit", methods=["POST"])
     def submit(event_uid):
@@ -446,11 +446,7 @@ def create_app():
             return "Forbidden", 403
 
         active_days_config = json.loads(event["active_days"])
-        active_days = [
-            day
-            for day in ["construction", "training", "research"]
-            if active_days_config.get(day)
-        ]
+        active_days = get_ordered_active_days(active_days_config)
 
         # Create a dictionary from the database row for the template
         event_dict = {
@@ -638,11 +634,7 @@ def create_app():
             return "Event not found", 404
 
         active_days_config = json.loads(event["active_days"])
-        active_days = [
-            day
-            for day in ["construction", "training", "research"]
-            if active_days_config.get(day)
-        ]
+        active_days = get_ordered_active_days(active_days_config)
 
         # Create a dictionary from the database row for the template
         event_dict = {
