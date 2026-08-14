@@ -19,14 +19,10 @@ When processing each submission `sub` in `submissions_by_day[day]`:
 
 ```python
 feasible_slots = json.loads(sub["feasible_slots"])
-requested_labels = [
-    slot_labels[i] for i in feasible_slots if 0 <= i < slot_count
-]
+requested_labels = [slot_labels[i] for i in feasible_slots if 0 <= i < slot_count]
 sub["requested_slots_labels"] = requested_labels
 sub["requested_slots_text"] = (
-    ", ".join(requested_labels)
-    if requested_labels
-    else "No slots selected"
+    ", ".join(requested_labels) if requested_labels else "No slots selected"
 )
 ```
 

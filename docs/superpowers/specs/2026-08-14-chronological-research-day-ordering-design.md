@@ -25,7 +25,11 @@ def get_ordered_active_days(active_days_config):
     Supports active_days_config as a dict or legacy list.
     """
     if isinstance(active_days_config, list):
-        return [d for d in active_days_config if d in ("construction", "training", "research")]
+        return [
+            d
+            for d in active_days_config
+            if d in ("construction", "training", "research")
+        ]
     if not isinstance(active_days_config, dict):
         return []
 
@@ -41,7 +45,8 @@ def get_ordered_active_days(active_days_config):
     }
 
     active = [
-        day for day in ["construction", "training", "research"]
+        day
+        for day in ["construction", "training", "research"]
         if active_days_config.get(day)
     ]
     return sorted(active, key=lambda d: day_numbers.get(d, 99))

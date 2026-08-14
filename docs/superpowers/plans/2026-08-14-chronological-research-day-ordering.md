@@ -191,7 +191,11 @@ git commit -m "feat: add get_ordered_active_days helper with unit tests"
 
 1. Import `get_ordered_active_days` in `app/__init__.py`:
    ```python
-   from .logic import generate_slot_labels, get_ordered_active_days, run_distribution_algorithm
+   from .logic import (
+       generate_slot_labels,
+       get_ordered_active_days,
+       run_distribution_algorithm,
+   )
    ```
 
 2. Update `locked_appointments` route in `app/__init__.py`:
@@ -221,9 +225,7 @@ git commit -m "feat: add get_ordered_active_days helper with unit tests"
        "active_days": active_days_config,
    }
 
-   return render_template(
-       "player_form.html", event=event_dict, active_days=active_days
-   )
+   return render_template("player_form.html", event=event_dict, active_days=active_days)
    ```
 
 4. Update `admin_dashboard` route in `app/__init__.py`:

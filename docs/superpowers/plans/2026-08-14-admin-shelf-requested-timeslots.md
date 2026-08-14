@@ -28,43 +28,39 @@
 
 In `app/__init__.py`, update the heatmap & requested slots processing loop:
 ```python
-        for day in active_days:
-            # Heatmap & Requested Slots Text
-            for sub in submissions_by_day[day]:
-                if not sub["feasible_slots"]:
-                    sub["requested_slots_text"] = "No slots selected"
-                    sub["requested_slots_labels"] = []
-                    continue
-                try:
-                    feasible_slots = json.loads(sub["feasible_slots"])
-                    # Create human readable labels for hover text and shelf badges
-                    requested_labels = [
-                        slot_labels[i]
-                        for i in feasible_slots
-                        if 0 <= i < slot_count
-                    ]
-                    sub["requested_slots_labels"] = requested_labels
-                    sub["requested_slots_text"] = (
-                        ", ".join(requested_labels)
-                        if requested_labels
-                        else "No slots selected"
+for day in active_days:
+    # Heatmap & Requested Slots Text
+    for sub in submissions_by_day[day]:
+        if not sub["feasible_slots"]:
+            sub["requested_slots_text"] = "No slots selected"
+            sub["requested_slots_labels"] = []
+            continue
+        try:
+            feasible_slots = json.loads(sub["feasible_slots"])
+            # Create human readable labels for hover text and shelf badges
+            requested_labels = [
+                slot_labels[i] for i in feasible_slots if 0 <= i < slot_count
+            ]
+            sub["requested_slots_labels"] = requested_labels
+            sub["requested_slots_text"] = (
+                ", ".join(requested_labels) if requested_labels else "No slots selected"
+            )
+
+            for slot_index in feasible_slots:
+                if 0 <= slot_index < slot_count:
+                    slot_density[day][slot_index] += 1
+                    slot_players[day][slot_index].append(
+                        {
+                            "player_name": sub["player_name"],
+                            "alliance_name": sub["alliance_name"],
+                            "resources": sub["resources"],
+                            "submission_id": sub["id"],
+                        }
                     )
 
-                    for slot_index in feasible_slots:
-                        if 0 <= slot_index < slot_count:
-                            slot_density[day][slot_index] += 1
-                            slot_players[day][slot_index].append(
-                                {
-                                    "player_name": sub["player_name"],
-                                    "alliance_name": sub["alliance_name"],
-                                    "resources": sub["resources"],
-                                    "submission_id": sub["id"],
-                                }
-                            )
-
-                except (json.JSONDecodeError, TypeError, KeyError):
-                    sub["requested_slots_text"] = "Error parsing slots"
-                    sub["requested_slots_labels"] = []
+        except (json.JSONDecodeError, TypeError, KeyError):
+            sub["requested_slots_text"] = "Error parsing slots"
+            sub["requested_slots_labels"] = []
 ```
 
 - [ ] **Step 2: Update `admin_dashboard.html` to render requested timeslots badges in `shelf-{{ sub.id }}`**
