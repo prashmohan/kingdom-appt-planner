@@ -106,123 +106,121 @@
             </div>
 
             <div class="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {% if event.active_days.construction %}
-                <div class="p-4 rounded-lg bg-kvk-gray-900 border border-kvk-gray-700">
-                    <h3 class="font-bold text-xl mb-2 text-amber-400">Day 1: Construction</h3>
-                    <p class="text-xs text-gray-400 mb-4 italic">Enter resources and select <strong>all feasible</strong> time slots. More slots give the system more flexibility to match you.</p>
-                    <div class="space-y-4 mb-4">
-                        <div>
+                {% for day in active_days %}
+                    {% if day == 'construction' %}
+                    <div class="p-4 rounded-lg bg-kvk-gray-900 border border-kvk-gray-700">
+                        <h3 class="font-bold text-xl mb-2 text-amber-400">Day 1: Construction</h3>
+                        <p class="text-xs text-gray-400 mb-4 italic">Enter resources and select <strong>all feasible</strong> time slots. More slots give the system more flexibility to match you.</p>
+                        <div class="space-y-4 mb-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Speedups</label>
+                                <div class="flex gap-2 mb-2">
+                                    <button type="button" data-unit="days" data-section="construction" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gray-700 bg-kvk-gray-700 text-gray-400 hover:bg-kvk-gray-600 transition">Days</button>
+                                    <button type="button" data-unit="hours" data-section="construction" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gray-700 bg-kvk-gray-700 text-gray-400 hover:bg-kvk-gray-600 transition">Hours</button>
+                                    <button type="button" data-unit="minutes" data-section="construction" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gold bg-kvk-gold text-kvk-gray-900 font-bold transition">Minutes</button>
+                                </div>
+                                <div id="input-group-construction" class="grid grid-cols-3 gap-2">
+                                    <div class="hidden" id="days-container-construction">
+                                        <label class="block text-[10px] uppercase text-gray-500 mb-1">Days</label>
+                                        <input type="number" id="days-construction" min="0" placeholder="0" class="dynamic-input w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200 text-sm">
+                                    </div>
+                                    <div class="hidden" id="hours-container-construction">
+                                        <label class="block text-[10px] uppercase text-gray-500 mb-1">Hours</label>
+                                        <input type="number" id="hours-construction" min="0" max="23" placeholder="0" class="dynamic-input w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200 text-sm">
+                                    </div>
+                                    <div id="minutes-container-construction">
+                                        <label class="block text-[10px] uppercase text-gray-500 mb-1">Minutes</label>
+                                        <input type="number" id="mins-construction" min="0" placeholder="0" class="dynamic-input w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200 text-sm">
+                                    </div>
+                                </div>
+                                <input type="hidden" name="speedups-construction" id="speedups-construction" value="0">
+                            </div>
+                            <div>
+                                <label for="truegold" class="block text-sm font-medium text-gray-300">TrueGold</label>
+                                <input type="number" name="truegold" id="truegold" min="0" class="mt-1 block w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200">
+                            </div>
+                            <div>
+                                <label for="tempered_truegold" class="block text-sm font-medium text-gray-300">Tempered TrueGold</label>
+                                <input type="number" name="tempered_truegold" id="tempered_truegold" min="0" class="mt-1 block w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200">
+                            </div>
+                        </div>
+                        <div id="slot-grid-construction" class="grid grid-cols-7 gap-1 mb-4">
+                            {% for i in range(slot_labels|length) %}<div class="slot" data-index="{{ i }}"><div class="slot-content">{{ slot_labels[i] }}</div></div>{% endfor %}
+                        </div>
+                        <input type="hidden" name="slots-construction" id="slots-input-construction">
+                    </div>
+                    {% elif day == 'research' %}
+                    <div class="p-4 rounded-lg bg-kvk-gray-900 border border-kvk-gray-700">
+                        <h3 class="font-bold text-xl mb-2 text-blue-500">Day {{ event.active_days.research_day if event.active_days.research_day else '5' }}: Research</h3>
+                        <p class="text-xs text-gray-400 mb-4 italic">Enter resources and select <strong>all feasible</strong> time slots. More slots give the system more flexibility to match you.</p>
+                         <div class="space-y-4 mb-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">Speedups</label>
+                                <div class="flex gap-2 mb-2">
+                                    <button type="button" data-unit="days" data-section="research" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gray-700 bg-kvk-gray-700 text-gray-400 hover:bg-kvk-gray-600 transition">Days</button>
+                                    <button type="button" data-unit="hours" data-section="research" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gray-700 bg-kvk-gray-700 text-gray-400 hover:bg-kvk-gray-600 transition">Hours</button>
+                                    <button type="button" data-unit="minutes" data-section="research" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gold bg-kvk-gold text-kvk-gray-900 font-bold transition">Minutes</button>
+                                </div>
+                                <div id="input-group-research" class="grid grid-cols-3 gap-2">
+                                    <div class="hidden" id="days-container-research">
+                                        <label class="block text-[10px] uppercase text-gray-500 mb-1">Days</label>
+                                        <input type="number" id="days-research" min="0" placeholder="0" class="dynamic-input w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200 text-sm">
+                                    </div>
+                                    <div class="hidden" id="hours-container-research">
+                                        <label class="block text-[10px] uppercase text-gray-500 mb-1">Hours</label>
+                                        <input type="number" id="hours-research" min="0" max="23" placeholder="0" class="dynamic-input w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200 text-sm">
+                                    </div>
+                                    <div id="minutes-container-research">
+                                        <label class="block text-[10px] uppercase text-gray-500 mb-1">Minutes</label>
+                                        <input type="number" id="mins-research" min="0" placeholder="0" class="dynamic-input w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200 text-sm">
+                                    </div>
+                                </div>
+                                <input type="hidden" name="speedups-research" id="speedups-research" value="0">
+                            </div>
+                            <div>
+                                <label for="truegold_dust" class="block text-sm font-medium text-gray-300">TrueGold Dust</label>
+                                <input type="number" name="truegold_dust" id="truegold_dust" min="0" class="mt-1 block w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200">
+                            </div>
+                        </div>
+                        <div id="slot-grid-research" class="grid grid-cols-7 gap-1 mb-4">
+                            {% for i in range(slot_labels|length) %}<div class="slot" data-index="{{ i }}"><div class="slot-content">{{ slot_labels[i] }}</div></div>{% endfor %}
+                        </div>
+                        <input type="hidden" name="slots-research" id="slots-input-research">
+                    </div>
+                    {% elif day == 'training' %}
+                    <div class="p-4 rounded-lg bg-kvk-gray-900 border border-kvk-gray-700">
+                        <h3 class="font-bold text-xl mb-2 text-red-500">Day 4: Troop Training</h3>
+                        <p class="text-xs text-gray-400 mb-4 italic">Enter resources and select <strong>all feasible</strong> time slots. More slots give the system more flexibility to match you.</p>
+                        <div class="mb-4">
                             <label class="block text-sm font-medium text-gray-300 mb-2">Speedups</label>
                             <div class="flex gap-2 mb-2">
-                                <button type="button" data-unit="days" data-section="construction" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gray-700 bg-kvk-gray-700 text-gray-400 hover:bg-kvk-gray-600 transition">Days</button>
-                                <button type="button" data-unit="hours" data-section="construction" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gray-700 bg-kvk-gray-700 text-gray-400 hover:bg-kvk-gray-600 transition">Hours</button>
-                                <button type="button" data-unit="minutes" data-section="construction" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gold bg-kvk-gold text-kvk-gray-900 font-bold transition">Minutes</button>
+                                <button type="button" data-unit="days" data-section="training" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gray-700 bg-kvk-gray-700 text-gray-400 hover:bg-kvk-gray-600 transition">Days</button>
+                                <button type="button" data-unit="hours" data-section="training" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gray-700 bg-kvk-gray-700 text-gray-400 hover:bg-kvk-gray-600 transition">Hours</button>
+                                <button type="button" data-unit="minutes" data-section="training" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gold bg-kvk-gold text-kvk-gray-900 font-bold transition">Minutes</button>
                             </div>
-                            <div id="input-group-construction" class="grid grid-cols-3 gap-2">
-                                <div class="hidden" id="days-container-construction">
+                            <div id="input-group-training" class="grid grid-cols-3 gap-2">
+                                <div class="hidden" id="days-container-training">
                                     <label class="block text-[10px] uppercase text-gray-500 mb-1">Days</label>
-                                    <input type="number" id="days-construction" min="0" placeholder="0" class="dynamic-input w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200 text-sm">
+                                    <input type="number" id="days-training" min="0" placeholder="0" class="dynamic-input w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200 text-sm">
                                 </div>
-                                <div class="hidden" id="hours-container-construction">
+                                <div class="hidden" id="hours-container-training">
                                     <label class="block text-[10px] uppercase text-gray-500 mb-1">Hours</label>
-                                    <input type="number" id="hours-construction" min="0" max="23" placeholder="0" class="dynamic-input w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200 text-sm">
+                                    <input type="number" id="hours-training" min="0" max="23" placeholder="0" class="dynamic-input w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200 text-sm">
                                 </div>
-                                <div id="minutes-container-construction">
+                                <div id="minutes-container-training">
                                     <label class="block text-[10px] uppercase text-gray-500 mb-1">Minutes</label>
-                                    <input type="number" id="mins-construction" min="0" placeholder="0" class="dynamic-input w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200 text-sm">
+                                    <input type="number" id="mins-training" min="0" placeholder="0" class="dynamic-input w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200 text-sm">
                                 </div>
                             </div>
-                            <input type="hidden" name="speedups-construction" id="speedups-construction" value="0">
+                            <input type="hidden" name="speedups-training" id="speedups-training" value="0">
                         </div>
-                        <div>
-                            <label for="truegold" class="block text-sm font-medium text-gray-300">TrueGold</label>
-                            <input type="number" name="truegold" id="truegold" min="0" class="mt-1 block w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200">
+                        <div id="slot-grid-training" class="grid grid-cols-7 gap-1 mb-4">
+                            {% for i in range(slot_labels|length) %}<div class="slot" data-index="{{ i }}"><div class="slot-content">{{ slot_labels[i] }}</div></div>{% endfor %}
                         </div>
-                        <div>
-                            <label for="tempered_truegold" class="block text-sm font-medium text-gray-300">Tempered TrueGold</label>
-                            <input type="number" name="tempered_truegold" id="tempered_truegold" min="0" class="mt-1 block w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200">
-                        </div>
+                        <input type="hidden" name="slots-training" id="slots-input-training">
                     </div>
-                    <div id="slot-grid-construction" class="grid grid-cols-7 gap-1 mb-4">
-                        {% for i in range(slot_labels|length) %}<div class="slot" data-index="{{ i }}"><div class="slot-content">{{ slot_labels[i] }}</div></div>{% endfor %}
-                    </div>
-                    <input type="hidden" name="slots-construction" id="slots-input-construction">
-                </div>
-                {% endif %}
-
-                {% if event.active_days.training %}
-                <div class="p-4 rounded-lg bg-kvk-gray-900 border border-kvk-gray-700">
-                    <h3 class="font-bold text-xl mb-2 text-red-500">Day 4: Troop Training</h3>
-                    <p class="text-xs text-gray-400 mb-4 italic">Enter resources and select <strong>all feasible</strong> time slots. More slots give the system more flexibility to match you.</p>
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-300 mb-2">Speedups</label>
-                        <div class="flex gap-2 mb-2">
-                            <button type="button" data-unit="days" data-section="training" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gray-700 bg-kvk-gray-700 text-gray-400 hover:bg-kvk-gray-600 transition">Days</button>
-                            <button type="button" data-unit="hours" data-section="training" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gray-700 bg-kvk-gray-700 text-gray-400 hover:bg-kvk-gray-600 transition">Hours</button>
-                            <button type="button" data-unit="minutes" data-section="training" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gold bg-kvk-gold text-kvk-gray-900 font-bold transition">Minutes</button>
-                        </div>
-                        <div id="input-group-training" class="grid grid-cols-3 gap-2">
-                            <div class="hidden" id="days-container-training">
-                                <label class="block text-[10px] uppercase text-gray-500 mb-1">Days</label>
-                                <input type="number" id="days-training" min="0" placeholder="0" class="dynamic-input w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200 text-sm">
-                            </div>
-                            <div class="hidden" id="hours-container-training">
-                                <label class="block text-[10px] uppercase text-gray-500 mb-1">Hours</label>
-                                <input type="number" id="hours-training" min="0" max="23" placeholder="0" class="dynamic-input w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200 text-sm">
-                            </div>
-                            <div id="minutes-container-training">
-                                <label class="block text-[10px] uppercase text-gray-500 mb-1">Minutes</label>
-                                <input type="number" id="mins-training" min="0" placeholder="0" class="dynamic-input w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200 text-sm">
-                            </div>
-                        </div>
-                        <input type="hidden" name="speedups-training" id="speedups-training" value="0">
-                    </div>
-                    <div id="slot-grid-training" class="grid grid-cols-7 gap-1 mb-4">
-                        {% for i in range(slot_labels|length) %}<div class="slot" data-index="{{ i }}"><div class="slot-content">{{ slot_labels[i] }}</div></div>{% endfor %}
-                    </div>
-                    <input type="hidden" name="slots-training" id="slots-input-training">
-                </div>
-                {% endif %}
-                
-                {% if event.active_days.research %}
-                <div class="p-4 rounded-lg bg-kvk-gray-900 border border-kvk-gray-700">
-                    <h3 class="font-bold text-xl mb-2 text-blue-500">Day {{ event.active_days.research_day if event.active_days.research_day else '5' }}: Research</h3>
-                    <p class="text-xs text-gray-400 mb-4 italic">Enter resources and select <strong>all feasible</strong> time slots. More slots give the system more flexibility to match you.</p>
-                     <div class="space-y-4 mb-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-2">Speedups</label>
-                            <div class="flex gap-2 mb-2">
-                                <button type="button" data-unit="days" data-section="research" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gray-700 bg-kvk-gray-700 text-gray-400 hover:bg-kvk-gray-600 transition">Days</button>
-                                <button type="button" data-unit="hours" data-section="research" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gray-700 bg-kvk-gray-700 text-gray-400 hover:bg-kvk-gray-600 transition">Hours</button>
-                                <button type="button" data-unit="minutes" data-section="research" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gold bg-kvk-gold text-kvk-gray-900 font-bold transition">Minutes</button>
-                            </div>
-                            <div id="input-group-research" class="grid grid-cols-3 gap-2">
-                                <div class="hidden" id="days-container-research">
-                                    <label class="block text-[10px] uppercase text-gray-500 mb-1">Days</label>
-                                    <input type="number" id="days-research" min="0" placeholder="0" class="dynamic-input w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200 text-sm">
-                                </div>
-                                <div class="hidden" id="hours-container-research">
-                                    <label class="block text-[10px] uppercase text-gray-500 mb-1">Hours</label>
-                                    <input type="number" id="hours-research" min="0" max="23" placeholder="0" class="dynamic-input w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200 text-sm">
-                                </div>
-                                <div id="minutes-container-research">
-                                    <label class="block text-[10px] uppercase text-gray-500 mb-1">Minutes</label>
-                                    <input type="number" id="mins-research" min="0" placeholder="0" class="dynamic-input w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200 text-sm">
-                                </div>
-                            </div>
-                            <input type="hidden" name="speedups-research" id="speedups-research" value="0">
-                        </div>
-                        <div>
-                            <label for="truegold_dust" class="block text-sm font-medium text-gray-300">TrueGold Dust</label>
-                            <input type="number" name="truegold_dust" id="truegold_dust" min="0" class="mt-1 block w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200">
-                        </div>
-                    </div>
-                    <div id="slot-grid-research" class="grid grid-cols-7 gap-1 mb-4">
-                        {% for i in range(slot_labels|length) %}<div class="slot" data-index="{{ i }}"><div class="slot-content">{{ slot_labels[i] }}</div></div>{% endfor %}
-                    </div>
-                    <input type="hidden" name="slots-research" id="slots-input-research">
-                </div>
-                {% endif %}
+                    {% endif %}
+                {% endfor %}
             </div>
 
             <button type="submit" class="mt-6 w-full bg-kvk-gold text-kvk-gray-900 font-bold py-3 px-4 rounded-md hover:bg-amber-500 transition duration-300">Submit All Entries</button>
