@@ -1,4 +1,5 @@
 import io
+import json
 import os
 import sqlite3
 from unittest.mock import patch
@@ -1937,3 +1938,119 @@ def test_locked_and_public_schedule_chronological_ordering(client):
     assert pos_pub_research != -1
     assert pos_pub_training != -1
     assert pos_pub_const < pos_pub_research < pos_pub_training
+
+
+def test_admin_shelf_requested_timeslots_display(client):
+    # 1. Create event
+    resp = client.post(
+        "/create",
+        data={
+            "event_name": "Shelf Timeslots Test",
+            "research_day": "5",
+            "slot_count": "49",
+        },
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    event_uid = resp.location.split("/success/")[1].split("?")[0]
+    secret = resp.location.split("secret=")[1]
+
+    # 2. Submit entry with 3 slots: [0, 2, 5]
+    sub_resp = client.post(
+        f"/event/{event_uid}/submit",
+        data={
+            "player_id": "11223344",
+            "player_name": "SlotTester",
+            "alliance_name": "TEST",
+            "speedups-construction": "120",
+            "slots-construction": "[0, 2, 5]",
+        },
+        follow_redirects=True,
+    )
+    assert sub_resp.status_code == 200
+
+    # 3. Access Admin Dashboard
+    admin_resp = client.get(f"/admin/{event_uid}?secret={secret}")
+    assert admin_resp.status_code == 200
+    html = admin_resp.get_data(as_text=True)
+
+    # 4. Verify presence of shelf with Requested Timeslots count & badges
+    assert "Requested Timeslots (3)" in html
+    # Slot labels for 49 slots: index 0 is "23:45-00:15", index 2 is "00:45-01:15", index 5 is "02:15-02:45"
+    assert "bg-kvk-gray-700 text-kvk-gold" in html
+    assert "23:45" in html
+    assert "00:45" in html
+    assert "02:15" in html
+
+
+def test_admin_shelf_requested_timeslots_empty(client, app):
+    # 1. Create event
+    resp = client.post(
+        "/create",
+        data={
+            "event_name": "Empty Slots Test",
+            "research_day": "5",
+            "slot_count": "49",
+        },
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    event_uid = resp.location.split("/success/")[1].split("?")[0]
+    secret = resp.location.split("secret=")[1]
+
+    # Insert submissions with empty array, NULL, and invalid feasible_slots directly into DB
+    with app.app_context():
+        db = database.get_db()
+        db.execute(
+            "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                f"{event_uid}_99999_construction",
+                event_uid,
+                "construction",
+                "EmptyUser",
+                "99999",
+                "NULL",
+                100,
+                json.dumps({"speedups": 100}),
+                "[]",
+                "Pending",
+            ),
+        )
+        db.execute(
+            "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                f"{event_uid}_88888_construction",
+                event_uid,
+                "construction",
+                "EmptyStrUser",
+                "88888",
+                "NULL",
+                100,
+                json.dumps({"speedups": 100}),
+                "",
+                "Pending",
+            ),
+        )
+        db.execute(
+            "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                f"{event_uid}_77777_construction",
+                event_uid,
+                "construction",
+                "BadJsonUser",
+                "77777",
+                "NULL",
+                100,
+                json.dumps({"speedups": 100}),
+                "invalid-json",
+                "Pending",
+            ),
+        )
+        db.commit()
+
+    admin_resp = client.get(f"/admin/{event_uid}?secret={secret}")
+    assert admin_resp.status_code == 200
+    html = admin_resp.get_data(as_text=True)
+
+    assert "Requested Timeslots (0)" in html
+    assert "No timeslots selected." in html
