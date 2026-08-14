@@ -2054,3 +2054,152 @@ def test_admin_shelf_requested_timeslots_empty(client, app):
 
     assert "Requested Timeslots (0)" in html
     assert "No timeslots selected." in html
+
+
+def test_create_event_auto_short_uid(client, app):
+    resp = client.post(
+        "/create",
+        data={
+            "event_name": "Short UID Event",
+            "research_day": "5",
+            "slot_count": "49",
+        },
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    assert "/success/" in resp.location
+    event_uid = resp.location.split("/success/")[1].split("?")[0]
+    assert len(event_uid) == 8
+    assert event_uid.isalnum()
+
+
+def test_create_event_with_custom_slug(client, app):
+    resp = client.post(
+        "/create",
+        data={
+            "event_name": "Custom Slug Event",
+            "custom_slug": "kvk-season-12",
+            "research_day": "5",
+            "slot_count": "49",
+        },
+        follow_redirects=False,
+    )
+    assert resp.status_code == 302
+    event_uid = resp.location.split("/success/")[1].split("?")[0]
+    assert event_uid == "kvk-season-12"
+
+    # Verify form loads with custom slug
+    form_resp = client.get(f"/event/{event_uid}")
+    assert form_resp.status_code == 200
+
+
+def test_create_event_custom_slug_errors(client, app):
+    # 1. Invalid characters
+    resp1 = client.post(
+        "/create",
+        data={
+            "event_name": "Invalid Slug",
+            "custom_slug": "bad slug @#$",
+            "research_day": "5",
+        },
+    )
+    assert resp1.status_code == 400
+    assert "letters, numbers, hyphens" in resp1.get_data(as_text=True)
+
+    # 2. Too short
+    resp2 = client.post(
+        "/create",
+        data={
+            "event_name": "Short Slug",
+            "custom_slug": "ab",
+            "research_day": "5",
+        },
+    )
+    assert resp2.status_code == 400
+    assert "between 3 and 32" in resp2.get_data(as_text=True)
+
+    # 3. Reserved keyword
+    resp3 = client.post(
+        "/create",
+        data={
+            "event_name": "Reserved Slug",
+            "custom_slug": "admin",
+            "research_day": "5",
+        },
+    )
+    assert resp3.status_code == 400
+    assert "reserved keyword" in resp3.get_data(as_text=True)
+
+    # 4. Duplicate slug
+    client.post(
+        "/create",
+        data={
+            "event_name": "Original Slug Event",
+            "custom_slug": "duplicate-test",
+            "research_day": "5",
+        },
+    )
+    resp4 = client.post(
+        "/create",
+        data={
+            "event_name": "Duplicate Slug Event",
+            "custom_slug": "duplicate-test",
+            "research_day": "5",
+        },
+    )
+    assert resp4.status_code == 400
+    assert "already taken" in resp4.get_data(as_text=True)
+
+
+def test_legacy_36_char_uuid_backward_compatibility(client, app):
+    legacy_uid = "e10adc39-49ba-42e5-a68b-59d4c6d32832"
+    secret = "test-secret-12345"
+
+    with app.app_context():
+        db = database.get_db()
+        db.execute(
+            "INSERT INTO events (uid, name, active_days, admin_secret, slot_count) VALUES (?, ?, ?, ?, ?)",
+            (
+                legacy_uid,
+                "Legacy UUID Event",
+                json.dumps(
+                    {
+                        "construction": True,
+                        "training": True,
+                        "research": True,
+                        "research_day": 5,
+                    }
+                ),
+                secret,
+                49,
+            ),
+        )
+        db.commit()
+
+    # Verify all routes work with legacy 36-char UUID
+    # 1. Player form
+    resp_form = client.get(f"/event/{legacy_uid}")
+    assert resp_form.status_code == 200
+
+    # 2. Player submission
+    resp_sub = client.post(
+        f"/event/{legacy_uid}/submit",
+        data={
+            "player_id": "98765432",
+            "player_name": "LegacyPlayer",
+            "alliance_name": "LEGACY",
+            "speedups-construction": "60",
+            "slots-construction": "[1, 2]",
+        },
+        follow_redirects=True,
+    )
+    assert resp_sub.status_code == 200
+
+    # 3. Admin dashboard
+    resp_admin = client.get(f"/admin/{legacy_uid}?secret={secret}")
+    assert resp_admin.status_code == 200
+    assert "LegacyPlayer" in resp_admin.get_data(as_text=True)
+
+    # 4. Finalized schedule
+    resp_fin = client.get(f"/event/{legacy_uid}/finalized")
+    assert resp_fin.status_code == 200
