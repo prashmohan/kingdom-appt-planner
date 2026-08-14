@@ -4,9 +4,9 @@ import json
 import logging
 import mimetypes
 import os
+import secrets
 import sqlite3
 import time
-import uuid
 from logging.handlers import RotatingFileHandler
 
 import markdown
@@ -26,7 +26,12 @@ from werkzeug.utils import secure_filename
 from config import Config
 
 from . import database, logic
-from .logic import format_minutes, get_ordered_active_days
+from .logic import (
+    format_minutes,
+    generate_short_uid,
+    get_ordered_active_days,
+    validate_custom_slug,
+)
 
 # Ensure .js files are served with the correct MIME type
 mimetypes.add_type("application/javascript", ".js")
@@ -150,7 +155,10 @@ def create_app():
 
     @app.route("/create", methods=["POST"])
     def create_event():
-        event_name = request.form["event_name"]
+        event_name = request.form.get("event_name", "").strip()
+        if not event_name:
+            event_name = "Untitled Event"
+
         research_day = request.form.get("research_day", "5")
         try:
             slot_count = int(request.form.get("slot_count", "49"))
@@ -159,8 +167,28 @@ def create_app():
         except ValueError:
             slot_count = 49
 
-        # All events will now have all 3 days active by default.
-        # Store the research day preference in the JSON
+        db = database.get_db()
+
+        # Handle custom slug or auto-generated short UID
+        custom_slug = request.form.get("custom_slug", "").strip()
+        if custom_slug:
+            is_valid, err_msg = validate_custom_slug(custom_slug, db)
+            if not is_valid:
+                return err_msg, 400
+            uid = custom_slug
+        else:
+            # Generate unique short UID with collision check
+            while True:
+                candidate_uid = generate_short_uid(8)
+                exists = db.execute(
+                    "SELECT 1 FROM events WHERE uid = ?", (candidate_uid,)
+                ).fetchone()
+                if not exists:
+                    uid = candidate_uid
+                    break
+
+        admin_secret = secrets.token_urlsafe(16)
+
         active_days = {
             "construction": True,
             "training": True,
@@ -168,10 +196,6 @@ def create_app():
             "research_day": int(research_day),
         }
 
-        uid = str(uuid.uuid4())
-        admin_secret = str(uuid.uuid4())
-
-        db = database.get_db()
         db.execute(
             "INSERT INTO events (uid, name, active_days, admin_secret, slot_count) VALUES (?, ?, ?, ?, ?)",
             (uid, event_name, json.dumps(active_days), admin_secret, slot_count),
