@@ -1,7 +1,62 @@
 import json
+import re
+import secrets
 import sqlite3
+import string
 
 from . import database
+
+RESERVED_SLUGS = {
+    "admin",
+    "create",
+    "distribute",
+    "event",
+    "export_csv",
+    "guide",
+    "static",
+    "success",
+    "confirm",
+    "unlock",
+    "delete",
+    "manual_assign",
+    "unset",
+    "override_resources",
+    "update_alliance",
+    "favicon.ico",
+}
+
+
+def generate_short_uid(length: int = 8) -> str:
+    """Generate a high-entropy URL-safe alphanumeric ID (Base62)."""
+    alphabet = string.ascii_letters + string.digits
+    return "".join(secrets.choice(alphabet) for _ in range(length))
+
+
+def validate_custom_slug(slug: str, db: sqlite3.Connection) -> tuple[bool, str | None]:
+    """Validate format, length, reserved keywords, and uniqueness for a custom slug."""
+    if not slug or len(slug) < 3 or len(slug) > 32:
+        return False, "Custom URL code must be between 3 and 32 characters."
+
+    if not re.match(r"^[a-zA-Z0-9_-]+$", slug):
+        return (
+            False,
+            "Custom URL code can only contain letters, numbers, hyphens, and underscores.",
+        )
+
+    if slug.lower() in RESERVED_SLUGS:
+        return (
+            False,
+            f"'{slug}' is a reserved keyword. Please choose a different URL code.",
+        )
+
+    row = db.execute("SELECT 1 FROM events WHERE uid = ?", (slug,)).fetchone()
+    if row:
+        return (
+            False,
+            f"URL code '{slug}' is already taken. Please choose a different one.",
+        )
+
+    return True, None
 
 
 def run_distribution_algorithm(event_uid, day_type=None):

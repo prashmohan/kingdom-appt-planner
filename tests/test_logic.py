@@ -1,7 +1,12 @@
 import json
+import string
 
 from app import database, logic
-from app.logic import get_ordered_active_days
+from app.logic import (
+    generate_short_uid,
+    get_ordered_active_days,
+    validate_custom_slug,
+)
 
 
 def test_algorithm_prioritization(app):
@@ -499,3 +504,70 @@ def test_get_ordered_active_days_json_string():
         "research",
         "training",
     ]
+
+
+def test_generate_short_uid_length_and_charset():
+    uid1 = generate_short_uid(8)
+    uid2 = generate_short_uid(8)
+    assert len(uid1) == 8
+    assert len(uid2) == 8
+    assert uid1 != uid2
+    valid_chars = set(string.ascii_letters + string.digits)
+    assert all(c in valid_chars for c in uid1)
+
+
+def test_validate_custom_slug_valid(app):
+    with app.app_context():
+        db = database.get_db()
+        # Valid slugs
+        for slug in ["kvk-s12", "kvk_prep", "KvkSeason10", "123-abc"]:
+            is_valid, err = validate_custom_slug(slug, db)
+            assert is_valid is True
+            assert err is None
+
+
+def test_validate_custom_slug_invalid_format(app):
+    with app.app_context():
+        db = database.get_db()
+        # Too short (< 3)
+        assert validate_custom_slug("ab", db) == (
+            False,
+            "Custom URL code must be between 3 and 32 characters.",
+        )
+        # Too long (> 32)
+        assert validate_custom_slug("a" * 33, db) == (
+            False,
+            "Custom URL code must be between 3 and 32 characters.",
+        )
+        # Invalid characters (spaces, special symbols)
+        assert validate_custom_slug("kvk s12", db) == (
+            False,
+            "Custom URL code can only contain letters, numbers, hyphens, and underscores.",
+        )
+        assert validate_custom_slug("kvk@s12!", db) == (
+            False,
+            "Custom URL code can only contain letters, numbers, hyphens, and underscores.",
+        )
+
+
+def test_validate_custom_slug_reserved_keyword(app):
+    with app.app_context():
+        db = database.get_db()
+        for kw in ["admin", "create", "success", "guide", "event", "static"]:
+            is_valid, err = validate_custom_slug(kw, db)
+            assert is_valid is False
+            assert "reserved keyword" in err
+
+
+def test_validate_custom_slug_duplicate(app):
+    with app.app_context():
+        db = database.get_db()
+        db.execute(
+            "INSERT INTO events (uid, name, active_days, admin_secret) VALUES (?, ?, ?, ?)",
+            ("existing-slug", "Test Event", "{}", "secret"),
+        )
+        db.commit()
+
+        is_valid, err = validate_custom_slug("existing-slug", db)
+        assert is_valid is False
+        assert "already taken" in err
