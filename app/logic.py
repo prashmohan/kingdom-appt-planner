@@ -20,11 +20,7 @@ def run_distribution_algorithm(event_uid, day_type=None):
     if day_type:
         active_days = [day_type]
     else:
-        active_days = [
-            day
-            for day, is_active in json.loads(event["active_days"]).items()
-            if is_active
-        ]
+        active_days = get_ordered_active_days(event["active_days"])
 
     # Reset all relevant submissions for the event to 'Pending' before starting
     if day_type:
@@ -172,3 +168,42 @@ def format_minutes(total_minutes):
     if minutes > 0 or not parts:
         parts.append(f"{minutes}m")
     return " ".join(parts)
+
+
+def get_ordered_active_days(active_days_config):
+    """
+    Returns active days sorted chronologically by day number.
+    Supports active_days_config as a dict, list, or JSON string.
+    """
+    if isinstance(active_days_config, str):
+        try:
+            active_days_config = json.loads(active_days_config)
+        except (json.JSONDecodeError, TypeError):
+            return []
+
+    if isinstance(active_days_config, list):
+        return [
+            d
+            for d in active_days_config
+            if d in ("construction", "training", "research")
+        ]
+    if not isinstance(active_days_config, dict):
+        return []
+
+    try:
+        research_day_num = int(active_days_config.get("research_day", 5) or 5)
+    except (ValueError, TypeError):
+        research_day_num = 5
+
+    day_numbers = {
+        "construction": 1,
+        "training": 4,
+        "research": research_day_num,
+    }
+
+    active = [
+        day
+        for day in ["construction", "training", "research"]
+        if active_days_config.get(day)
+    ]
+    return sorted(active, key=lambda d: day_numbers.get(d, 99))

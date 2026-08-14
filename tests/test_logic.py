@@ -1,6 +1,7 @@
 import json
 
 from app import database, logic
+from app.logic import get_ordered_active_days
 
 
 def test_algorithm_prioritization(app):
@@ -413,3 +414,88 @@ def test_distribution_algorithm_both_slot_lengths(app):
                 assert assignment2 is not None
                 assert assignment2["slot_index"] == 48
                 assert sub2_status == "Confirmed"
+
+
+def test_get_ordered_active_days_day_2():
+    config = {
+        "construction": True,
+        "training": True,
+        "research": True,
+        "research_day": 2,
+    }
+    assert get_ordered_active_days(config) == [
+        "construction",
+        "research",
+        "training",
+    ]
+
+
+def test_get_ordered_active_days_day_5():
+    config = {
+        "construction": True,
+        "training": True,
+        "research": True,
+        "research_day": 5,
+    }
+    assert get_ordered_active_days(config) == [
+        "construction",
+        "training",
+        "research",
+    ]
+
+
+def test_get_ordered_active_days_default():
+    config = {
+        "construction": True,
+        "training": True,
+        "research": True,
+    }
+    assert get_ordered_active_days(config) == [
+        "construction",
+        "training",
+        "research",
+    ]
+
+
+def test_get_ordered_active_days_string_number():
+    config = {
+        "construction": True,
+        "training": True,
+        "research": True,
+        "research_day": "2",
+    }
+    assert get_ordered_active_days(config) == [
+        "construction",
+        "research",
+        "training",
+    ]
+
+
+def test_get_ordered_active_days_partial():
+    config = {
+        "construction": False,
+        "training": True,
+        "research": True,
+        "research_day": 2,
+    }
+    assert get_ordered_active_days(config) == ["research", "training"]
+
+
+def test_get_ordered_active_days_legacy_list():
+    assert get_ordered_active_days(["construction", "research"]) == [
+        "construction",
+        "research",
+    ]
+    assert get_ordered_active_days(None) == []
+    assert get_ordered_active_days("invalid") == []
+
+
+def test_get_ordered_active_days_json_string():
+    json_str = (
+        '{"construction": true, "training": true, "research": true, "research_day": 2}'
+    )
+    assert get_ordered_active_days(json_str) == [
+        "construction",
+        "research",
+        "training",
+    ]
