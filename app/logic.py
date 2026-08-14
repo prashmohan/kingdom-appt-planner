@@ -22,6 +22,7 @@ RESERVED_SLUGS = {
     "unset",
     "override_resources",
     "update_alliance",
+    "submission-success",
     "favicon.ico",
 }
 
