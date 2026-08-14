@@ -375,6 +375,24 @@
                                 <tr id="shelf-{{ sub.id }}" class="hidden bg-kvk-gray-900/60 border-b border-kvk-gray-700" onclick="event.stopPropagation()">
                                     <td colspan="6" class="px-6 py-4">
                                         <div class="bg-kvk-gray-800/80 border border-kvk-gold/30 rounded-lg p-4 max-w-2xl mx-auto shadow-inner" onclick="event.stopPropagation()">
+                                            <div class="mb-4 pb-4 border-b border-kvk-gray-700">
+                                                <div class="flex items-center justify-between mb-2">
+                                                    <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                                                        Requested Timeslots ({{ sub.requested_slots_labels|length if sub.requested_slots_labels else 0 }})
+                                                    </span>
+                                                </div>
+                                                {% if sub.requested_slots_labels %}
+                                                    <div class="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1 custom-scrollbar">
+                                                        {% for slot_label in sub.requested_slots_labels %}
+                                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-mono font-medium bg-kvk-gray-700 text-kvk-gold border border-kvk-gray-600">
+                                                                {{ slot_label }}
+                                                            </span>
+                                                        {% endfor %}
+                                                    </div>
+                                                {% else %}
+                                                    <p class="text-xs text-gray-500 italic">No timeslots selected.</p>
+                                                {% endif %}
+                                            </div>
                                             <h4 class="text-sm font-bold text-kvk-gold mb-3 uppercase tracking-wider">
                                                 Override Resources: {{ sub.player_name }}
                                             </h4>
