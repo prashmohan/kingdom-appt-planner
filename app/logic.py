@@ -330,24 +330,31 @@ def get_superadmin_metrics(
             "events": [],
         }
 
-    event_uids = [e["uid"] for e in events]
-    placeholders = ",".join("?" for _ in event_uids)
+    # Fetch submissions and assignments for matching events using JOINs (safe against SQLite variable limits)
+    if valid_range in time_filters:
+        sub_query = (
+            "SELECT s.id, s.event_uid, s.day_type, s.player_name, s.player_id, s.alliance_name, s.resources, s.feasible_slots, s.status, s.timestamp "
+            "FROM submissions s JOIN events e ON s.event_uid = e.uid "
+            f"WHERE e.created_at >= datetime('now', '{time_filters[valid_range]}')"
+        )
+        ass_query = (
+            "SELECT a.event_uid, a.day_type, a.slot_index, a.player_id, a.is_locked "
+            "FROM assignments a JOIN events e ON a.event_uid = e.uid "
+            f"WHERE e.created_at >= datetime('now', '{time_filters[valid_range]}')"
+        )
+        sub_cur = db.execute(sub_query)
+        ass_cur = db.execute(ass_query)
+    else:
+        sub_cur = db.execute(
+            "SELECT id, event_uid, day_type, player_name, player_id, alliance_name, resources, feasible_slots, status, timestamp FROM submissions"
+        )
+        ass_cur = db.execute(
+            "SELECT event_uid, day_type, slot_index, player_id, is_locked FROM assignments"
+        )
 
-    # Fetch submissions for matching events
-    sub_cur = db.execute(
-        "SELECT id, event_uid, day_type, player_name, player_id, alliance_name, resources, feasible_slots, status, timestamp "
-        f"FROM submissions WHERE event_uid IN ({placeholders})",
-        event_uids,
-    )
     sub_cols = [c[0] for c in sub_cur.description] if sub_cur.description else []
     submissions = [dict(zip(sub_cols, row)) for row in sub_cur.fetchall()]
 
-    # Fetch assignments for matching events
-    ass_cur = db.execute(
-        "SELECT event_uid, day_type, slot_index, player_id, is_locked "
-        f"FROM assignments WHERE event_uid IN ({placeholders})",
-        event_uids,
-    )
     ass_cols = [c[0] for c in ass_cur.description] if ass_cur.description else []
     assignments = [dict(zip(ass_cols, row)) for row in ass_cur.fetchall()]
 
@@ -368,6 +375,7 @@ def get_superadmin_metrics(
 
     total_capacity = 0
     events_data = []
+    event_uids = [e["uid"] for e in events]
 
     # Map submissions and assignments by event_uid for fast aggregation
     subs_by_event: dict[str, list[dict]] = {uid: [] for uid in event_uids}

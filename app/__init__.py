@@ -1,4 +1,5 @@
 import csv
+import hmac
 import io
 import json
 import logging
@@ -1342,7 +1343,8 @@ def create_app():
     def superadmin():
         secret = request.args.get("secret")
         if secret is not None:
-            if secret == app.config.get("SUPERADMIN_SECRET"):
+            expected_secret = app.config.get("SUPERADMIN_SECRET", "")
+            if hmac.compare_digest(secret, expected_secret):
                 session["is_superadmin"] = True
                 range_param = request.args.get("range", "all")
                 return redirect(url_for("superadmin", range=range_param))
