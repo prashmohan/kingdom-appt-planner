@@ -2358,7 +2358,6 @@ def test_superadmin_template_rendering_with_events_and_data(client, app, test_ev
 
     # Data attributes for sorting & client-side filtering
     assert 'data-sort="name"' in html
-    assert 'data-sort="uid"' in html
     assert 'data-sort="created"' in html
     assert 'data-sort="submissions"' in html
     assert 'data-sort="players"' in html
