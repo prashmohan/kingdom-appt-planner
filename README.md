@@ -35,6 +35,7 @@ Managing a kingdom of hundreds of players manually is a nightmare. This tool aut
 | **Heatmap Analytics** | Visualize alliance contributions and slot distribution at a glance. |
 | **Manual Overrides** | "Lock" automated assignments or manually set specific players to specific slots. |
 | **Private Admin Suite** | Secure, tabbed interface for full event management. |
+| **Superadmin Console** | Global cross-event platform analytics, time filters (1w/2w/4w/all), KPIs, and directory with 1-click admin access. |
 
 ---
 
@@ -102,12 +103,19 @@ git clone https://github.com/prashmohan/kingdom-appt-planner.git
 cd kingdom-appt-planner
 ```
 
+*   **Configure Environment Variables:**
+```bash
+cp .env.example .env
+# Set a custom SECRET_KEY and SUPERADMIN_SECRET
+```
+
 *   **Launch with Docker Compose:**
 ```bash
 docker-compose up --build -d
 ```
 
 *   **Access the App:** Open your browser to `http://localhost:12348`.
+*   **Superadmin Console:** Visit `http://localhost:12348/superadmin?secret=<YOUR_SUPERADMIN_SECRET>`.
 
 ---
 
@@ -120,9 +128,10 @@ Keep your data safe with our included utility script:
 
 ---
 
-## 🛡️ Security Note
+## 🛡️ Security & Access Control
 
-The **Admin URL** contains a unique secret key. Treat it with the same care as your kingdom's treasury—if someone has this link, they have full control over your event.
+*   **Event Admin URLs:** Each event has a unique secret key (`/admin/<uid>?secret=<admin_secret>`). Treat it with care—anyone with this link has administrative control over that event.
+*   **Superadmin Console:** Access to `/superadmin` is governed by `SUPERADMIN_SECRET`. It uses session-based authentication and sanitizes the secret from URL history after login. Individual event admin keys cannot access the superadmin interface.
 
 ---
 

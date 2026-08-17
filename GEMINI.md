@@ -48,7 +48,8 @@ This document provides essential context for AI models interacting with this pro
 * **Main Entrypoint(s):** `app:app` (defined by the factory in `app/__init__.py`). Run in development using the environment or locally through `gunicorn` in production.
 * **Configuration:** 
     * `config.py`: Contains the `Config` class which reads options from environment variables (fallback values provided).
-    * `.env` and `.env.example`: Hold local environment variables (e.g., `SECRET_KEY`, `DATABASE_PATH`).
+    * `.env` and `.env.example`: Hold local environment variables (e.g., `SECRET_KEY`, `SUPERADMIN_SECRET`, `DATABASE_PATH`).
+    * Superadmin Access: `/superadmin?secret=<SUPERADMIN_SECRET>` grants session-persisted access to platform-wide statistics and all registered event admin consoles.
 * **CI/CD Pipeline:** `.github/workflows/main.yml` is used for automated testing.
 
 ## 6. Development & Testing Workflow
