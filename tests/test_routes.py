@@ -2203,3 +2203,53 @@ def test_legacy_36_char_uuid_backward_compatibility(client, app):
     # 4. Finalized schedule
     resp_fin = client.get(f"/event/{legacy_uid}/finalized")
     assert resp_fin.status_code == 200
+
+
+def test_superadmin_unauthorized_access(client):
+    response = client.get("/superadmin")
+    assert response.status_code == 403
+
+
+def test_superadmin_invalid_secret(client):
+    response = client.get("/superadmin?secret=invalid_secret")
+    assert response.status_code == 403
+
+
+def test_superadmin_event_admin_secret_rejected(client, test_event):
+    response = client.get(f"/superadmin?secret={test_event['admin_secret']}")
+    assert response.status_code == 403
+
+
+def test_superadmin_valid_secret_sets_session_and_redirects(client, app):
+    secret = app.config["SUPERADMIN_SECRET"]
+    response = client.get(f"/superadmin?secret={secret}", follow_redirects=False)
+    assert response.status_code == 302
+    assert response.headers["Location"].endswith("/superadmin?range=all")
+
+    # Follow redirect and verify 200 OK
+    follow_resp = client.get("/superadmin?range=all")
+    assert follow_resp.status_code == 200
+    assert b"Superadmin" in follow_resp.data
+
+
+def test_superadmin_time_range_filter(client, app, test_event):
+    secret = app.config["SUPERADMIN_SECRET"]
+    client.get(f"/superadmin?secret={secret}")
+
+    response = client.get("/superadmin?range=1w")
+    assert response.status_code == 200
+
+
+def test_superadmin_logout(client, app):
+    secret = app.config["SUPERADMIN_SECRET"]
+    client.get(f"/superadmin?secret={secret}")
+
+    # Authorized
+    assert client.get("/superadmin").status_code == 200
+
+    # Logout
+    logout_resp = client.get("/superadmin/logout", follow_redirects=True)
+    assert logout_resp.status_code == 200
+
+    # Now unauthorized
+    assert client.get("/superadmin").status_code == 403

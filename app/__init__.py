@@ -18,6 +18,7 @@ from flask import (
     render_template,
     request,
     send_from_directory,
+    session,
     url_for,
 )
 from flask_wtf.csrf import CSRFProtect
@@ -30,6 +31,7 @@ from .logic import (
     format_minutes,
     generate_short_uid,
     get_ordered_active_days,
+    get_superadmin_metrics,
     validate_custom_slug,
 )
 
@@ -1335,6 +1337,36 @@ def create_app():
             content = "".join(lines)
 
         return Response(content, mimetype="text/plain")
+
+    @app.route("/superadmin")
+    def superadmin():
+        secret = request.args.get("secret")
+        if secret is not None:
+            if secret == app.config.get("SUPERADMIN_SECRET"):
+                session["is_superadmin"] = True
+                range_param = request.args.get("range", "all")
+                return redirect(url_for("superadmin", range=range_param))
+            return "Forbidden", 403
+
+        if session.get("is_superadmin") is True:
+            range_param = request.args.get("range", "all")
+            valid_range = range_param if range_param in ("1w", "2w", "4w") else "all"
+            db = database.get_db()
+            metrics = get_superadmin_metrics(db, time_range=valid_range)
+            slot_labels = generate_slot_labels(49)
+            return render_template(
+                "superadmin.html",
+                metrics=metrics,
+                current_range=valid_range,
+                slot_labels=slot_labels,
+            )
+
+        return "Forbidden", 403
+
+    @app.route("/superadmin/logout")
+    def superadmin_logout():
+        session.pop("is_superadmin", None)
+        return redirect(url_for("index"))
 
     return app
 

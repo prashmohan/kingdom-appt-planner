@@ -50,3 +50,32 @@ def temp_db(app):
     with app.app_context():
         db = database.get_db()
         yield db
+
+
+@pytest.fixture
+def test_event(app):
+    import json
+
+    event_data = {
+        "uid": "test_event_123",
+        "name": "Test Event",
+        "active_days": json.dumps(
+            {"construction": True, "training": True, "research": True}
+        ),
+        "admin_secret": "test_admin_secret_xyz",
+        "slot_count": 49,
+    }
+    with app.app_context():
+        db = database.get_db()
+        db.execute(
+            "INSERT INTO events (uid, name, active_days, admin_secret, slot_count) VALUES (?, ?, ?, ?, ?)",
+            (
+                event_data["uid"],
+                event_data["name"],
+                event_data["active_days"],
+                event_data["admin_secret"],
+                event_data["slot_count"],
+            ),
+        )
+        db.commit()
+    return event_data
