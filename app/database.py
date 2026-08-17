@@ -30,6 +30,7 @@ def init_db():
             active_days TEXT NOT NULL,
             admin_secret TEXT NOT NULL,
             slot_count INTEGER DEFAULT 49,
+            server_id INTEGER DEFAULT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
@@ -41,6 +42,15 @@ def init_db():
         try:
             cursor.execute(
                 "ALTER TABLE events ADD COLUMN slot_count INTEGER DEFAULT 49"
+            )
+        except sqlite3.OperationalError as e:
+            if "duplicate column name" not in str(e):
+                raise
+
+    if "server_id" not in columns:
+        try:
+            cursor.execute(
+                "ALTER TABLE events ADD COLUMN server_id INTEGER DEFAULT NULL"
             )
         except sqlite3.OperationalError as e:
             if "duplicate column name" not in str(e):

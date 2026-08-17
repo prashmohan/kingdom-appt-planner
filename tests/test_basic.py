@@ -656,3 +656,32 @@ def test_superadmin_is_reserved_slug():
     is_valid, error = validate_custom_slug("superadmin")
     assert is_valid is False
     assert "reserved" in error.lower()
+
+
+def test_database_migration_server_id(app):
+    old_db_path = database.DATABASE_PATH
+    db_fd, db_path = tempfile.mkstemp()
+    try:
+        conn = sqlite3.connect(db_path)
+        # Create events table with legacy schema (missing server_id)
+        conn.execute(
+            "CREATE TABLE events (id INTEGER PRIMARY KEY, uid TEXT UNIQUE, name TEXT, active_days TEXT, admin_secret TEXT, slot_count INTEGER DEFAULT 49)"
+        )
+        conn.commit()
+        conn.close()
+
+        # Run init_db with this existing database
+        database.DATABASE_PATH = db_path
+        with app.app_context():
+            database.init_db()
+
+            # Verify server_id column exists
+            db = database.get_db()
+            cursor = db.cursor()
+            cursor.execute("PRAGMA table_info(events)")
+            columns = {col[1]: col[2] for col in cursor.fetchall()}
+            assert "server_id" in columns
+    finally:
+        database.DATABASE_PATH = old_db_path
+        os.close(db_fd)
+        os.unlink(db_path)
