@@ -24,6 +24,7 @@ RESERVED_SLUGS = {
     "update_alliance",
     "submission-success",
     "favicon.ico",
+    "superadmin",
 }
 
 
@@ -33,7 +34,9 @@ def generate_short_uid(length: int = 8) -> str:
     return "".join(secrets.choice(alphabet) for _ in range(length))
 
 
-def validate_custom_slug(slug: str, db: sqlite3.Connection) -> tuple[bool, str | None]:
+def validate_custom_slug(
+    slug: str, db: sqlite3.Connection | None = None
+) -> tuple[bool, str | None]:
     """Validate format, length, reserved keywords, and uniqueness for a custom slug."""
     if not slug or len(slug) < 3 or len(slug) > 32:
         return False, "Custom URL code must be between 3 and 32 characters."
@@ -50,12 +53,13 @@ def validate_custom_slug(slug: str, db: sqlite3.Connection) -> tuple[bool, str |
             f"'{slug}' is a reserved keyword. Please choose a different URL code.",
         )
 
-    row = db.execute("SELECT 1 FROM events WHERE uid = ?", (slug,)).fetchone()
-    if row:
-        return (
-            False,
-            f"URL code '{slug}' is already taken. Please choose a different one.",
-        )
+    if db is not None:
+        row = db.execute("SELECT 1 FROM events WHERE uid = ?", (slug,)).fetchone()
+        if row:
+            return (
+                False,
+                f"URL code '{slug}' is already taken. Please choose a different one.",
+            )
 
     return True, None
 

@@ -7,6 +7,9 @@ load_dotenv()
 
 class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-key-for-internal-use-only-123")
+    SUPERADMIN_SECRET = os.environ.get(
+        "SUPERADMIN_SECRET", "dev-superadmin-secret-change-me"
+    )
     DATABASE_PATH = os.environ.get("DATABASE_PATH", "data/planner.db")
     ENABLE_SCREENSHOT_UPLOAD = (
         os.environ.get("ENABLE_SCREENSHOT_UPLOAD", "false").lower() == "true"

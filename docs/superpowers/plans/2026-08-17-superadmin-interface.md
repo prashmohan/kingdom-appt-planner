@@ -36,12 +36,15 @@
 ```python
 def test_superadmin_secret_config(app):
     from config import Config
+
     assert hasattr(Config, "SUPERADMIN_SECRET")
     assert isinstance(Config.SUPERADMIN_SECRET, str)
     assert len(Config.SUPERADMIN_SECRET) > 0
 
+
 def test_superadmin_is_reserved_slug():
     from app.logic import validate_custom_slug
+
     is_valid, error = validate_custom_slug("superadmin")
     assert is_valid is False
     assert "reserved" in error.lower()
@@ -56,7 +59,9 @@ Expected: FAIL with missing attribute or slug validation passing.
 
 In `config.py`:
 ```python
-SUPERADMIN_SECRET = os.environ.get("SUPERADMIN_SECRET", "dev-superadmin-secret-change-me")
+SUPERADMIN_SECRET = os.environ.get(
+    "SUPERADMIN_SECRET", "dev-superadmin-secret-change-me"
+)
 ```
 
 In `app/logic.py`:
@@ -94,8 +99,8 @@ git commit -m "feat(config): add SUPERADMIN_SECRET and reserve superadmin slug"
         "total_alliances": int,
         "total_assigned_slots": int,
         "total_locked_slots": int,
-        "global_fill_rate": float, # 0.0 - 100.0
-        "global_lock_rate": float, # 0.0 - 100.0
+        "global_fill_rate": float,  # 0.0 - 100.0
+        "global_lock_rate": float,  # 0.0 - 100.0
         "total_resources_pledged": float,
         "avg_submissions_per_event": float,
         "buff_distribution": {
@@ -103,13 +108,13 @@ git commit -m "feat(config): add SUPERADMIN_SECRET and reserve superadmin slug"
             "training": {"submissions": int, "assignments": int},
             "research": {"submissions": int, "assignments": int},
         },
-        "peak_time_slots": list[dict], # [{"slot": str, "count": int}]
+        "peak_time_slots": list[dict],  # [{"slot": str, "count": int}]
         "superlatives": {
             "most_contested": dict | None,
             "top_resources": dict | None,
         },
         "top_events": list[dict],
-        "events": list[dict], # Full list for the data table
+        "events": list[dict],  # Full list for the data table
     }
     ```
 
@@ -118,6 +123,7 @@ git commit -m "feat(config): add SUPERADMIN_SECRET and reserve superadmin slug"
 ```python
 def test_get_superadmin_metrics_empty(temp_db):
     from app.logic import get_superadmin_metrics
+
     metrics = get_superadmin_metrics(temp_db, time_range="all")
     assert metrics["total_events"] == 0
     assert metrics["total_submissions"] == 0
@@ -125,32 +131,53 @@ def test_get_superadmin_metrics_empty(temp_db):
     assert metrics["global_fill_rate"] == 0.0
     assert metrics["events"] == []
 
+
 def test_get_superadmin_metrics_with_data(temp_db):
     import json
     from app.logic import get_superadmin_metrics
-    
+
     # Insert test events
     temp_db.execute(
         "INSERT INTO events (uid, name, active_days, admin_secret, slot_count, created_at) VALUES (?, ?, ?, ?, ?, datetime('now', '-2 days'))",
-        ("evt1", "Kingdom 101", json.dumps(["construction", "training"]), "sec1", 49)
+        ("evt1", "Kingdom 101", json.dumps(["construction", "training"]), "sec1", 49),
     )
     temp_db.execute(
         "INSERT INTO events (uid, name, active_days, admin_secret, slot_count, created_at) VALUES (?, ?, ?, ?, ?, datetime('now', '-20 days'))",
-        ("evt2", "Kingdom 102", json.dumps(["construction"]), "sec2", 48)
+        ("evt2", "Kingdom 102", json.dumps(["construction"]), "sec2", 48),
     )
-    
+
     # Insert test submissions
     temp_db.execute(
         "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        ("s1", "evt1", "construction", "PlayerOne", "P1", "ALL1", 1000000.0, "{}", json.dumps([0, 1]))
+        (
+            "s1",
+            "evt1",
+            "construction",
+            "PlayerOne",
+            "P1",
+            "ALL1",
+            1000000.0,
+            "{}",
+            json.dumps([0, 1]),
+        ),
     )
     temp_db.execute(
         "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        ("s2", "evt1", "training", "PlayerTwo", "P2", "ALL2", 2000000.0, "{}", json.dumps([1, 2]))
+        (
+            "s2",
+            "evt1",
+            "training",
+            "PlayerTwo",
+            "P2",
+            "ALL2",
+            2000000.0,
+            "{}",
+            json.dumps([1, 2]),
+        ),
     )
     temp_db.execute(
         "INSERT INTO assignments (event_uid, day_type, slot_index, player_id, is_locked) VALUES (?, ?, ?, ?, ?)",
-        ("evt1", "construction", 0, "P1", 1)
+        ("evt1", "construction", 0, "P1", 1),
     )
     temp_db.commit()
 
@@ -212,13 +239,16 @@ def test_superadmin_unauthorized_access(client):
     response = client.get("/superadmin")
     assert response.status_code == 403
 
+
 def test_superadmin_invalid_secret(client):
     response = client.get("/superadmin?secret=invalid_secret")
     assert response.status_code == 403
 
+
 def test_superadmin_event_admin_secret_rejected(client, test_event):
     response = client.get(f"/superadmin?secret={test_event['admin_secret']}")
     assert response.status_code == 403
+
 
 def test_superadmin_valid_secret_sets_session_and_redirects(client, app):
     secret = app.config["SUPERADMIN_SECRET"]
@@ -231,24 +261,26 @@ def test_superadmin_valid_secret_sets_session_and_redirects(client, app):
     assert follow_resp.status_code == 200
     assert b"Superadmin" in follow_resp.data
 
+
 def test_superadmin_time_range_filter(client, app, test_event):
     secret = app.config["SUPERADMIN_SECRET"]
     client.get(f"/superadmin?secret={secret}")
-    
+
     response = client.get("/superadmin?range=1w")
     assert response.status_code == 200
+
 
 def test_superadmin_logout(client, app):
     secret = app.config["SUPERADMIN_SECRET"]
     client.get(f"/superadmin?secret={secret}")
-    
+
     # Authorized
     assert client.get("/superadmin").status_code == 200
-    
+
     # Logout
     logout_resp = client.get("/superadmin/logout", follow_redirects=True)
     assert logout_resp.status_code == 200
-    
+
     # Now unauthorized
     assert client.get("/superadmin").status_code == 403
 ```

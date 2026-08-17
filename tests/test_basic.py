@@ -640,3 +640,19 @@ def test_event_slot_count_constraint_and_defaults(app):
         ).fetchone()
         assert row is not None
         assert row["slot_count"] == 48
+
+
+def test_superadmin_secret_config(app):
+    from config import Config
+
+    assert hasattr(Config, "SUPERADMIN_SECRET")
+    assert isinstance(Config.SUPERADMIN_SECRET, str)
+    assert len(Config.SUPERADMIN_SECRET) > 0
+
+
+def test_superadmin_is_reserved_slug():
+    from app.logic import validate_custom_slug
+
+    is_valid, error = validate_custom_slug("superadmin")
+    assert is_valid is False
+    assert "reserved" in error.lower()
