@@ -199,9 +199,26 @@ def create_app():
             "research_day": int(research_day),
         }
 
+        raw_server_id = request.form.get("server_id", "").strip()
+        server_id = None
+        if raw_server_id:
+            try:
+                parsed_id = int(raw_server_id)
+                if parsed_id > 0:
+                    server_id = parsed_id
+            except ValueError:
+                server_id = None
+
         db.execute(
-            "INSERT INTO events (uid, name, active_days, admin_secret, slot_count) VALUES (?, ?, ?, ?, ?)",
-            (uid, event_name, json.dumps(active_days), admin_secret, slot_count),
+            "INSERT INTO events (uid, name, active_days, admin_secret, slot_count, server_id) VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                uid,
+                event_name,
+                json.dumps(active_days),
+                admin_secret,
+                slot_count,
+                server_id,
+            ),
         )
         db.commit()
 

@@ -54,6 +54,46 @@ def test_create_event(client, app):
         assert event is not None
 
 
+def test_create_event_with_server_id(client, app):
+    from app import database
+
+    # 1. Valid integer server ID
+    resp = client.post(
+        "/create", data={"event_name": "Kingdom 1052 KvK", "server_id": "1052"}
+    )
+    assert resp.status_code == 302
+    with app.app_context():
+        db = database.get_db()
+        row = db.execute(
+            "SELECT server_id FROM events WHERE name = 'Kingdom 1052 KvK'"
+        ).fetchone()
+        assert row[0] == 1052
+
+    # 2. Empty/missing server ID -> stored as NULL / None
+    resp2 = client.post(
+        "/create", data={"event_name": "No Server KvK", "server_id": ""}
+    )
+    assert resp2.status_code == 302
+    with app.app_context():
+        db = database.get_db()
+        row2 = db.execute(
+            "SELECT server_id FROM events WHERE name = 'No Server KvK'"
+        ).fetchone()
+        assert row2[0] is None
+
+    # 3. Invalid non-integer server ID -> falls back to None gracefully
+    resp3 = client.post(
+        "/create", data={"event_name": "Invalid Server KvK", "server_id": "invalid"}
+    )
+    assert resp3.status_code == 302
+    with app.app_context():
+        db = database.get_db()
+        row3 = db.execute(
+            "SELECT server_id FROM events WHERE name = 'Invalid Server KvK'"
+        ).fetchone()
+        assert row3[0] is None
+
+
 def test_player_form_page(client, app):
     client.post("/create", data={"event_name": "Form Test"})
     with app.app_context():

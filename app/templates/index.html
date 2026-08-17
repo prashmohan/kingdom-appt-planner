@@ -57,6 +57,12 @@
                 </div>
 
                 <div class="mb-6">
+                    <label for="server_id" class="block text-sm font-medium text-gray-300 mb-1">Kingdom Server ID (Optional)</label>
+                    <input type="number" name="server_id" id="server_id" min="1" max="999999" placeholder="e.g., 1052" class="mt-1 block w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md shadow-sm text-gray-200 focus:border-kvk-gold focus:ring focus:ring-kvk-gold focus:ring-opacity-50">
+                    <p class="text-xs text-gray-500 mt-1">Optional kingdom/server number (e.g. 1052) for display on player forms and schedules.</p>
+                </div>
+
+                <div class="mb-6">
                     <label for="custom_slug" class="block text-sm font-medium text-gray-300 mb-1">Custom URL Code (Optional)</label>
                     <input type="text" name="custom_slug" id="custom_slug" 
                            pattern="[a-zA-Z0-9_-]{3,32}"
