@@ -379,7 +379,7 @@
 
             <!-- Events Table -->
             <div class="overflow-x-auto rounded-lg border border-kvk-gray-700">
-                <table id="events-table" class="min-w-full divide-y divide-kvk-gray-700 text-sm text-left">
+                <table id="events-table" class="w-full divide-y divide-kvk-gray-700 text-sm text-left">
                     <thead class="bg-kvk-gray-900/90 text-xs font-semibold uppercase tracking-wider text-gray-400 select-none">
                         <tr>
                             <th scope="col" class="py-3 px-4 cursor-pointer hover:text-kvk-gold transition-colors" data-sort="name" onclick="sortTable('name')">
@@ -388,31 +388,31 @@
                                     <span class="sort-icon text-gray-500 text-[10px]">↕</span>
                                 </div>
                             </th>
-                            <th scope="col" class="py-3 px-4 cursor-pointer hover:text-kvk-gold transition-colors" data-sort="created" onclick="sortTable('created')">
+                            <th scope="col" class="py-3 px-3 w-36 whitespace-nowrap cursor-pointer hover:text-kvk-gold transition-colors" data-sort="created" onclick="sortTable('created')">
                                 <div class="flex items-center gap-1">
                                     <span>Created (UTC)</span>
                                     <span class="sort-icon text-gray-500 text-[10px]">↕</span>
                                 </div>
                             </th>
-                            <th scope="col" class="py-3 px-4 cursor-pointer hover:text-kvk-gold transition-colors text-right" data-sort="submissions" onclick="sortTable('submissions')">
+                            <th scope="col" class="py-3 px-3 w-28 whitespace-nowrap cursor-pointer hover:text-kvk-gold transition-colors text-right" data-sort="submissions" onclick="sortTable('submissions')">
                                 <div class="flex items-center justify-end gap-1">
                                     <span>Submissions</span>
                                     <span class="sort-icon text-gray-500 text-[10px]">↕</span>
                                 </div>
                             </th>
-                            <th scope="col" class="py-3 px-4 cursor-pointer hover:text-kvk-gold transition-colors text-right" data-sort="players" onclick="sortTable('players')">
+                            <th scope="col" class="py-3 px-3 w-24 whitespace-nowrap cursor-pointer hover:text-kvk-gold transition-colors text-right" data-sort="players" onclick="sortTable('players')">
                                 <div class="flex items-center justify-end gap-1">
                                     <span>Players</span>
                                     <span class="sort-icon text-gray-500 text-[10px]">↕</span>
                                 </div>
                             </th>
-                            <th scope="col" class="py-3 px-4 cursor-pointer hover:text-kvk-gold transition-colors" data-sort="fill" onclick="sortTable('fill')">
+                            <th scope="col" class="py-3 px-4 w-44 whitespace-nowrap cursor-pointer hover:text-kvk-gold transition-colors" data-sort="fill" onclick="sortTable('fill')">
                                 <div class="flex items-center gap-1">
                                     <span>Slot Fill Rate</span>
                                     <span class="sort-icon text-gray-500 text-[10px]">↕</span>
                                 </div>
                             </th>
-                            <th scope="col" class="py-3 px-4 text-center">
+                            <th scope="col" class="py-3 px-4 w-44 whitespace-nowrap text-center">
                                 <span>Actions</span>
                             </th>
                         </tr>
@@ -427,38 +427,38 @@
                                 data-players="{{ ev.unique_player_count }}"
                                 data-fill="{{ ev.fill_percentage }}">
                                 <!-- 1. Event Name (with link to Public Schedule) -->
-                                <td class="py-3.5 px-4 font-semibold text-white">
+                                <td class="py-3 px-4 font-semibold text-white max-w-[200px] md:max-w-[280px]">
                                     <a href="{{ ev.public_url }}" 
                                        target="_blank"
-                                       class="text-gray-100 hover:text-kvk-gold transition-colors inline-flex items-center gap-1.5 group"
+                                       class="text-gray-100 hover:text-kvk-gold transition-colors inline-flex items-center gap-1.5 max-w-full group"
                                        title="View Public Schedule ({{ ev.name }})">
-                                        <span>{{ ev.name }}</span>
-                                        <svg class="w-3.5 h-3.5 text-gray-500 group-hover:text-kvk-gold transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <span class="truncate block">{{ ev.name }}</span>
+                                        <svg class="w-3.5 h-3.5 flex-shrink-0 text-gray-500 group-hover:text-kvk-gold transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                                         </svg>
                                     </a>
                                 </td>
 
                                 <!-- 2. Created Date -->
-                                <td class="py-3.5 px-4 text-xs text-gray-400 whitespace-nowrap">
+                                <td class="py-3 px-3 text-xs text-gray-400 whitespace-nowrap w-36">
                                     {{ ev.created_at }}
                                 </td>
 
                                 <!-- 3. Submissions -->
-                                <td class="py-3.5 px-4 text-right font-bold text-gray-200">
+                                <td class="py-3 px-3 text-right font-bold text-gray-200 w-28 whitespace-nowrap">
                                     {{ ev.submission_count }}
                                 </td>
 
                                 <!-- 4. Unique Players -->
-                                <td class="py-3.5 px-4 text-right font-medium text-gray-300">
+                                <td class="py-3 px-3 text-right font-medium text-gray-300 w-24 whitespace-nowrap">
                                     {{ ev.unique_player_count }}
                                 </td>
 
                                 <!-- 5. Slot Fill Rate -->
-                                <td class="py-3.5 px-4 whitespace-nowrap">
+                                <td class="py-3 px-4 whitespace-nowrap w-44">
                                     <div class="flex items-center gap-2">
-                                        <span class="text-xs font-semibold text-gray-200 w-10 text-right">{{ ev.fill_percentage }}%</span>
-                                        <div class="w-20 bg-kvk-gray-900 rounded-full h-2 overflow-hidden border border-kvk-gray-700">
+                                        <span class="text-xs font-semibold text-gray-200 w-9 text-right">{{ ev.fill_percentage }}%</span>
+                                        <div class="w-16 bg-kvk-gray-900 rounded-full h-2 overflow-hidden border border-kvk-gray-700 flex-shrink-0">
                                             <div class="bg-kvk-gold h-2 rounded-full" style="width: {{ ev.fill_percentage }}%;"></div>
                                         </div>
                                         <span class="text-[11px] text-gray-500">({{ ev.assigned_slot_count }}/{{ ev.capacity }})</span>
@@ -466,7 +466,7 @@
                                 </td>
 
                                 <!-- 6. Actions -->
-                                <td class="py-3.5 px-4 text-center">
+                                <td class="py-3 px-4 text-center whitespace-nowrap w-44">
                                     <div class="flex items-center justify-center gap-1.5">
                                         <!-- Primary Action: Open Admin -->
                                         <a href="{{ ev.admin_url }}" 
