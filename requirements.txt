@@ -2,8 +2,5 @@ flask
 flask-wtf
 gunicorn
 python-dotenv
-pytest
-pytest-cov
 requests
 markdown
-ruff
