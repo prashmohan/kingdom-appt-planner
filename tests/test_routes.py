@@ -2253,3 +2253,144 @@ def test_superadmin_logout(client, app):
 
     # Now unauthorized
     assert client.get("/superadmin").status_code == 403
+
+
+def test_superadmin_template_rendering_empty(client, app):
+    secret = app.config["SUPERADMIN_SECRET"]
+    client.get(f"/superadmin?secret={secret}")
+
+    response = client.get("/superadmin?range=all")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    # 1. Header & Navigation
+    assert "Superadmin Console" in html
+    assert "Global Platform Oversight" in html
+    assert "1 Week" in html
+    assert "2 Weeks" in html
+    assert "4 Weeks" in html
+    assert "All Time" in html
+    assert "/superadmin/logout" in html
+
+    # 2. KPI Cards
+    assert "Total Events" in html
+    assert "Total Submissions" in html
+    assert "Unique Players" in html
+    assert "Global Slot Fill &amp; Lock" in html or "Global Slot Fill & Lock" in html
+
+    # 3. Analytics Grid
+    assert "Buff Distribution" in html
+    assert "Construction (Day 1)" in html
+    assert "Training (Day 4)" in html
+    assert "Research (Day 2/5)" in html
+    assert "Superlatives &amp; Top 5" in html or "Superlatives & Top 5" in html
+    assert "Peak UTC Demand" in html
+
+    # 4. Table and Empty State
+    assert "Registered Events Directory" in html
+    assert "event-search-input" in html
+    assert "No kingdom events found in the selected time range" in html
+    assert 'id="toast"' in html
+
+
+def test_superadmin_template_rendering_with_events_and_data(client, app, test_event):
+    import json
+
+    from app import database
+
+    with app.app_context():
+        db = database.get_db()
+        # Add submission
+        db.execute(
+            """INSERT INTO submissions (
+                id, event_uid, day_type, player_name, player_id, alliance_name,
+                resources, raw_data, feasible_slots, status, timestamp
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                "sub_superadmin_1",
+                test_event["uid"],
+                "construction",
+                "Lord Commander",
+                "LC007",
+                "K100 Elite",
+                120000.0,
+                "{}",
+                json.dumps([10, 11, 12]),
+                "pending",
+                "2026-08-17 08:00:00",
+            ),
+        )
+        # Add assignment
+        db.execute(
+            """INSERT INTO assignments (
+                event_uid, day_type, slot_index, player_id, is_locked
+            ) VALUES (?, ?, ?, ?, ?)""",
+            (test_event["uid"], "construction", 10, "LC007", 1),
+        )
+        db.commit()
+
+    secret = app.config["SUPERADMIN_SECRET"]
+    client.get(f"/superadmin?secret={secret}")
+
+    response = client.get("/superadmin?range=all")
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+
+    # Event details in table
+    assert test_event["name"] in html
+    assert test_event["uid"] in html
+    assert f"/admin/{test_event['uid']}?secret={test_event['admin_secret']}" in html
+    assert f"/event/{test_event['uid']}/schedule" in html
+    assert f"/event/{test_event['uid']}" in html
+    assert "Open Admin" in html
+    assert "copyAdminLink" in html
+    assert "Const" in html
+    assert "Train" in html
+    assert "Res" in html
+
+    # Superlatives & Top 5
+    assert "Most Contested" in html
+    assert "Top Resources" in html
+    assert "Submission Leaderboard" in html
+
+    # Peak UTC Demand
+    assert "05:00 - 05:30 UTC" in html or "requests" in html
+
+    # Data attributes for sorting & client-side filtering
+    assert 'data-sort="name"' in html
+    assert 'data-sort="uid"' in html
+    assert 'data-sort="created"' in html
+    assert 'data-sort="submissions"' in html
+    assert 'data-sort="players"' in html
+    assert 'data-sort="fill"' in html
+    assert f'data-name="{test_event["name"].lower()}"' in html
+    assert f'data-uid="{test_event["uid"].lower()}"' in html
+
+
+def test_superadmin_template_range_highlighting(client, app):
+    secret = app.config["SUPERADMIN_SECRET"]
+    client.get(f"/superadmin?secret={secret}")
+
+    # Check 1w range
+    resp_1w = client.get("/superadmin?range=1w")
+    assert resp_1w.status_code == 200
+    html_1w = resp_1w.get_data(as_text=True)
+    # The 1 Week button should have active gold styling
+    assert "range=1w" in html_1w
+    assert (
+        'bg-kvk-gold text-kvk-gray-900 shadow-md">\n                        1 Week'
+        in html_1w
+        or "1 Week" in html_1w
+    )
+
+    # Check 2w range
+    resp_2w = client.get("/superadmin?range=2w")
+    assert resp_2w.status_code == 200
+    html_2w = resp_2w.get_data(as_text=True)
+    assert "range=2w" in html_2w
+
+    # Check 4w range
+    resp_4w = client.get("/superadmin?range=4w")
+    assert resp_4w.status_code == 200
+    html_4w = resp_4w.get_data(as_text=True)
+    assert "range=4w" in html_4w

@@ -1,10 +1,742 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
-    <title>Superadmin Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>👑 Superadmin Console - KingShot Planner</title>
+    {% include 'analytics.html' %}
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    <script src="{{ url_for('static', filename='tailwind.js') }}"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        'kvk-gold': '#FBBF24',
+                        'kvk-blue': '#3B82F6',
+                        'kvk-gray': {
+                            700: '#374151',
+                            800: '#1F2937',
+                            900: '#111827',
+                        },
+                    }
+                }
+            }
+        }
+    </script>
 </head>
-<body>
-    <h1>Superadmin Dashboard</h1>
+<body class="bg-kvk-gray-900 text-gray-200 antialiased min-h-screen">
+    <!-- Top Navigation / Header -->
+    <header class="bg-kvk-gray-800/90 backdrop-blur-md border-b border-kvk-gray-700 sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <span class="text-3xl select-none" aria-hidden="true">👑</span>
+                <div>
+                    <h1 class="text-2xl sm:text-3xl font-extrabold text-kvk-gold tracking-tight">Superadmin Console</h1>
+                    <p class="text-xs sm:text-sm text-gray-400">Global Platform Oversight & Operations</p>
+                </div>
+            </div>
+
+            <div class="flex items-center flex-wrap gap-3">
+                <!-- Time Range Filter Buttons -->
+                <nav class="inline-flex bg-kvk-gray-900/90 p-1 rounded-xl border border-kvk-gray-700 shadow-inner" aria-label="Time range selector">
+                    <a href="{{ url_for('superadmin', range='1w') }}" 
+                       class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all {% if current_range == '1w' %}bg-kvk-gold text-kvk-gray-900 shadow-md{% else %}text-gray-400 hover:text-gray-200 hover:bg-kvk-gray-800{% endif %}">
+                        1 Week
+                    </a>
+                    <a href="{{ url_for('superadmin', range='2w') }}" 
+                       class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all {% if current_range == '2w' %}bg-kvk-gold text-kvk-gray-900 shadow-md{% else %}text-gray-400 hover:text-gray-200 hover:bg-kvk-gray-800{% endif %}">
+                        2 Weeks
+                    </a>
+                    <a href="{{ url_for('superadmin', range='4w') }}" 
+                       class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all {% if current_range == '4w' %}bg-kvk-gold text-kvk-gray-900 shadow-md{% else %}text-gray-400 hover:text-gray-200 hover:bg-kvk-gray-800{% endif %}">
+                        4 Weeks
+                    </a>
+                    <a href="{{ url_for('superadmin', range='all') }}" 
+                       class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all {% if current_range == 'all' or not current_range %}bg-kvk-gold text-kvk-gray-900 shadow-md{% else %}text-gray-400 hover:text-gray-200 hover:bg-kvk-gray-800{% endif %}">
+                        All Time
+                    </a>
+                </nav>
+
+                <!-- Logout Button -->
+                <a href="{{ url_for('superadmin_logout') }}" 
+                   class="inline-flex items-center gap-1.5 bg-red-900/30 hover:bg-red-800/50 text-red-300 border border-red-700/50 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors shadow-sm"
+                   title="End superadmin session">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    Logout
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        <!-- 1. Overview KPI Cards (Grid of 4) -->
+        <section aria-label="Global Key Performance Indicators">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                <!-- Card 1: Total Events Registered -->
+                <div class="bg-kvk-gray-800 border border-kvk-gray-700 rounded-xl p-5 shadow-lg relative overflow-hidden flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold uppercase tracking-wider text-gray-400">Total Events</span>
+                        <div class="p-2 bg-amber-500/10 text-kvk-gold rounded-lg border border-amber-500/20">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <div class="text-3xl font-extrabold text-white tracking-tight">{{ metrics.total_events }}</div>
+                        <div class="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                            <span class="text-kvk-gold font-medium">{{ metrics.avg_submissions_per_event }}</span>
+                            <span>avg submissions/event</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 2: Total Submissions -->
+                <div class="bg-kvk-gray-800 border border-kvk-gray-700 rounded-xl p-5 shadow-lg relative overflow-hidden flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold uppercase tracking-wider text-gray-400">Total Submissions</span>
+                        <div class="p-2 bg-blue-500/10 text-kvk-blue rounded-lg border border-blue-500/20">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <div class="text-3xl font-extrabold text-white tracking-tight">{{ metrics.total_submissions }}</div>
+                        <div class="text-xs text-gray-400 mt-1">
+                            Across all kingdom events
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 3: Unique Players -->
+                <div class="bg-kvk-gray-800 border border-kvk-gray-700 rounded-xl p-5 shadow-lg relative overflow-hidden flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold uppercase tracking-wider text-gray-400">Unique Players</span>
+                        <div class="p-2 bg-emerald-500/10 text-emerald-400 rounded-lg border border-emerald-500/20">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <div class="text-3xl font-extrabold text-white tracking-tight">{{ metrics.total_unique_players }}</div>
+                        <div class="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                            <span class="text-emerald-400 font-medium">{{ metrics.total_alliances }}</span>
+                            <span>alliances represented</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 4: Global Slot Fill & Confirmation Lock Rate -->
+                <div class="bg-kvk-gray-800 border border-kvk-gray-700 rounded-xl p-5 shadow-lg relative overflow-hidden flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold uppercase tracking-wider text-gray-400">Global Slot Fill & Lock</span>
+                        <div class="p-2 bg-purple-500/10 text-purple-400 rounded-lg border border-purple-500/20">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-3xl font-extrabold text-white tracking-tight">{{ metrics.global_fill_rate }}%</span>
+                            <span class="text-xs font-semibold text-gray-400">fill rate</span>
+                        </div>
+                        <div class="text-xs text-gray-400 mt-1 flex items-center gap-1.5">
+                            <span class="text-purple-400 font-medium">{{ metrics.global_lock_rate }}% locked</span>
+                            <span>({{ metrics.total_locked_slots }}/{{ metrics.total_assigned_slots }})</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. Analytics & Highlights Grid (3 Columns) -->
+        <section aria-label="Platform Highlights and Distribution" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Card 1: Buff Demand Distribution -->
+            <div class="bg-kvk-gray-800 border border-kvk-gray-700 rounded-xl p-6 shadow-lg flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-4 border-b border-kvk-gray-700 pb-3">
+                        <h2 class="text-lg font-bold text-gray-100 flex items-center gap-2">
+                            <span class="text-kvk-gold">⚔️</span> Buff Distribution
+                        </h2>
+                        <span class="text-xs text-gray-400 font-medium">Submissions & Assigned</span>
+                    </div>
+
+                    {% set const_subs = metrics.buff_distribution.construction.submissions %}
+                    {% set const_asses = metrics.buff_distribution.construction.assignments %}
+                    {% set train_subs = metrics.buff_distribution.training.submissions %}
+                    {% set train_asses = metrics.buff_distribution.training.assignments %}
+                    {% set res_subs = metrics.buff_distribution.research.submissions %}
+                    {% set res_asses = metrics.buff_distribution.research.assignments %}
+                    {% set total_buff_subs = const_subs + train_subs + res_subs %}
+
+                    <div class="space-y-4">
+                        <!-- Construction -->
+                        <div>
+                            <div class="flex justify-between text-xs font-semibold mb-1">
+                                <span class="text-amber-400 flex items-center gap-1.5">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"></span>
+                                    Construction (Day 1)
+                                </span>
+                                <span class="text-gray-300">{{ const_subs }} subs · {{ const_asses }} assigned</span>
+                            </div>
+                            <div class="w-full bg-kvk-gray-900 rounded-full h-2.5 overflow-hidden border border-kvk-gray-700">
+                                {% set const_pct = (const_subs / total_buff_subs * 100)|round(1) if total_buff_subs > 0 else 0 %}
+                                <div class="bg-amber-400 h-2.5 rounded-full transition-all duration-500" style="width: {{ const_pct }}%;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Training -->
+                        <div>
+                            <div class="flex justify-between text-xs font-semibold mb-1">
+                                <span class="text-emerald-400 flex items-center gap-1.5">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span>
+                                    Training (Day 4)
+                                </span>
+                                <span class="text-gray-300">{{ train_subs }} subs · {{ train_asses }} assigned</span>
+                            </div>
+                            <div class="w-full bg-kvk-gray-900 rounded-full h-2.5 overflow-hidden border border-kvk-gray-700">
+                                {% set train_pct = (train_subs / total_buff_subs * 100)|round(1) if total_buff_subs > 0 else 0 %}
+                                <div class="bg-emerald-400 h-2.5 rounded-full transition-all duration-500" style="width: {{ train_pct }}%;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Research -->
+                        <div>
+                            <div class="flex justify-between text-xs font-semibold mb-1">
+                                <span class="text-kvk-blue flex items-center gap-1.5">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-kvk-blue inline-block"></span>
+                                    Research (Day 2/5)
+                                </span>
+                                <span class="text-gray-300">{{ res_subs }} subs · {{ res_asses }} assigned</span>
+                            </div>
+                            <div class="w-full bg-kvk-gray-900 rounded-full h-2.5 overflow-hidden border border-kvk-gray-700">
+                                {% set res_pct = (res_subs / total_buff_subs * 100)|round(1) if total_buff_subs > 0 else 0 %}
+                                <div class="bg-kvk-blue h-2.5 rounded-full transition-all duration-500" style="width: {{ res_pct }}%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-5 pt-3 border-t border-kvk-gray-700/60 text-center">
+                    <span class="text-xs text-gray-400">Total buffer requests: <strong class="text-gray-200">{{ total_buff_subs }}</strong></span>
+                </div>
+            </div>
+
+            <!-- Card 2: Superlatives & Top 5 Kingdoms -->
+            <div class="bg-kvk-gray-800 border border-kvk-gray-700 rounded-xl p-6 shadow-lg flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-4 border-b border-kvk-gray-700 pb-3">
+                        <h2 class="text-lg font-bold text-gray-100 flex items-center gap-2">
+                            <span class="text-kvk-gold">🏆</span> Superlatives & Top 5
+                        </h2>
+                        <span class="text-xs text-gray-400 font-medium">Kingdom Honors</span>
+                    </div>
+
+                    <!-- Superlatives Badges -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                        <!-- Most Contested -->
+                        <div class="bg-kvk-gray-900/80 p-3 rounded-lg border border-kvk-gray-700">
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-amber-400 block mb-1">Most Contested</span>
+                            {% if metrics.superlatives.most_contested %}
+                                <div class="font-bold text-gray-100 truncate text-sm" title="{{ metrics.superlatives.most_contested.name }}">
+                                    {{ metrics.superlatives.most_contested.name }}
+                                </div>
+                                <div class="text-xs text-gray-400 mt-0.5">
+                                    <span class="text-amber-300 font-semibold">{{ metrics.superlatives.most_contested.ratio }}x</span> demand ratio
+                                    ({{ metrics.superlatives.most_contested.submission_count }}/{{ metrics.superlatives.most_contested.capacity }})
+                                </div>
+                            {% else %}
+                                <div class="text-xs text-gray-500 italic">No event data</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Top Resources -->
+                        <div class="bg-kvk-gray-900/80 p-3 rounded-lg border border-kvk-gray-700">
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-400 block mb-1">Top Resources</span>
+                            {% if metrics.superlatives.top_resources %}
+                                <div class="font-bold text-gray-100 truncate text-sm" title="{{ metrics.superlatives.top_resources.name }}">
+                                    {{ metrics.superlatives.top_resources.name }}
+                                </div>
+                                <div class="text-xs text-gray-400 mt-0.5">
+                                    <span class="text-emerald-300 font-semibold">{{ metrics.superlatives.top_resources.formatted_resources }}</span> pledged
+                                </div>
+                            {% else %}
+                                <div class="text-xs text-gray-500 italic">No event data</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Top 5 Leaderboard -->
+                    <div class="mt-3">
+                        <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider block mb-2">Submission Leaderboard</span>
+                        {% if metrics.top_events %}
+                            <div class="space-y-1.5">
+                                {% for top_ev in metrics.top_events %}
+                                    <div class="flex items-center justify-between text-xs py-1 px-2 rounded bg-kvk-gray-900/40 hover:bg-kvk-gray-900/80 border border-kvk-gray-700/40">
+                                        <div class="flex items-center gap-2 truncate pr-2">
+                                            <span class="font-bold {% if loop.index == 1 %}text-kvk-gold{% elif loop.index == 2 %}text-gray-300{% elif loop.index == 3 %}text-amber-600{% else %}text-gray-500{% endif %}">
+                                                #{{ loop.index }}
+                                            </span>
+                                            <span class="text-gray-200 font-medium truncate" title="{{ top_ev.name }}">{{ top_ev.name }}</span>
+                                        </div>
+                                        <div class="flex-shrink-0 text-right">
+                                            <span class="font-bold text-gray-200">{{ top_ev.submission_count }}</span>
+                                            <span class="text-gray-500">subs</span>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <p class="text-xs text-gray-500 italic">No events in this range</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 3: Peak UTC Demand Hours -->
+            <div class="bg-kvk-gray-800 border border-kvk-gray-700 rounded-xl p-6 shadow-lg flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-4 border-b border-kvk-gray-700 pb-3">
+                        <h2 class="text-lg font-bold text-gray-100 flex items-center gap-2">
+                            <span class="text-kvk-gold">⏰</span> Peak UTC Demand
+                        </h2>
+                        <span class="text-xs text-gray-400 font-medium">Top 30-min Windows</span>
+                    </div>
+
+                    {% if metrics.peak_time_slots %}
+                        {% set max_slot_count = metrics.peak_time_slots[0].count if metrics.peak_time_slots[0] else 1 %}
+                        <div class="space-y-3">
+                            {% for peak in metrics.peak_time_slots %}
+                                <div class="bg-kvk-gray-900/80 p-3 rounded-lg border border-kvk-gray-700">
+                                    <div class="flex items-center justify-between mb-1.5">
+                                        <span class="font-mono text-sm font-bold text-kvk-gold">{{ peak.slot }}</span>
+                                        <span class="bg-kvk-blue/20 text-kvk-blue border border-kvk-blue/30 px-2 py-0.5 rounded text-xs font-bold">
+                                            {{ peak.count }} requests
+                                        </span>
+                                    </div>
+                                    <div class="w-full bg-kvk-gray-800 rounded-full h-1.5 overflow-hidden">
+                                        {% set peak_pct = (peak.count / max_slot_count * 100)|round(1) if max_slot_count > 0 else 0 %}
+                                        <div class="bg-kvk-blue h-1.5 rounded-full" style="width: {{ peak_pct }}%;"></div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-8 text-gray-500 text-sm">
+                            <svg class="w-8 h-8 mx-auto mb-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            No time slot requests recorded in this range.
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="mt-5 pt-3 border-t border-kvk-gray-700/60 text-center">
+                    <span class="text-xs text-gray-400">All times calculated in standardized <strong class="text-gray-200">UTC</strong></span>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. Registered Events Table & Interactive Directory -->
+        <section aria-label="Registered Events Directory" class="bg-kvk-gray-800 border border-kvk-gray-700 rounded-xl shadow-lg p-6">
+            <!-- Header & Search Controls -->
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-100 flex items-center gap-2">
+                        <span>📋</span> Registered Events Directory
+                        <span class="bg-kvk-gray-700 text-gray-300 text-xs px-2.5 py-0.5 rounded-full font-semibold border border-kvk-gray-600">
+                            {{ metrics.events|length }}
+                        </span>
+                    </h2>
+                    <p class="text-xs text-gray-400 mt-0.5">Real-time filtering, fast sorting, and direct administrative access</p>
+                </div>
+
+                <!-- Search Input -->
+                <div class="relative w-full sm:w-72">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                    <input type="text" 
+                           id="event-search-input" 
+                           placeholder="Search by event name or UID..." 
+                           class="w-full pl-9 pr-8 py-2 bg-kvk-gray-900 border border-kvk-gray-700 rounded-lg text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-kvk-gold focus:ring-1 focus:ring-kvk-gold transition-colors">
+                    <button id="clear-search-btn" type="button" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-300 hidden">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Events Table -->
+            <div class="overflow-x-auto rounded-lg border border-kvk-gray-700">
+                <table id="events-table" class="min-w-full divide-y divide-kvk-gray-700 text-sm text-left">
+                    <thead class="bg-kvk-gray-900/90 text-xs font-semibold uppercase tracking-wider text-gray-400 select-none">
+                        <tr>
+                            <th scope="col" class="py-3 px-4 cursor-pointer hover:text-kvk-gold transition-colors" data-sort="name" onclick="sortTable('name')">
+                                <div class="flex items-center gap-1">
+                                    <span>Event Name</span>
+                                    <span class="sort-icon text-gray-500 text-[10px]">↕</span>
+                                </div>
+                            </th>
+                            <th scope="col" class="py-3 px-4 cursor-pointer hover:text-kvk-gold transition-colors" data-sort="uid" onclick="sortTable('uid')">
+                                <div class="flex items-center gap-1">
+                                    <span>UID / Slug</span>
+                                    <span class="sort-icon text-gray-500 text-[10px]">↕</span>
+                                </div>
+                            </th>
+                            <th scope="col" class="py-3 px-4 cursor-pointer hover:text-kvk-gold transition-colors" data-sort="created" onclick="sortTable('created')">
+                                <div class="flex items-center gap-1">
+                                    <span>Created (UTC)</span>
+                                    <span class="sort-icon text-gray-500 text-[10px]">↕</span>
+                                </div>
+                            </th>
+                            <th scope="col" class="py-3 px-4">
+                                <span>Active Days</span>
+                            </th>
+                            <th scope="col" class="py-3 px-4 cursor-pointer hover:text-kvk-gold transition-colors text-right" data-sort="submissions" onclick="sortTable('submissions')">
+                                <div class="flex items-center justify-end gap-1">
+                                    <span>Submissions</span>
+                                    <span class="sort-icon text-gray-500 text-[10px]">↕</span>
+                                </div>
+                            </th>
+                            <th scope="col" class="py-3 px-4 cursor-pointer hover:text-kvk-gold transition-colors text-right" data-sort="players" onclick="sortTable('players')">
+                                <div class="flex items-center justify-end gap-1">
+                                    <span>Players</span>
+                                    <span class="sort-icon text-gray-500 text-[10px]">↕</span>
+                                </div>
+                            </th>
+                            <th scope="col" class="py-3 px-4 cursor-pointer hover:text-kvk-gold transition-colors" data-sort="fill" onclick="sortTable('fill')">
+                                <div class="flex items-center gap-1">
+                                    <span>Slot Fill Rate</span>
+                                    <span class="sort-icon text-gray-500 text-[10px]">↕</span>
+                                </div>
+                            </th>
+                            <th scope="col" class="py-3 px-4 text-center">
+                                <span>Actions</span>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="events-tbody" class="divide-y divide-kvk-gray-700/60 text-gray-300">
+                        {% for ev in metrics.events %}
+                            <tr class="event-row hover:bg-kvk-gray-700/40 transition-colors"
+                                data-name="{{ ev.name|lower }}"
+                                data-uid="{{ ev.uid|lower }}"
+                                data-created="{{ ev.created_at }}"
+                                data-submissions="{{ ev.submission_count }}"
+                                data-players="{{ ev.unique_player_count }}"
+                                data-fill="{{ ev.fill_percentage }}">
+                                <!-- 1. Event Name (with link to Public Schedule) -->
+                                <td class="py-3.5 px-4 font-semibold text-white">
+                                    <a href="{{ ev.public_url }}" 
+                                       target="_blank"
+                                       class="text-gray-100 hover:text-kvk-gold transition-colors inline-flex items-center gap-1.5 group"
+                                       title="View Public Schedule ({{ ev.name }})">
+                                        <span>{{ ev.name }}</span>
+                                        <svg class="w-3.5 h-3.5 text-gray-500 group-hover:text-kvk-gold transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                        </svg>
+                                    </a>
+                                </td>
+
+                                <!-- 2. UID / Slug -->
+                                <td class="py-3.5 px-4 font-mono text-xs">
+                                    <code class="bg-kvk-gray-900 px-2 py-0.5 rounded text-kvk-gold border border-kvk-gray-700/80">{{ ev.uid }}</code>
+                                </td>
+
+                                <!-- 3. Created Date -->
+                                <td class="py-3.5 px-4 text-xs text-gray-400 whitespace-nowrap">
+                                    {{ ev.created_at }}
+                                </td>
+
+                                <!-- 4. Active Days Badges -->
+                                <td class="py-3.5 px-4">
+                                    <div class="flex flex-wrap gap-1">
+                                        {% for day in ev.active_days %}
+                                            {% if day == 'construction' %}
+                                                <span class="bg-amber-900/40 text-amber-300 border border-amber-600/30 px-1.5 py-0.5 rounded text-[11px] font-medium" title="Construction (Day 1)">Const</span>
+                                            {% elif day == 'training' %}
+                                                <span class="bg-emerald-900/40 text-emerald-300 border border-emerald-600/30 px-1.5 py-0.5 rounded text-[11px] font-medium" title="Training (Day 4)">Train</span>
+                                            {% elif day == 'research' %}
+                                                <span class="bg-blue-900/40 text-blue-300 border border-blue-600/30 px-1.5 py-0.5 rounded text-[11px] font-medium" title="Research">Res</span>
+                                            {% else %}
+                                                <span class="bg-kvk-gray-700 text-gray-300 px-1.5 py-0.5 rounded text-[11px] font-medium">{{ day }}</span>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                </td>
+
+                                <!-- 5. Submissions -->
+                                <td class="py-3.5 px-4 text-right font-bold text-gray-200">
+                                    {{ ev.submission_count }}
+                                </td>
+
+                                <!-- 6. Unique Players -->
+                                <td class="py-3.5 px-4 text-right font-medium text-gray-300">
+                                    {{ ev.unique_player_count }}
+                                </td>
+
+                                <!-- 7. Slot Fill Rate -->
+                                <td class="py-3.5 px-4 whitespace-nowrap">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-xs font-semibold text-gray-200 w-10 text-right">{{ ev.fill_percentage }}%</span>
+                                        <div class="w-20 bg-kvk-gray-900 rounded-full h-2 overflow-hidden border border-kvk-gray-700">
+                                            <div class="bg-kvk-gold h-2 rounded-full" style="width: {{ ev.fill_percentage }}%;"></div>
+                                        </div>
+                                        <span class="text-[11px] text-gray-500">({{ ev.assigned_slot_count }}/{{ ev.capacity }})</span>
+                                    </div>
+                                </td>
+
+                                <!-- 8. Actions -->
+                                <td class="py-3.5 px-4 text-center">
+                                    <div class="flex items-center justify-center gap-1.5">
+                                        <!-- Primary Action: Open Admin -->
+                                        <a href="{{ ev.admin_url }}" 
+                                           class="bg-kvk-blue hover:bg-blue-600 text-white font-semibold px-2.5 py-1.5 rounded-lg text-xs transition-colors flex items-center gap-1 shadow-sm"
+                                           title="Open Event Admin Dashboard">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                            </svg>
+                                            <span>Open Admin</span>
+                                        </a>
+
+                                        <!-- Copy Admin Link Button -->
+                                        <button type="button" 
+                                                onclick="copyAdminLink('{{ ev.admin_url }}', this)"
+                                                class="copy-admin-btn bg-kvk-gray-700 hover:bg-kvk-gray-600 text-gray-200 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors border border-kvk-gray-600 flex items-center gap-1"
+                                                title="Copy full secret Admin URL">
+                                            <svg class="w-3.5 h-3.5 text-kvk-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                                            </svg>
+                                            <span>Copy</span>
+                                        </button>
+
+                                        <!-- Quick Link to Player Form -->
+                                        <a href="{{ ev.player_url }}" 
+                                           target="_blank"
+                                           class="bg-kvk-gray-900 hover:bg-kvk-gray-700 text-gray-400 hover:text-gray-200 p-1.5 rounded-lg border border-kvk-gray-700 transition-colors"
+                                           title="Open Player Submission Form">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                            </svg>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+
+                        {% if not metrics.events %}
+                            <tr id="empty-state-row">
+                                <td colspan="8" class="text-center py-12 text-gray-400">
+                                    <div class="max-w-sm mx-auto">
+                                        <svg class="w-12 h-12 mx-auto text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <p class="text-base font-semibold text-gray-300">No events registered</p>
+                                        <p class="text-xs text-gray-500 mt-1">No kingdom events found in the selected time range.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endif %}
+
+                        <!-- Client-Side No Search Results Row -->
+                        <tr id="no-search-results" class="hidden">
+                            <td colspan="8" class="text-center py-12 text-gray-400">
+                                <div class="max-w-sm mx-auto">
+                                    <svg class="w-10 h-10 mx-auto text-gray-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                    <p class="text-sm font-semibold text-gray-300">No matching events</p>
+                                    <p class="text-xs text-gray-500 mt-1">No events matching "<span id="search-term-display" class="text-kvk-gold font-mono"></span>"</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <!-- Toast Notification (Fixed Floating UI) -->
+    <div id="toast" 
+         role="status" 
+         aria-live="polite"
+         class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 ease-out bg-kvk-gray-800 border border-kvk-gold/60 text-gray-100 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 pointer-events-none">
+        <svg class="w-5 h-5 text-kvk-gold flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+        </svg>
+        <span id="toast-message" class="text-sm font-medium">Admin URL copied to clipboard!</span>
+    </div>
+
+    <!-- Client-side Interactive JavaScript -->
+    <script>
+        // 1. Copy Admin URL to Clipboard with Toast
+        function copyAdminLink(relativeOrAbsoluteUrl, btnElement) {
+            const fullUrl = new URL(relativeOrAbsoluteUrl, window.location.origin).href;
+
+            const copyPromise = (navigator.clipboard && navigator.clipboard.writeText)
+                ? navigator.clipboard.writeText(fullUrl)
+                : new Promise((resolve, reject) => {
+                    try {
+                        const textArea = document.createElement('textarea');
+                        textArea.value = fullUrl;
+                        textArea.style.position = 'fixed';
+                        textArea.style.opacity = '0';
+                        document.body.appendChild(textArea);
+                        textArea.focus();
+                        textArea.select();
+                        const success = document.execCommand('copy');
+                        document.body.removeChild(textArea);
+                        if (success) resolve(); else reject();
+                    } catch (err) {
+                        reject(err);
+                    }
+                });
+
+            copyPromise.then(() => {
+                showToast('Admin URL copied to clipboard!');
+                if (btnElement) {
+                    const originalHtml = btnElement.innerHTML;
+                    btnElement.classList.add('text-emerald-400', 'border-emerald-500/60');
+                    setTimeout(() => {
+                        btnElement.classList.remove('text-emerald-400', 'border-emerald-500/60');
+                    }, 2000);
+                }
+            }).catch(() => {
+                showToast('Failed to copy to clipboard', true);
+            });
+        }
+
+        // 2. Toast Notification Controller
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-message');
+            if (!toast || !toastMsg) return;
+
+            toastMsg.textContent = message;
+            if (isError) {
+                toast.classList.remove('border-kvk-gold/60');
+                toast.classList.add('border-red-500/60');
+            } else {
+                toast.classList.remove('border-red-500/60');
+                toast.classList.add('border-kvk-gold/60');
+            }
+
+            toast.classList.remove('translate-y-20', 'opacity-0', 'pointer-events-none');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            clearTimeout(window._toastTimeout);
+            window._toastTimeout = setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0', 'pointer-events-none');
+            }, 2500);
+        }
+
+        // 3. Real-Time Client-Side Search
+        const searchInput = document.getElementById('event-search-input');
+        const clearBtn = document.getElementById('clear-search-btn');
+
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                const query = this.value.trim().toLowerCase();
+                const rows = document.querySelectorAll('#events-tbody tr.event-row');
+                const noResultsRow = document.getElementById('no-search-results');
+                const termDisplay = document.getElementById('search-term-display');
+
+                if (clearBtn) {
+                    if (query.length > 0) {
+                        clearBtn.classList.remove('hidden');
+                    } else {
+                        clearBtn.classList.add('hidden');
+                    }
+                }
+
+                let visibleCount = 0;
+                rows.forEach(row => {
+                    const name = row.getAttribute('data-name') || '';
+                    const uid = row.getAttribute('data-uid') || '';
+                    if (name.includes(query) || uid.includes(query)) {
+                        row.style.display = '';
+                        visibleCount++;
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+
+                if (noResultsRow) {
+                    if (visibleCount === 0 && rows.length > 0) {
+                        noResultsRow.classList.remove('hidden');
+                        if (termDisplay) termDisplay.textContent = query;
+                    } else {
+                        noResultsRow.classList.add('hidden');
+                    }
+                }
+            });
+        }
+
+        if (clearBtn && searchInput) {
+            clearBtn.addEventListener('click', function() {
+                searchInput.value = '';
+                searchInput.dispatchEvent(new Event('input'));
+                searchInput.focus();
+            });
+        }
+
+        // 4. Client-Side Column Sorting
+        let currentSort = { column: null, direction: 'asc' };
+
+        function sortTable(columnKey) {
+            const tbody = document.getElementById('events-tbody');
+            if (!tbody) return;
+            const rows = Array.from(tbody.querySelectorAll('tr.event-row'));
+            if (rows.length <= 1) return;
+
+            const isAsc = (currentSort.column === columnKey && currentSort.direction === 'asc');
+            const newDirection = isAsc ? 'desc' : 'asc';
+            currentSort = { column: columnKey, direction: newDirection };
+
+            // Update header indicators
+            document.querySelectorAll('th[data-sort]').forEach(th => {
+                const icon = th.querySelector('.sort-icon');
+                if (th.getAttribute('data-sort') === columnKey) {
+                    th.classList.add('text-kvk-gold');
+                    if (icon) icon.textContent = newDirection === 'asc' ? '↑' : '↓';
+                } else {
+                    th.classList.remove('text-kvk-gold');
+                    if (icon) icon.textContent = '↕';
+                }
+            });
+
+            rows.sort((a, b) => {
+                let valA = a.getAttribute(`data-${columnKey}`) || '';
+                let valB = b.getAttribute(`data-${columnKey}`) || '';
+
+                if (['submissions', 'players', 'fill'].includes(columnKey)) {
+                    valA = parseFloat(valA) || 0;
+                    valB = parseFloat(valB) || 0;
+                    return newDirection === 'asc' ? valA - valB : valB - valA;
+                }
+
+                if (columnKey === 'created') {
+                    return newDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                }
+
+                return newDirection === 'asc'
+                    ? valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' })
+                    : valB.localeCompare(valA, undefined, { numeric: true, sensitivity: 'base' });
+            });
+
+            rows.forEach(row => tbody.appendChild(row));
+        }
+    </script>
 </body>
 </html>
