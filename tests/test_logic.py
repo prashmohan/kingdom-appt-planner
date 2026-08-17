@@ -607,8 +607,15 @@ def test_get_superadmin_metrics_with_data(temp_db):
 
     # Insert test events
     temp_db.execute(
-        "INSERT INTO events (uid, name, active_days, admin_secret, slot_count, created_at) VALUES (?, ?, ?, ?, ?, datetime('now', '-2 days'))",
-        ("evt1", "Kingdom 101", json.dumps(["construction", "training"]), "sec1", 49),
+        "INSERT INTO events (uid, name, active_days, admin_secret, slot_count, server_id, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now', '-2 days'))",
+        (
+            "evt1",
+            "Kingdom 101",
+            json.dumps(["construction", "training"]),
+            "sec1",
+            49,
+            101,
+        ),
     )
     temp_db.execute(
         "INSERT INTO events (uid, name, active_days, admin_secret, slot_count, created_at) VALUES (?, ?, ?, ?, ?, datetime('now', '-20 days'))",
@@ -659,6 +666,10 @@ def test_get_superadmin_metrics_with_data(temp_db):
     assert all_metrics["total_assigned_slots"] == 1
     assert all_metrics["total_locked_slots"] == 1
     assert len(all_metrics["events"]) == 2
+    evt1_data = next(e for e in all_metrics["events"] if e["uid"] == "evt1")
+    assert evt1_data["server_id"] == 101
+    evt2_data = next(e for e in all_metrics["events"] if e["uid"] == "evt2")
+    assert evt2_data["server_id"] is None
 
     # 1w filter (should exclude evt2 created 20 days ago)
     week_metrics = get_superadmin_metrics(temp_db, time_range="1w")

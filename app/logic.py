@@ -288,13 +288,13 @@ def get_superadmin_metrics(
 
     if valid_range in time_filters:
         query = (
-            "SELECT uid, name, active_days, admin_secret, slot_count, created_at "
+            "SELECT uid, name, active_days, admin_secret, slot_count, server_id, created_at "
             f"FROM events WHERE created_at >= datetime('now', '{time_filters[valid_range]}') "
             "ORDER BY created_at DESC"
         )
     else:
         query = (
-            "SELECT uid, name, active_days, admin_secret, slot_count, created_at "
+            "SELECT uid, name, active_days, admin_secret, slot_count, server_id, created_at "
             "FROM events ORDER BY created_at DESC"
         )
 
@@ -421,6 +421,7 @@ def get_superadmin_metrics(
         event_dict = {
             "uid": uid,
             "name": name,
+            "server_id": e.get("server_id"),
             "created_at": created_at,
             "active_days": active_days_list,
             "slot_count": sc,

@@ -2497,3 +2497,36 @@ def test_superadmin_template_range_highlighting(client, app):
     assert resp_4w.status_code == 200
     html_4w = resp_4w.get_data(as_text=True)
     assert "range=4w" in html_4w
+
+
+def test_superadmin_metrics_and_template_server_id(client, app):
+    import json
+
+    from app import database
+    from app.logic import get_superadmin_metrics
+
+    with app.app_context():
+        db = database.get_db()
+        db.execute(
+            "INSERT INTO events (uid, name, active_days, admin_secret, slot_count, server_id) VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                "sa_srv_uid",
+                "Super Event",
+                json.dumps({"construction": True}),
+                "sec_sa",
+                49,
+                1088,
+            ),
+        )
+        db.commit()
+        metrics = get_superadmin_metrics(db)
+        found = [e for e in metrics["events"] if e["uid"] == "sa_srv_uid"]
+        assert len(found) == 1
+        assert found[0]["server_id"] == 1088
+
+    secret = app.config["SUPERADMIN_SECRET"]
+    client.get(f"/superadmin?secret={secret}")
+    resp = client.get("/superadmin?range=all")
+    html = resp.get_data(as_text=True)
+    assert "Kingdom #1088" in html
+    assert 'data-server="1088"' in html
