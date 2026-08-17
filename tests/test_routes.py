@@ -94,6 +94,70 @@ def test_create_event_with_server_id(client, app):
         assert row3[0] is None
 
 
+def test_server_id_badge_rendering(client, app):
+    from app import database
+
+    # Create event with server_id 1052
+    with app.app_context():
+        db = database.get_db()
+        db.execute(
+            "INSERT INTO events (uid, name, active_days, admin_secret, slot_count, server_id) VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                "k1052_event",
+                "KvK Season 12",
+                json.dumps(
+                    {
+                        "construction": True,
+                        "training": True,
+                        "research": True,
+                        "research_day": 5,
+                    }
+                ),
+                "sec123",
+                49,
+                1052,
+            ),
+        )
+        # Create event without server_id
+        db.execute(
+            "INSERT INTO events (uid, name, active_days, admin_secret, slot_count, server_id) VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                "no_server_event",
+                "Legacy KvK",
+                json.dumps(
+                    {
+                        "construction": True,
+                        "training": True,
+                        "research": True,
+                        "research_day": 5,
+                    }
+                ),
+                "sec456",
+                49,
+                None,
+            ),
+        )
+        db.commit()
+
+    # 1. Player form
+    resp_player = client.get("/event/k1052_event")
+    assert "Kingdom #1052" in resp_player.get_data(as_text=True)
+    resp_player_no = client.get("/event/no_server_event")
+    assert "Kingdom #" not in resp_player_no.get_data(as_text=True)
+
+    # 2. Admin dashboard
+    resp_admin = client.get("/admin/k1052_event?secret=sec123")
+    assert "Kingdom #1052" in resp_admin.get_data(as_text=True)
+
+    # 3. Finalized schedule
+    resp_fin = client.get("/event/k1052_event/finalized")
+    assert "Kingdom #1052" in resp_fin.get_data(as_text=True)
+
+    # 4. Public schedule
+    resp_pub = client.get("/event/k1052_event/schedule")
+    assert "Kingdom #1052" in resp_pub.get_data(as_text=True)
+
+
 def test_player_form_page(client, app):
     client.post("/create", data={"event_name": "Form Test"})
     with app.app_context():

@@ -63,7 +63,14 @@
     <div class="container mx-auto p-4 md:p-8 max-w-7xl">
         <header class="text-center mb-10">
             <h1 class="text-4xl md:text-5xl font-bold text-kvk-gold">Submission Form</h1>
-            <p class="text-lg text-gray-400 mt-2">{{ event.name }}</p>
+            <p class="text-lg text-gray-400 mt-2 flex items-center justify-center gap-2">
+                <span>{{ event.name }}</span>
+                {% if event.server_id %}
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-kvk-gray-800 text-kvk-gold border border-kvk-gold/40">
+                        Kingdom #{{ event.server_id }}
+                    </span>
+                {% endif %}
+            </p>
         </header>
 
         <form action="/event/{{ event.uid }}/submit" method="POST" {% if enable_screenshot_upload %}enctype="multipart/form-data"{% endif %} class="bg-kvk-gray-800 p-6 rounded-xl shadow-lg border border-kvk-gray-700">

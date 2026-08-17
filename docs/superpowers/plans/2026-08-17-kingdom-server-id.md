@@ -91,27 +91,39 @@ def test_create_event_with_server_id(client, app):
     from app import database
 
     # 1. Valid integer server ID
-    resp = client.post("/create", data={"event_name": "Kingdom 1052 KvK", "server_id": "1052"})
+    resp = client.post(
+        "/create", data={"event_name": "Kingdom 1052 KvK", "server_id": "1052"}
+    )
     assert resp.status_code == 302
     with app.app_context():
         db = database.get_db()
-        row = db.execute("SELECT server_id FROM events WHERE name = 'Kingdom 1052 KvK'").fetchone()
+        row = db.execute(
+            "SELECT server_id FROM events WHERE name = 'Kingdom 1052 KvK'"
+        ).fetchone()
         assert row[0] == 1052
 
     # 2. Empty/missing server ID -> stored as NULL / None
-    resp2 = client.post("/create", data={"event_name": "No Server KvK", "server_id": ""})
+    resp2 = client.post(
+        "/create", data={"event_name": "No Server KvK", "server_id": ""}
+    )
     assert resp2.status_code == 302
     with app.app_context():
         db = database.get_db()
-        row2 = db.execute("SELECT server_id FROM events WHERE name = 'No Server KvK'").fetchone()
+        row2 = db.execute(
+            "SELECT server_id FROM events WHERE name = 'No Server KvK'"
+        ).fetchone()
         assert row2[0] is None
 
     # 3. Invalid non-integer server ID -> falls back to None gracefully
-    resp3 = client.post("/create", data={"event_name": "Invalid Server KvK", "server_id": "invalid"})
+    resp3 = client.post(
+        "/create", data={"event_name": "Invalid Server KvK", "server_id": "invalid"}
+    )
     assert resp3.status_code == 302
     with app.app_context():
         db = database.get_db()
-        row3 = db.execute("SELECT server_id FROM events WHERE name = 'Invalid Server KvK'").fetchone()
+        row3 = db.execute(
+            "SELECT server_id FROM events WHERE name = 'Invalid Server KvK'"
+        ).fetchone()
         assert row3[0] is None
 ```
 
@@ -188,12 +200,40 @@ def test_server_id_badge_rendering(client, app):
         db = database.get_db()
         db.execute(
             "INSERT INTO events (uid, name, active_days, admin_secret, slot_count, server_id) VALUES (?, ?, ?, ?, ?, ?)",
-            ("k1052_event", "KvK Season 12", json.dumps({"construction": True, "training": True, "research": True, "research_day": 5}), "sec123", 49, 1052),
+            (
+                "k1052_event",
+                "KvK Season 12",
+                json.dumps(
+                    {
+                        "construction": True,
+                        "training": True,
+                        "research": True,
+                        "research_day": 5,
+                    }
+                ),
+                "sec123",
+                49,
+                1052,
+            ),
         )
         # Create event without server_id
         db.execute(
             "INSERT INTO events (uid, name, active_days, admin_secret, slot_count, server_id) VALUES (?, ?, ?, ?, ?, ?)",
-            ("no_server_event", "Legacy KvK", json.dumps({"construction": True, "training": True, "research": True, "research_day": 5}), "sec456", 49, None),
+            (
+                "no_server_event",
+                "Legacy KvK",
+                json.dumps(
+                    {
+                        "construction": True,
+                        "training": True,
+                        "research": True,
+                        "research_day": 5,
+                    }
+                ),
+                "sec456",
+                49,
+                None,
+            ),
         )
         db.commit()
 
@@ -305,7 +345,14 @@ def test_superadmin_metrics_and_template_server_id(client, app):
         db = database.get_db()
         db.execute(
             "INSERT INTO events (uid, name, active_days, admin_secret, slot_count, server_id) VALUES (?, ?, ?, ?, ?, ?)",
-            ("sa_srv_uid", "Super Event", json.dumps({"construction": True}), "sec_sa", 49, 1088),
+            (
+                "sa_srv_uid",
+                "Super Event",
+                json.dumps({"construction": True}),
+                "sec_sa",
+                49,
+                1088,
+            ),
         )
         db.commit()
         metrics = get_superadmin_metrics(db)

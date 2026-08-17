@@ -262,6 +262,7 @@ def create_app():
             "uid": event["uid"],
             "name": event["name"],
             "active_days": active_days_config,
+            "server_id": event["server_id"],
         }
 
         # Fetch all assignments
@@ -319,6 +320,7 @@ def create_app():
             "uid": event["uid"],
             "name": event["name"],
             "active_days": active_days_config,
+            "server_id": event["server_id"],
         }
 
         return render_template(
@@ -497,6 +499,7 @@ def create_app():
             "uid": event["uid"],
             "name": event["name"],
             "active_days": active_days_config,
+            "server_id": event["server_id"],
         }
 
         # 1. Group submissions by day_type
@@ -688,6 +691,7 @@ def create_app():
             "uid": event["uid"],
             "name": event["name"],
             "active_days": active_days_config,
+            "server_id": event["server_id"],
         }
 
         assignments_raw = db.execute(
