@@ -8,8 +8,12 @@ services:
     volumes:
       - planner_data:/app/data
       - planner_uploads:/app/app/static/uploads
+    env_file:
+      - .env
     environment:
       - DATABASE_PATH=/app/data/planner.db
+      - SUPERADMIN_SECRET=${SUPERADMIN_SECRET:-dev-superadmin-secret-change-me}
+      - SECRET_KEY=${SECRET_KEY:-dev-key-for-internal-use-only-123}
     dns:
       - 8.8.8.8
       - 1.1.1.1
