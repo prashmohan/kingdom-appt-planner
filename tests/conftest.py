@@ -43,3 +43,10 @@ def client(app):
 @pytest.fixture
 def runner(app):
     return app.test_cli_runner()
+
+
+@pytest.fixture
+def temp_db(app):
+    with app.app_context():
+        db = database.get_db()
+        yield db

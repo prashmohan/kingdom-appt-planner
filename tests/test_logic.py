@@ -571,3 +571,268 @@ def test_validate_custom_slug_duplicate(app):
         is_valid, err = validate_custom_slug("existing-slug", db)
         assert is_valid is False
         assert "already taken" in err
+
+
+def test_get_superadmin_metrics_empty(temp_db):
+    from app.logic import get_superadmin_metrics
+
+    metrics = get_superadmin_metrics(temp_db, time_range="all")
+    assert metrics["time_range"] == "all"
+    assert metrics["total_events"] == 0
+    assert metrics["total_submissions"] == 0
+    assert metrics["total_unique_players"] == 0
+    assert metrics["total_alliances"] == 0
+    assert metrics["total_assigned_slots"] == 0
+    assert metrics["total_locked_slots"] == 0
+    assert metrics["global_fill_rate"] == 0.0
+    assert metrics["global_lock_rate"] == 0.0
+    assert metrics["total_resources_pledged"] == 0.0
+    assert metrics["avg_submissions_per_event"] == 0.0
+    assert metrics["buff_distribution"] == {
+        "construction": {"submissions": 0, "assignments": 0},
+        "training": {"submissions": 0, "assignments": 0},
+        "research": {"submissions": 0, "assignments": 0},
+    }
+    assert metrics["peak_time_slots"] == []
+    assert metrics["superlatives"]["most_contested"] is None
+    assert metrics["superlatives"]["top_resources"] is None
+    assert metrics["top_events"] == []
+    assert metrics["events"] == []
+
+
+def test_get_superadmin_metrics_with_data(temp_db):
+    import json
+
+    from app.logic import get_superadmin_metrics
+
+    # Insert test events
+    temp_db.execute(
+        "INSERT INTO events (uid, name, active_days, admin_secret, slot_count, created_at) VALUES (?, ?, ?, ?, ?, datetime('now', '-2 days'))",
+        ("evt1", "Kingdom 101", json.dumps(["construction", "training"]), "sec1", 49),
+    )
+    temp_db.execute(
+        "INSERT INTO events (uid, name, active_days, admin_secret, slot_count, created_at) VALUES (?, ?, ?, ?, ?, datetime('now', '-20 days'))",
+        ("evt2", "Kingdom 102", json.dumps(["construction"]), "sec2", 48),
+    )
+
+    # Insert test submissions
+    temp_db.execute(
+        "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            "s1",
+            "evt1",
+            "construction",
+            "PlayerOne",
+            "P1",
+            "ALL1",
+            1000000.0,
+            "{}",
+            json.dumps([0, 1]),
+        ),
+    )
+    temp_db.execute(
+        "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            "s2",
+            "evt1",
+            "training",
+            "PlayerTwo",
+            "P2",
+            "ALL2",
+            2000000.0,
+            "{}",
+            json.dumps([1, 2]),
+        ),
+    )
+    temp_db.execute(
+        "INSERT INTO assignments (event_uid, day_type, slot_index, player_id, is_locked) VALUES (?, ?, ?, ?, ?)",
+        ("evt1", "construction", 0, "P1", 1),
+    )
+    temp_db.commit()
+
+    # All time
+    all_metrics = get_superadmin_metrics(temp_db, time_range="all")
+    assert all_metrics["total_events"] == 2
+    assert all_metrics["total_submissions"] == 2
+    assert all_metrics["total_unique_players"] == 2
+    assert all_metrics["total_alliances"] == 2
+    assert all_metrics["total_assigned_slots"] == 1
+    assert all_metrics["total_locked_slots"] == 1
+    assert len(all_metrics["events"]) == 2
+
+    # 1w filter (should exclude evt2 created 20 days ago)
+    week_metrics = get_superadmin_metrics(temp_db, time_range="1w")
+    assert week_metrics["total_events"] == 1
+    assert week_metrics["total_submissions"] == 2
+    assert len(week_metrics["events"]) == 1
+    assert week_metrics["events"][0]["uid"] == "evt1"
+
+
+def test_get_superadmin_metrics_time_ranges_and_superlatives(temp_db):
+    import json
+
+    from app.logic import get_superadmin_metrics
+
+    # Insert events at various time points: 3 days ago, 10 days ago, 20 days ago, 40 days ago
+    temp_db.execute(
+        "INSERT INTO events (uid, name, active_days, admin_secret, slot_count, created_at) VALUES (?, ?, ?, ?, ?, datetime('now', '-3 days'))",
+        ("e_3d", "Kingdom Recent", json.dumps(["construction"]), "sec3", 48),
+    )
+    temp_db.execute(
+        "INSERT INTO events (uid, name, active_days, admin_secret, slot_count, created_at) VALUES (?, ?, ?, ?, ?, datetime('now', '-10 days'))",
+        ("e_10d", "Kingdom 10d", json.dumps(["construction", "training"]), "sec10", 48),
+    )
+    temp_db.execute(
+        "INSERT INTO events (uid, name, active_days, admin_secret, slot_count, created_at) VALUES (?, ?, ?, ?, ?, datetime('now', '-20 days'))",
+        ("e_20d", "Kingdom 20d", json.dumps(["research"]), "sec20", 48),
+    )
+    temp_db.execute(
+        "INSERT INTO events (uid, name, active_days, admin_secret, slot_count, created_at) VALUES (?, ?, ?, ?, ?, datetime('now', '-40 days'))",
+        ("e_40d", "Kingdom Old", json.dumps(["construction"]), "sec40", 48),
+    )
+
+    # Submissions with feasible slots for peak analysis
+    temp_db.execute(
+        "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            "s1",
+            "e_3d",
+            "construction",
+            "P1",
+            "PID1",
+            "AllianceA",
+            500000.0,
+            "{}",
+            json.dumps([5, 6]),
+        ),
+    )
+    temp_db.execute(
+        "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            "s2",
+            "e_3d",
+            "construction",
+            "P2",
+            "PID2",
+            "AllianceA",
+            1500000.0,
+            "{}",
+            json.dumps([5, 7]),
+        ),
+    )
+    temp_db.execute(
+        "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            "s3",
+            "e_10d",
+            "training",
+            "P3",
+            "PID3",
+            "AllianceB",
+            3000000.0,
+            "{}",
+            json.dumps([5, 8]),
+        ),
+    )
+    temp_db.execute(
+        "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            "s4",
+            "e_20d",
+            "research",
+            "P4",
+            "PID4",
+            "AllianceC",
+            100000.0,
+            "{}",
+            json.dumps([12]),
+        ),
+    )
+
+    # Assignments
+    temp_db.execute(
+        "INSERT INTO assignments (event_uid, day_type, slot_index, player_id, is_locked) VALUES (?, ?, ?, ?, ?)",
+        ("e_3d", "construction", 5, "PID1", 1),
+    )
+    temp_db.execute(
+        "INSERT INTO assignments (event_uid, day_type, slot_index, player_id, is_locked) VALUES (?, ?, ?, ?, ?)",
+        ("e_10d", "training", 5, "PID3", 0),
+    )
+    temp_db.commit()
+
+    # Test 1w (<= 7 days: e_3d)
+    m_1w = get_superadmin_metrics(temp_db, time_range="1w")
+    assert m_1w["total_events"] == 1
+    assert m_1w["total_submissions"] == 2
+    assert m_1w["total_resources_pledged"] == 2000000.0
+    assert m_1w["global_fill_rate"] == round((1 / 48) * 100, 1)
+    assert m_1w["global_lock_rate"] == 100.0
+
+    # Test 2w (<= 14 days: e_3d, e_10d)
+    m_2w = get_superadmin_metrics(temp_db, time_range="2w")
+    assert m_2w["total_events"] == 2
+    assert m_2w["total_submissions"] == 3
+    assert m_2w["total_resources_pledged"] == 5000000.0
+    assert m_2w["total_assigned_slots"] == 2
+    assert m_2w["total_locked_slots"] == 1
+    assert m_2w["global_lock_rate"] == 50.0
+
+    # Test 4w (<= 28 days: e_3d, e_10d, e_20d)
+    m_4w = get_superadmin_metrics(temp_db, time_range="4w")
+    assert m_4w["total_events"] == 3
+    assert m_4w["total_submissions"] == 4
+
+    # Test all (all 4 events)
+    m_all = get_superadmin_metrics(temp_db, time_range="all")
+    assert m_all["total_events"] == 4
+    assert m_all["total_submissions"] == 4
+
+    # Check peak time slots (Slot 5 appeared 3 times in s1, s2, s3)
+    assert len(m_all["peak_time_slots"]) > 0
+    top_slot = m_all["peak_time_slots"][0]
+    assert top_slot["count"] == 3
+
+    # Check superlatives
+    assert m_all["superlatives"]["most_contested"] is not None
+    assert m_all["superlatives"]["top_resources"] is not None
+    assert m_all["superlatives"]["top_resources"]["uid"] == "e_10d"
+    assert m_all["superlatives"]["top_resources"]["total_resources"] == 3000000.0
+
+    # Check top_events
+    assert len(m_all["top_events"]) <= 5
+    assert m_all["top_events"][0]["uid"] == "e_3d"  # 2 submissions
+
+
+def test_get_superadmin_metrics_corrupted_data_and_fallbacks(temp_db):
+    from app.logic import get_superadmin_metrics
+
+    # Event with corrupted/empty JSON
+    temp_db.execute(
+        "INSERT INTO events (uid, name, active_days, admin_secret, slot_count) VALUES (?, ?, ?, ?, ?)",
+        ("bad_evt", "Bad Event", "invalid-json", "sec_bad", None),
+    )
+    # Submission with invalid feasible slots and None alliance
+    temp_db.execute(
+        "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            "sub_bad",
+            "bad_evt",
+            "construction",
+            "BadPlayer",
+            "P99",
+            None,
+            0.0,
+            "{",
+            "not-json",
+        ),
+    )
+    temp_db.commit()
+
+    metrics = get_superadmin_metrics(temp_db, time_range="all")
+    assert metrics["total_events"] == 1
+    assert metrics["total_submissions"] == 1
+    assert metrics["total_unique_players"] == 1
+    assert metrics["total_alliances"] == 0
+    assert metrics["global_fill_rate"] == 0.0
+    assert metrics["events"][0]["slot_count"] == 49
+    assert metrics["events"][0]["active_days"] == []
