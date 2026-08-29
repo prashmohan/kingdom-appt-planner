@@ -289,16 +289,17 @@ def get_superadmin_metrics(
     if valid_range in time_filters:
         query = (
             "SELECT uid, name, active_days, admin_secret, slot_count, server_id, created_at "
-            f"FROM events WHERE created_at >= datetime('now', '{time_filters[valid_range]}') "
+            "FROM events WHERE created_at >= datetime('now', ?) "
             "ORDER BY created_at DESC"
         )
+        cur = db.execute(query, (time_filters[valid_range],))
     else:
         query = (
             "SELECT uid, name, active_days, admin_secret, slot_count, server_id, created_at "
             "FROM events ORDER BY created_at DESC"
         )
+        cur = db.execute(query)
 
-    cur = db.execute(query)
     cols = [c[0] for c in cur.description] if cur.description else []
     raw_events = cur.fetchall()
     events = [dict(zip(cols, row)) for row in raw_events]
@@ -335,15 +336,15 @@ def get_superadmin_metrics(
         sub_query = (
             "SELECT s.id, s.event_uid, s.day_type, s.player_name, s.player_id, s.alliance_name, s.resources, s.feasible_slots, s.status, s.timestamp "
             "FROM submissions s JOIN events e ON s.event_uid = e.uid "
-            f"WHERE e.created_at >= datetime('now', '{time_filters[valid_range]}')"
+            "WHERE e.created_at >= datetime('now', ?)"
         )
         ass_query = (
             "SELECT a.event_uid, a.day_type, a.slot_index, a.player_id, a.is_locked "
             "FROM assignments a JOIN events e ON a.event_uid = e.uid "
-            f"WHERE e.created_at >= datetime('now', '{time_filters[valid_range]}')"
+            "WHERE e.created_at >= datetime('now', ?)"
         )
-        sub_cur = db.execute(sub_query)
-        ass_cur = db.execute(ass_query)
+        sub_cur = db.execute(sub_query, (time_filters[valid_range],))
+        ass_cur = db.execute(ass_query, (time_filters[valid_range],))
     else:
         sub_cur = db.execute(
             "SELECT id, event_uid, day_type, player_name, player_id, alliance_name, resources, feasible_slots, status, timestamp FROM submissions"
