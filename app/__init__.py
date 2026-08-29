@@ -40,6 +40,16 @@ from .logic import (
 mimetypes.add_type("application/javascript", ".js")
 
 
+def validate_safe_url(url: str | None) -> str | None:
+    """Ensure URL uses only safe HTTP(S) or static relative schemes."""
+    if not url or not isinstance(url, str):
+        return None
+    cleaned = url.strip()
+    if cleaned.startswith(("http://", "https://", "/static/")):
+        return cleaned
+    return None
+
+
 def generate_slot_labels(slot_count=49):
     labels = []
     for i in range(slot_count):
@@ -113,6 +123,10 @@ def create_app():
     def add_security_headers(response):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=31536000; includeSubDomains"
+        )
         csp = (
             "default-src 'self'; "
             "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; "
@@ -350,11 +364,23 @@ def create_app():
         if Config.ENABLE_SCREENSHOT_UPLOAD and "backpack_screenshot" in request.files:
             file = request.files["backpack_screenshot"]
             if file and file.filename:
-                # Security: Validate file extension
+                # Validate file extension
                 allowed_extensions = {"png", "jpg", "jpeg", "gif"}
                 extension = file.filename.rsplit(".", 1)[-1].lower()
                 if extension not in allowed_extensions:
                     return "Invalid file type. Only images are allowed.", 400
+
+                # Validate image header / magic bytes
+                header = file.read(16)
+                file.seek(0)
+                is_png = header.startswith(b"\x89PNG\r\n\x1a\n")
+                is_jpeg = header.startswith(b"\xff\xd8\xff")
+                is_gif = header.startswith((b"GIF87a", b"GIF89a"))
+                if not (is_png or is_jpeg or is_gif):
+                    return (
+                        "Invalid image content. Only PNG, JPEG, and GIF images are allowed.",
+                        400,
+                    )
 
                 # Create upload directory if it doesn't exist
                 upload_dir = os.path.join(app.static_folder, "uploads")
@@ -365,7 +391,9 @@ def create_app():
                     f"{event_uid}_{player_id}_{int(time.time())}_{file.filename}"
                 )
                 file.save(os.path.join(upload_dir, filename))
-                backpack_url = url_for("static", filename=f"uploads/{filename}")
+                backpack_url = validate_safe_url(
+                    url_for("static", filename=f"uploads/{filename}")
+                )
 
         # First, delete all previous submissions and assignments for this player and event.
         db.execute(
@@ -378,7 +406,7 @@ def create_app():
         )
 
         # Then, insert the new submissions from the form.
-        avatar_url = request.form.get("avatar_url") or None
+        avatar_url = validate_safe_url(request.form.get("avatar_url"))
 
         # --- Process Construction Submission ---
         construction_speedups = int(request.form.get("speedups-construction") or 0)
@@ -488,7 +516,7 @@ def create_app():
 
         if event is None:
             return "Event not found", 404
-        if event["admin_secret"] != secret:
+        if not secret or not hmac.compare_digest(event["admin_secret"], secret):
             return "Forbidden", 403
 
         active_days_config = json.loads(event["active_days"])
@@ -721,7 +749,7 @@ def create_app():
         ).fetchone()
         if event is None:
             return "Event not found", 404
-        if event["admin_secret"] != secret:
+        if not secret or not hmac.compare_digest(event["admin_secret"], secret):
             return "Forbidden", 403
 
         submission_id = request.form.get("submission_id")
@@ -801,7 +829,7 @@ def create_app():
         ).fetchone()
         if event is None:
             return "Event not found", 404
-        if event["admin_secret"] != secret:
+        if not secret or not hmac.compare_digest(event["admin_secret"], secret):
             return "Forbidden", 403
 
         day_type = request.form.get("day_type")
@@ -822,7 +850,7 @@ def create_app():
         ).fetchone()
         if event is None:
             return "Event not found", 404
-        if event["admin_secret"] != secret:
+        if not secret or not hmac.compare_digest(event["admin_secret"], secret):
             return "Forbidden", 403
 
         # Fetch locked assignments joined with submissions to get player name
@@ -873,7 +901,7 @@ def create_app():
         ).fetchone()
         if event is None:
             return "Event not found", 404
-        if event["admin_secret"] != secret:
+        if not secret or not hmac.compare_digest(event["admin_secret"], secret):
             return "Forbidden", 403
 
         submissions = db.execute(
@@ -927,7 +955,7 @@ def create_app():
         ).fetchone()
         if event is None:
             return "Event not found", 404
-        if event["admin_secret"] != secret:
+        if not secret or not hmac.compare_digest(event["admin_secret"], secret):
             return "Forbidden", 403
 
         file = request.files.get("submissions_file")
@@ -1071,8 +1099,8 @@ def create_app():
                     item["day_type"],
                     item["player_name"],
                     item["player_id"],
-                    item.get("avatar_url"),
-                    item.get("backpack_url"),
+                    validate_safe_url(item.get("avatar_url")),
+                    validate_safe_url(item.get("backpack_url")),
                     item.get("alliance_name"),
                     item["resources"],
                     raw_data_str,
@@ -1102,7 +1130,7 @@ def create_app():
         ).fetchone()
         if event is None:
             return "Event not found", 404
-        if event["admin_secret"] != secret:
+        if not secret or not hmac.compare_digest(event["admin_secret"], secret):
             return "Forbidden", 403
 
         slot_index = request.form.get("slot_index")
@@ -1143,7 +1171,7 @@ def create_app():
         ).fetchone()
         if event is None:
             return "Event not found", 404
-        if event["admin_secret"] != secret:
+        if not secret or not hmac.compare_digest(event["admin_secret"], secret):
             return "Forbidden", 403
 
         slot_index = request.form.get("slot_index")
@@ -1184,7 +1212,7 @@ def create_app():
         ).fetchone()
         if event is None:
             return "Event not found", 404
-        if event["admin_secret"] != secret:
+        if not secret or not hmac.compare_digest(event["admin_secret"], secret):
             return "Forbidden", 403
 
         submission_id = request.form.get("submission_id")
@@ -1219,7 +1247,7 @@ def create_app():
         ).fetchone()
         if event is None:
             return "Event not found", 404
-        if event["admin_secret"] != secret:
+        if not secret or not hmac.compare_digest(event["admin_secret"], secret):
             return "Forbidden", 403
 
         submission_id = request.form.get("submission_id")
@@ -1247,7 +1275,7 @@ def create_app():
         ).fetchone()
         if event is None:
             return "Event not found", 404
-        if event["admin_secret"] != secret:
+        if not secret or not hmac.compare_digest(event["admin_secret"], secret):
             return "Forbidden", 403
 
         submission_id = request.form.get("submission_id")
@@ -1310,7 +1338,7 @@ def create_app():
         ).fetchone()
         if event is None:
             return "Event not found", 404
-        if event["admin_secret"] != secret:
+        if not secret or not hmac.compare_digest(event["admin_secret"], secret):
             return "Forbidden", 403
 
         submission_id = request.form.get("submission_id")
@@ -1346,17 +1374,18 @@ def create_app():
         ).fetchone()
         if event is None:
             return "Event not found", 404
-        if event["admin_secret"] != secret:
+        if not secret or not hmac.compare_digest(event["admin_secret"], secret):
             return "Forbidden", 403
 
         log_path = os.path.join(app.root_path, "..", "logs", "audit.log")
         if not os.path.exists(log_path):
             return "Log file not found", 404
 
-        with open(log_path, "r") as f:
-            # Read last 1000 lines
-            lines = f.readlines()[-1000:]
-            content = "".join(lines)
+        with open(log_path, "r", encoding="utf-8") as f:
+            all_lines = f.readlines()
+            # Filter lines specifically for this event_uid to enforce tenant isolation
+            matching_lines = [line for line in all_lines if event_uid in line][-1000:]
+            content = "".join(matching_lines)
 
         return Response(content, mimetype="text/plain")
 

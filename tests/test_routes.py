@@ -499,7 +499,12 @@ def test_submit_with_backpack(client, app):
         "alliance_name": "A",
         "speedups-construction": "10",
         "slots-construction": "[0]",
-        "backpack_screenshot": (io.BytesIO(b"dummy image data"), "test.jpg"),
+        "backpack_screenshot": (
+            io.BytesIO(
+                b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00"
+            ),
+            "test.jpg",
+        ),
     }
 
     with patch("config.Config.ENABLE_SCREENSHOT_UPLOAD", True):
@@ -1056,7 +1061,12 @@ def test_submit_creates_dir(client, app):
         "alliance_name": "A",
         "speedups-construction": "10",
         "slots-construction": "[0]",
-        "backpack_screenshot": (io.BytesIO(b"data"), "test.jpg"),
+        "backpack_screenshot": (
+            io.BytesIO(
+                b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00"
+            ),
+            "test.jpg",
+        ),
     }
 
     with (
