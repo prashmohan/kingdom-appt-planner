@@ -12,8 +12,8 @@ services:
       - .env
     environment:
       - DATABASE_PATH=/app/data/planner.db
-      - SUPERADMIN_SECRET=${SUPERADMIN_SECRET:-dev-superadmin-secret-change-me}
-      - SECRET_KEY=${SECRET_KEY:-dev-key-for-internal-use-only-123}
+      - SUPERADMIN_SECRET=${SUPERADMIN_SECRET}
+      - SECRET_KEY=${SECRET_KEY}
     dns:
       - 8.8.8.8
       - 1.1.1.1

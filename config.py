@@ -17,3 +17,10 @@ class Config:
     GA_MEASUREMENT_ID = os.environ.get("GA_MEASUREMENT_ID")
     EXTERNAL_API_SECRET = os.environ.get("EXTERNAL_API_SECRET", "mN4!pQs6JrYwV9")
     MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 5MB upload limit
+
+    # Session cookie security defaults
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = os.environ.get("SESSION_COOKIE_SAMESITE", "Lax")
+    SESSION_COOKIE_SECURE = (
+        os.environ.get("SESSION_COOKIE_SECURE", "false").lower() == "true"
+    )
