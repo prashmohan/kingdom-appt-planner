@@ -657,6 +657,16 @@
 
     const slotLabels = {{ slot_labels|tojson }};
 
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     function getDayData(day) {
         const drawer = document.getElementById(`drawer-${day}`);
         return {
@@ -686,28 +696,35 @@
             // Sort by points descending
             const sorted = [...players].sort((a, b) => b.resources - a.resources);
             
-            contentEl.innerHTML = sorted.map(p => `
-                <div class="flex justify-between items-center p-2 bg-kvk-gray-800 rounded border border-kvk-gray-700 hover:border-kvk-gold/50 transition-colors">
-                    <div class="flex flex-col">
-                        <span class="font-bold text-gray-200">[${p.alliance_name || 'N/A'}] ${p.player_name}</span>
-                        <span class="text-[10px] text-gray-400 uppercase tracking-tighter">Alliance Member</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <button 
-                            onclick="assignFromDrawer('${day}', ${index}, '${p.submission_id}', '${p.player_name}')"
-                            data-submission-id="${p.submission_id}"
-                            data-player-name="${p.player_name}"
-                            class="bg-blue-600 text-white px-2 py-1 rounded text-[10px]"
-                        >
-                            Assign
-                        </button>
-                        <div class="text-right">
-                            <span class="text-kvk-gold font-mono font-bold">${Math.round(p.resources).toLocaleString()}</span>
-                            <span class="text-[9px] text-gray-500 block -mt-1">POINTS</span>
+            contentEl.innerHTML = sorted.map(p => {
+                const safeAlliance = escapeHtml(p.alliance_name || 'N/A');
+                const safePlayerName = escapeHtml(p.player_name || '');
+                const safePoints = Math.round(p.resources || 0).toLocaleString();
+                return `
+                    <div class="flex justify-between items-center p-2 bg-kvk-gray-800 rounded border border-kvk-gray-700 hover:border-kvk-gold/50 transition-colors">
+                        <div class="flex flex-col">
+                            <span class="font-bold text-gray-200">[${safeAlliance}] ${safePlayerName}</span>
+                            <span class="text-[10px] text-gray-400 uppercase tracking-tighter">Alliance Member</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button 
+                                onclick="handleDrawerAssign(this)"
+                                data-day="${escapeHtml(day)}"
+                                data-slot-index="${index}"
+                                data-submission-id="${escapeHtml(p.submission_id)}"
+                                data-player-name="${escapeHtml(p.player_name)}"
+                                class="bg-blue-600 text-white px-2 py-1 rounded text-[10px]"
+                            >
+                                Assign
+                            </button>
+                            <div class="text-right">
+                                <span class="text-kvk-gold font-mono font-bold">${safePoints}</span>
+                                <span class="text-[9px] text-gray-500 block -mt-1">POINTS</span>
+                            </div>
                         </div>
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         // Highlight selected slot
@@ -716,6 +733,14 @@
         if (selectedSlot) {
             selectedSlot.classList.add('ring-2', 'ring-amber-400', 'z-20');
         }
+    }
+
+    function handleDrawerAssign(btn) {
+        const day = btn.getAttribute('data-day');
+        const slotIndex = parseInt(btn.getAttribute('data-slot-index'), 10);
+        const submissionId = btn.getAttribute('data-submission-id');
+        const playerName = btn.getAttribute('data-player-name');
+        assignFromDrawer(day, slotIndex, submissionId, playerName);
     }
 
     function assignFromDrawer(day, slotIndex, submissionId, playerName) {
