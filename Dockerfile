@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.14-slim
 WORKDIR /app
 RUN apt-get update && apt-get install -y sqlite3 gosu && rm -rf /var/lib/apt/lists/*
 RUN useradd -m -u 1000 -U -s /bin/bash appuser
