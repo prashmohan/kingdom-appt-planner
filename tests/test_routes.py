@@ -2604,3 +2604,100 @@ def test_admin_dashboard_insights_tab(client, app):
     assert "Top Contributors & Buff Status" in html
     assert "Lord Commander" in html
     assert "GOLD" in html
+
+
+def test_player_form_contention_and_timezone_toggle(client, app):
+    import json
+
+    from app import database
+
+    event_uid = "evt_tz_contention"
+    with app.app_context():
+        db = database.get_db()
+        db.execute(
+            "INSERT INTO events (uid, name, active_days, admin_secret, slot_count) VALUES (?, ?, ?, ?, ?)",
+            (event_uid, "TZ Event", json.dumps({"construction": True}), "sec", 49),
+        )
+        db.execute(
+            "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                f"{event_uid}_p1_construction",
+                event_uid,
+                "construction",
+                "Alice",
+                "1001",
+                "WAR",
+                5000.0,
+                json.dumps({"speedups": 500}),
+                json.dumps([10, 11]),
+                "Pending",
+            ),
+        )
+        db.execute(
+            "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                f"{event_uid}_p2_construction",
+                event_uid,
+                "construction",
+                "Bob",
+                "1002",
+                "WAR",
+                8000.0,
+                json.dumps({"speedups": 800}),
+                json.dumps([11, 12]),
+                "Pending",
+            ),
+        )
+        db.commit()
+
+    resp = client.get(f"/event/{event_uid}")
+    assert resp.status_code == 200
+    html = resp.get_data(as_text=True)
+
+    # Timezone toggle present
+    assert "tz-toggle" in html or "data-tz" in html
+    assert "UTC" in html
+    assert "Local Time" in html
+
+    # Contention indicators present
+    assert "contention" in html or "demand" in html.lower()
+    # Slot data attributes or indicators for counts
+    assert 'data-count="2"' in html  # Slot 11 has 2 applicants
+    assert 'data-count="1"' in html  # Slot 10 and 12 have 1 applicant
+
+
+def test_public_and_finalized_timezone_toggle(client, app):
+    import json
+
+    from app import database
+
+    event_uid = "evt_pub_tz"
+    with app.app_context():
+        db = database.get_db()
+        db.execute(
+            "INSERT INTO events (uid, name, active_days, admin_secret, slot_count) VALUES (?, ?, ?, ?, ?)",
+            (
+                event_uid,
+                "Public TZ Event",
+                json.dumps({"construction": True}),
+                "sec",
+                49,
+            ),
+        )
+        db.commit()
+
+    # Public schedule
+    resp = client.get(f"/event/{event_uid}/schedule")
+    assert resp.status_code == 200
+    html = resp.get_data(as_text=True)
+    assert "tz-toggle" in html or "data-tz" in html
+    assert "UTC" in html
+    assert "Local Time" in html
+
+    # Finalized schedule
+    resp2 = client.get(f"/event/{event_uid}/finalized")
+    assert resp2.status_code == 200
+    html2 = resp2.get_data(as_text=True)
+    assert "tz-toggle" in html2 or "data-tz" in html2
+    assert "UTC" in html2
+    assert "Local Time" in html2

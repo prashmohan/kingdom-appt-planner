@@ -26,36 +26,92 @@
     </script>
     <style>
         .slot {
-            border: 1px solid #374151; /* kvk-gray-700 */
+            border: 1.5px solid #374151; /* kvk-gray-700 */
             position: relative;
             cursor: pointer;
             user-select: none;
-            transition: background-color 0.2s;
-            border-radius: 0.25rem;
+            transition: all 0.2s ease-in-out;
+            border-radius: 0.375rem;
+            background-color: #1f2937;
         }
         .slot:before {
             content: "";
             display: block;
             padding-top: 100%;
         }
+        .slot.slot-traffic-low {
+            border-color: rgba(34, 197, 94, 0.7); /* bright green-500 */
+        }
+        .slot.slot-traffic-low:hover {
+            border-color: #4ade80; /* bright green-400 */
+            box-shadow: 0 0 6px rgba(74, 222, 128, 0.4);
+        }
+        .slot.slot-traffic-medium {
+            border-color: rgba(234, 179, 8, 0.8); /* bright yellow-500 */
+        }
+        .slot.slot-traffic-medium:hover {
+            border-color: #fde047; /* bright yellow-300 */
+            box-shadow: 0 0 6px rgba(250, 204, 21, 0.4);
+        }
+        .slot.slot-traffic-high {
+            border-color: rgba(239, 68, 68, 0.85); /* bright red-500 */
+        }
+        .slot.slot-traffic-high:hover {
+            border-color: #f87171; /* bright red-400 */
+            box-shadow: 0 0 6px rgba(239, 68, 68, 0.5);
+        }
         .slot.selected {
-            background-color: #FBBF24; /* kvk-gold */
-            border-color: #FBBF24;
+            background-color: #FBBF24 !important; /* kvk-gold */
+            border-color: #FBBF24 !important;
+            box-shadow: 0 0 8px rgba(251, 191, 36, 0.4);
         }
         .slot.selected .slot-content {
-            color: #111827; /* kvk-gray-900 */
+            color: #111827 !important; /* kvk-gray-900 */
+            font-weight: 700;
+        }
+        .slot.selected .slot-day-shift {
+            color: #111827 !important;
+        }
+        .slot.selected .contention-indicator {
+            box-shadow: 0 0 0 1.5px #111827;
         }
         .slot-content {
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            font-size: 0.7rem;
-            line-height: 1.1;
+            font-size: 0.68rem;
+            line-height: 1.15;
             text-align: center;
-            overflow-wrap: anywhere;
             padding: 2px;
+        }
+        .slot-time-text {
+            word-break: keep-all;
+            overflow-wrap: normal;
+        }
+        .contention-indicator {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 7px;
+            height: 7px;
+            border-radius: 9999px;
+            pointer-events: none;
+            display: block;
+        }
+        .contention-indicator.dot-low {
+            background-color: #4ade80; /* bright neon green-400 */
+            box-shadow: 0 0 5px rgba(74, 222, 128, 0.9);
+        }
+        .contention-indicator.dot-medium {
+            background-color: #facc15; /* bright vivid yellow-400 */
+            box-shadow: 0 0 5px rgba(250, 204, 21, 0.9);
+        }
+        .contention-indicator.dot-high {
+            background-color: #ef4444; /* bright traffic red-500 */
+            box-shadow: 0 0 6px rgba(239, 68, 68, 0.95);
         }
     </style>
 </head>
@@ -112,6 +168,37 @@
                 {% endif %}
             </div>
 
+            <!-- Time Display & Slot Contention Guidance Bar -->
+            <div class="p-4 border-b border-kvk-gray-700 bg-kvk-gray-800/80 flex flex-wrap items-center justify-between gap-4" data-tz-container>
+                <div class="flex items-center gap-3">
+                    <span class="text-xs font-semibold text-gray-300 uppercase tracking-wider">Timezone Display:</span>
+                    <div class="inline-flex rounded-lg shadow-sm border border-kvk-gray-600 p-0.5 bg-kvk-gray-900" role="group" id="tz-toggle-group">
+                        <button type="button" id="tz-toggle-utc" onclick="setTimezoneMode('utc')" 
+                                class="tz-toggle-btn px-3 py-1 text-xs font-bold rounded-md bg-kvk-gold text-kvk-gray-900 transition-all shadow-sm">
+                            🌐 UTC
+                        </button>
+                        <button type="button" id="tz-toggle-local" onclick="setTimezoneMode('local')" 
+                                class="tz-toggle-btn px-3 py-1 text-xs font-medium rounded-md text-gray-300 hover:text-white transition-all">
+                            🕒 Local Time (<span id="detected-tz-name">Local</span>)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Slot Demand Guidance Legend -->
+                <div class="flex items-center gap-3 text-xs text-gray-400 bg-kvk-gray-900/80 px-3 py-1.5 rounded-lg border border-kvk-gray-700">
+                    <span class="font-semibold text-gray-300">Slot Demand:</span>
+                    <span class="inline-flex items-center gap-1.5" title="0 to 1 applicants (great chance of assignment)">
+                        <span class="w-2 h-2 rounded-full bg-green-400 shadow-[0_0_4px_rgba(74,222,128,0.8)]"></span> Low (0-1)
+                    </span>
+                    <span class="inline-flex items-center gap-1.5" title="2 to 3 applicants (moderate competition)">
+                        <span class="w-2 h-2 rounded-full bg-yellow-400 shadow-[0_0_4px_rgba(250,204,21,0.8)]"></span> Moderate (2-3)
+                    </span>
+                    <span class="inline-flex items-center gap-1.5" title="4+ applicants (peak competition)">
+                        <span class="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_4px_rgba(239,68,68,0.8)]"></span> Busy (4+)
+                    </span>
+                </div>
+            </div>
+
             <div class="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {% for day in active_days %}
                     {% if day == 'construction' %}
@@ -151,8 +238,17 @@
                                 <input type="number" name="tempered_truegold" id="tempered_truegold" min="0" class="mt-1 block w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200">
                             </div>
                         </div>
-                        <div id="slot-grid-construction" class="grid grid-cols-7 gap-1 mb-4">
-                            {% for i in range(slot_labels|length) %}<div class="slot" data-index="{{ i }}"><div class="slot-content">{{ slot_labels[i] }}</div></div>{% endfor %}
+                        <div id="slot-grid-construction" class="grid grid-cols-7 gap-1 mb-4" data-day="construction">
+                            {% for i in range(slot_labels|length) %}
+                                {% set count = slot_density.get('construction', [])[i] if slot_density and 'construction' in slot_density and i < slot_density['construction']|length else 0 %}
+                                {% set contention = 'low' if count <= 1 else ('medium' if count <= 3 else 'high') %}
+                                <div class="slot slot-traffic-{{ contention }}" data-index="{{ i }}" data-count="{{ count }}" data-contention="{{ contention }}" data-utc-label="{{ slot_labels[i] }}" title="{{ slot_labels[i] }} UTC ({{ count }} applicant{% if count != 1 %}s{% endif %} - {{ contention|capitalize }} demand)">
+                                    <div class="slot-content">
+                                        <span class="slot-time-text">{{ slot_labels[i] }}</span>
+                                        <span class="contention-indicator dot-{{ contention }}" title="{{ count }} applicant{% if count != 1 %}s{% endif %} ({{ contention|capitalize }})"></span>
+                                    </div>
+                                </div>
+                            {% endfor %}
                         </div>
                         <input type="hidden" name="slots-construction" id="slots-input-construction">
                     </div>
@@ -189,8 +285,17 @@
                                 <input type="number" name="truegold_dust" id="truegold_dust" min="0" class="mt-1 block w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200">
                             </div>
                         </div>
-                        <div id="slot-grid-research" class="grid grid-cols-7 gap-1 mb-4">
-                            {% for i in range(slot_labels|length) %}<div class="slot" data-index="{{ i }}"><div class="slot-content">{{ slot_labels[i] }}</div></div>{% endfor %}
+                        <div id="slot-grid-research" class="grid grid-cols-7 gap-1 mb-4" data-day="research">
+                            {% for i in range(slot_labels|length) %}
+                                {% set count = slot_density.get('research', [])[i] if slot_density and 'research' in slot_density and i < slot_density['research']|length else 0 %}
+                                {% set contention = 'low' if count <= 1 else ('medium' if count <= 3 else 'high') %}
+                                <div class="slot slot-traffic-{{ contention }}" data-index="{{ i }}" data-count="{{ count }}" data-contention="{{ contention }}" data-utc-label="{{ slot_labels[i] }}" title="{{ slot_labels[i] }} UTC ({{ count }} applicant{% if count != 1 %}s{% endif %} - {{ contention|capitalize }} demand)">
+                                    <div class="slot-content">
+                                        <span class="slot-time-text">{{ slot_labels[i] }}</span>
+                                        <span class="contention-indicator dot-{{ contention }}" title="{{ count }} applicant{% if count != 1 %}s{% endif %} ({{ contention|capitalize }})"></span>
+                                    </div>
+                                </div>
+                            {% endfor %}
                         </div>
                         <input type="hidden" name="slots-research" id="slots-input-research">
                     </div>
@@ -221,8 +326,17 @@
                             </div>
                             <input type="hidden" name="speedups-training" id="speedups-training" value="0">
                         </div>
-                        <div id="slot-grid-training" class="grid grid-cols-7 gap-1 mb-4">
-                            {% for i in range(slot_labels|length) %}<div class="slot" data-index="{{ i }}"><div class="slot-content">{{ slot_labels[i] }}</div></div>{% endfor %}
+                        <div id="slot-grid-training" class="grid grid-cols-7 gap-1 mb-4" data-day="training">
+                            {% for i in range(slot_labels|length) %}
+                                {% set count = slot_density.get('training', [])[i] if slot_density and 'training' in slot_density and i < slot_density['training']|length else 0 %}
+                                {% set contention = 'low' if count <= 1 else ('medium' if count <= 3 else 'high') %}
+                                <div class="slot slot-traffic-{{ contention }}" data-index="{{ i }}" data-count="{{ count }}" data-contention="{{ contention }}" data-utc-label="{{ slot_labels[i] }}" title="{{ slot_labels[i] }} UTC ({{ count }} applicant{% if count != 1 %}s{% endif %} - {{ contention|capitalize }} demand)">
+                                    <div class="slot-content">
+                                        <span class="slot-time-text">{{ slot_labels[i] }}</span>
+                                        <span class="contention-indicator dot-{{ contention }}" title="{{ count }} applicant{% if count != 1 %}s{% endif %} ({{ contention|capitalize }})"></span>
+                                    </div>
+                                </div>
+                            {% endfor %}
                         </div>
                         <input type="hidden" name="slots-training" id="slots-input-training">
                     </div>
@@ -243,7 +357,90 @@
     </div>
 
     <script>
+        // Timezone Management
+        let currentTzMode = localStorage.getItem('kvk_tz_mode') || 'utc';
+        const detectedTz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+        const cleanTzName = detectedTz.split('/').pop().replace(/_/g, ' ');
+
+        function setTimezoneMode(mode) {
+            currentTzMode = mode;
+            localStorage.setItem('kvk_tz_mode', mode);
+            
+            const btnUtc = document.getElementById('tz-toggle-utc');
+            const btnLocal = document.getElementById('tz-toggle-local');
+            
+            if (!btnUtc || !btnLocal) return;
+
+            if (mode === 'local') {
+                btnLocal.className = 'tz-toggle-btn px-3 py-1 text-xs font-bold rounded-md bg-kvk-gold text-kvk-gray-900 transition-all shadow-sm';
+                btnUtc.className = 'tz-toggle-btn px-3 py-1 text-xs font-medium rounded-md text-gray-300 hover:text-white transition-all';
+            } else {
+                btnUtc.className = 'tz-toggle-btn px-3 py-1 text-xs font-bold rounded-md bg-kvk-gold text-kvk-gray-900 transition-all shadow-sm';
+                btnLocal.className = 'tz-toggle-btn px-3 py-1 text-xs font-medium rounded-md text-gray-300 hover:text-white transition-all';
+            }
+
+            updateSlotTimeLabels(mode);
+        }
+
+        function updateSlotTimeLabels(mode) {
+            const slots = document.querySelectorAll('.slot');
+            if (!slots.length) return;
+
+            const refEventNoon = new Date(Date.UTC(2026, 5, 15, 12, 0, 0));
+            const refLocalDay = refEventNoon.getDate();
+
+            const sampleGrid = document.querySelector('[id^="slot-grid-"]');
+            const totalSlots = sampleGrid ? sampleGrid.querySelectorAll('.slot').length : 49;
+
+            slots.forEach(slot => {
+                const index = parseInt(slot.dataset.index, 10);
+                const textEl = slot.querySelector('.slot-time-text');
+                if (!textEl) return;
+
+                let shiftEl = slot.querySelector('.slot-day-shift');
+
+                if (mode === 'utc') {
+                    textEl.textContent = slot.dataset.utcLabel;
+                    if (shiftEl) shiftEl.remove();
+                    slot.title = `${slot.dataset.utcLabel} UTC (${slot.dataset.count} applicants - ${slot.dataset.contention} demand)`;
+                } else {
+                    const startMins = (totalSlots === 48) ? (index * 30) : ((index * 30) - 15);
+                    const slotStartDate = new Date(Date.UTC(2026, 5, 15, 0, startMins, 0));
+                    const slotEndDate = new Date(Date.UTC(2026, 5, 15, 0, startMins + 30, 0));
+
+                    const pad = n => String(n).padStart(2, '0');
+                    const startStr = `${pad(slotStartDate.getHours())}:${pad(slotStartDate.getMinutes())}`;
+                    const endStr = `${pad(slotEndDate.getHours())}:${pad(slotEndDate.getMinutes())}`;
+
+                    const slotLocalDay = slotStartDate.getDate();
+                    let diffDays = slotLocalDay - refLocalDay;
+                    if (diffDays > 15) diffDays -= 30;
+                    if (diffDays < -15) diffDays += 30;
+
+                    textEl.textContent = `${startStr}-\u200b${endStr}`;
+                    const shiftText = diffDays > 0 ? '+1d' : (diffDays < 0 ? '-1d' : '');
+                    
+                    if (shiftText) {
+                        if (!shiftEl) {
+                            shiftEl = document.createElement('span');
+                            shiftEl.className = 'slot-day-shift text-[9px] font-bold text-amber-400 block -mt-0.5';
+                            textEl.parentElement.appendChild(shiftEl);
+                        }
+                        shiftEl.textContent = shiftText;
+                    } else if (shiftEl) {
+                        shiftEl.remove();
+                    }
+
+                    const dayTag = shiftText ? ` (${shiftText})` : '';
+                    slot.title = `${startStr}-${endStr}${dayTag} Local (${slot.dataset.count} applicants - ${slot.dataset.contention} demand)`;
+                }
+            });
+        }
+
         document.addEventListener('DOMContentLoaded', function () {
+            const detectedTzEl = document.getElementById('detected-tz-name');
+            if (detectedTzEl) detectedTzEl.textContent = cleanTzName;
+            setTimezoneMode(currentTzMode);
             
             function initializeGrid(gridId) {
                 const grid = document.getElementById(gridId);
@@ -253,16 +450,20 @@
                 let isMouseDown = false;
 
                 grid.addEventListener('mousedown', function (e) {
-                    if (e.target.classList.contains('slot') || e.target.parentElement.classList.contains('slot')) {
+                    const slot = e.target.closest('.slot');
+                    if (slot) {
                         e.preventDefault();
                         isMouseDown = true;
-                        toggleSlot(e.target);
+                        toggleSlot(slot);
                     }
                 });
 
                 grid.addEventListener('mouseover', function (e) {
-                    if (isMouseDown && (e.target.classList.contains('slot') || e.target.parentElement.classList.contains('slot'))) {
-                        toggleSlot(e.target);
+                    if (isMouseDown) {
+                        const slot = e.target.closest('.slot');
+                        if (slot) {
+                            toggleSlot(slot);
+                        }
                     }
                 });
 
@@ -271,10 +472,9 @@
                 });
                 
                 function toggleSlot(element) {
-                    if (!element.classList.contains('slot')) {
-                        element = element.parentElement;
-                    }
-                    element.classList.toggle('selected');
+                    const slot = element.closest('.slot');
+                    if (!slot) return;
+                    slot.classList.toggle('selected');
                     updateSlotsInput();
                 }
 

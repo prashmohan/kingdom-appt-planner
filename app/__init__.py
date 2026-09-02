@@ -336,10 +336,33 @@ def create_app():
             "name": event["name"],
             "active_days": active_days_config,
             "server_id": event["server_id"],
+            "slot_count": event["slot_count"]
+            if event["slot_count"] is not None
+            else 49,
         }
 
+        slot_count = event_dict["slot_count"]
+        slot_density = {day: [0] * slot_count for day in active_days}
+        submissions = db.execute(
+            "SELECT day_type, feasible_slots FROM submissions WHERE event_uid = ?",
+            (event_uid,),
+        ).fetchall()
+        for sub in submissions:
+            dt = sub["day_type"]
+            if dt in slot_density and sub["feasible_slots"]:
+                try:
+                    slots = json.loads(sub["feasible_slots"])
+                    for s in slots:
+                        if 0 <= s < slot_count:
+                            slot_density[dt][s] += 1
+                except (json.JSONDecodeError, TypeError):
+                    pass
+
         return render_template(
-            "player_form.html", event=event_dict, active_days=active_days
+            "player_form.html",
+            event=event_dict,
+            active_days=active_days,
+            slot_density=slot_density,
         )
 
     @app.route("/event/<event_uid>/submit", methods=["POST"])

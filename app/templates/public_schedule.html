@@ -39,8 +39,9 @@
             text-align: center;
             padding: 2px;
             background-color: #1F2937; /* kvk-gray-800 */
-            line-height: 1.1;
-            overflow-wrap: anywhere;
+            line-height: 1.15;
+            word-break: keep-all;
+            overflow-wrap: normal;
         }
         .slot-pending { background-color: #45331d; }
         .slot-locked { background-color: #1e3a8a; } 
@@ -60,8 +61,21 @@
             </p>
         </header>
         
-        <div class="mb-6 p-4 bg-kvk-gray-800 rounded-lg shadow-md border border-kvk-gray-700">
-            <div class="flex items-center justify-center space-x-6">
+        <div class="mb-6 p-4 bg-kvk-gray-800 rounded-lg shadow-md border border-kvk-gray-700 flex flex-wrap items-center justify-between gap-4" data-tz-container>
+            <div class="flex items-center gap-3">
+                <span class="text-xs font-semibold text-gray-300 uppercase tracking-wider">Timezone Display:</span>
+                <div class="inline-flex rounded-lg shadow-sm border border-kvk-gray-600 p-0.5 bg-kvk-gray-900" role="group" id="tz-toggle-group">
+                    <button type="button" id="tz-toggle-utc" onclick="setTimezoneMode('utc')" 
+                            class="tz-toggle-btn px-3 py-1 text-xs font-bold rounded-md bg-kvk-gold text-kvk-gray-900 transition-all shadow-sm">
+                        🌐 UTC
+                    </button>
+                    <button type="button" id="tz-toggle-local" onclick="setTimezoneMode('local')" 
+                            class="tz-toggle-btn px-3 py-1 text-xs font-medium rounded-md text-gray-300 hover:text-white transition-all">
+                        🕒 Local Time (<span id="detected-tz-name">Local</span>)
+                    </button>
+                </div>
+            </div>
+            <div class="flex items-center space-x-6 text-sm">
                 <div class="flex items-center">
                     <div class="w-4 h-4 mr-2 rounded" style="background-color: #1e3a8a;"></div>
                     <span class="text-gray-300">Confirmed</span>
@@ -89,7 +103,9 @@
                     {% set day_assignments = assignments.get(day, {}) %}
                     {% set current_assignment = day_assignments.get(i) %}
                     <div class="slot rounded {% if current_assignment %}{% if current_assignment.is_locked %}slot-locked{% else %}slot-pending{% endif %}{% endif %}">
-                        <div class="slot-time rounded-t">{{ slot_labels[i] }}</div>
+                        <div class="slot-time rounded-t" data-index="{{ i }}" data-utc-label="{{ slot_labels[i] }}">
+                            <span class="slot-time-text">{{ slot_labels[i] }}</span>
+                        </div>
                         {% if current_assignment %}
                             <div class="p-1">
                                 <p class="font-bold text-center text-gray-100">{{ current_assignment.player_id }}</p>
@@ -114,5 +130,85 @@
             </a>
         </footer>
     </div>
+
+    <script>
+        let currentTzMode = localStorage.getItem('kvk_tz_mode') || 'utc';
+        const detectedTz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+        const cleanTzName = detectedTz.split('/').pop().replace(/_/g, ' ');
+
+        function setTimezoneMode(mode) {
+            currentTzMode = mode;
+            localStorage.setItem('kvk_tz_mode', mode);
+            
+            const btnUtc = document.getElementById('tz-toggle-utc');
+            const btnLocal = document.getElementById('tz-toggle-local');
+            if (!btnUtc || !btnLocal) return;
+
+            if (mode === 'local') {
+                btnLocal.className = 'tz-toggle-btn px-3 py-1 text-xs font-bold rounded-md bg-kvk-gold text-kvk-gray-900 transition-all shadow-sm';
+                btnUtc.className = 'tz-toggle-btn px-3 py-1 text-xs font-medium rounded-md text-gray-300 hover:text-white transition-all';
+            } else {
+                btnUtc.className = 'tz-toggle-btn px-3 py-1 text-xs font-bold rounded-md bg-kvk-gold text-kvk-gray-900 transition-all shadow-sm';
+                btnLocal.className = 'tz-toggle-btn px-3 py-1 text-xs font-medium rounded-md text-gray-300 hover:text-white transition-all';
+            }
+
+            updateSlotTimeLabels(mode);
+        }
+
+        function updateSlotTimeLabels(mode) {
+            const timeEls = document.querySelectorAll('.slot-time');
+            if (!timeEls.length) return;
+
+            const refEventNoon = new Date(Date.UTC(2026, 5, 15, 12, 0, 0));
+            const refLocalDay = refEventNoon.getDate();
+            const totalSlots = {{ slot_labels|length }};
+
+            timeEls.forEach(el => {
+                const index = parseInt(el.dataset.index, 10);
+                const textEl = el.querySelector('.slot-time-text');
+                if (!textEl) return;
+
+                let shiftEl = el.querySelector('.slot-day-shift');
+
+                if (mode === 'utc') {
+                    textEl.textContent = el.dataset.utcLabel;
+                    if (shiftEl) shiftEl.remove();
+                } else {
+                    const startMins = (totalSlots === 48) ? (index * 30) : ((index * 30) - 15);
+                    const slotStartDate = new Date(Date.UTC(2026, 5, 15, 0, startMins, 0));
+                    const slotEndDate = new Date(Date.UTC(2026, 5, 15, 0, startMins + 30, 0));
+
+                    const pad = n => String(n).padStart(2, '0');
+                    const startStr = `${pad(slotStartDate.getHours())}:${pad(slotStartDate.getMinutes())}`;
+                    const endStr = `${pad(slotEndDate.getHours())}:${pad(slotEndDate.getMinutes())}`;
+
+                    const slotLocalDay = slotStartDate.getDate();
+                    let diffDays = slotLocalDay - refLocalDay;
+                    if (diffDays > 15) diffDays -= 30;
+                    if (diffDays < -15) diffDays += 30;
+
+                    textEl.textContent = `${startStr}-\u200b${endStr}`;
+                    const shiftText = diffDays > 0 ? '+1d' : (diffDays < 0 ? '-1d' : '');
+                    
+                    if (shiftText) {
+                        if (!shiftEl) {
+                            shiftEl = document.createElement('span');
+                            shiftEl.className = 'slot-day-shift text-[9px] font-bold text-amber-400 block -mt-0.5';
+                            el.appendChild(shiftEl);
+                        }
+                        shiftEl.textContent = shiftText;
+                    } else if (shiftEl) {
+                        shiftEl.remove();
+                    }
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const detectedTzEl = document.getElementById('detected-tz-name');
+            if (detectedTzEl) detectedTzEl.textContent = cleanTzName;
+            setTimezoneMode(currentTzMode);
+        });
+    </script>
 </body>
 </html>
