@@ -2540,3 +2540,67 @@ def test_superadmin_metrics_and_template_server_id(client, app):
     html = resp.get_data(as_text=True)
     assert "Kingdom #1088" in html
     assert 'data-server="1088"' in html
+
+
+def test_admin_dashboard_insights_tab(client, app):
+    import json
+
+    from app import database
+
+    with app.app_context():
+        db = database.get_db()
+        event_uid = "insights_event_test"
+        secret = "insights_secret"
+        db.execute(
+            "INSERT INTO events (uid, name, active_days, admin_secret, slot_count, server_id) VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                event_uid,
+                "Insights Kingdom",
+                json.dumps({"construction": True, "training": True}),
+                secret,
+                49,
+                999,
+            ),
+        )
+        # Submissions
+        db.execute(
+            "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                "ins_s1",
+                event_uid,
+                "construction",
+                "Lord Commander",
+                "LC01",
+                "GOLD",
+                50000.0,
+                json.dumps(
+                    {"speedups": 3000, "truegold": 200, "tempered_truegold": 50}
+                ),
+                json.dumps([10, 11]),
+                "Assigned",
+            ),
+        )
+        db.execute(
+            "INSERT INTO assignments (event_uid, day_type, slot_index, player_id, is_locked) VALUES (?, ?, ?, ?, ?)",
+            (event_uid, "construction", 10, "LC01", 1),
+        )
+        db.commit()
+
+    resp = client.get(f"/admin/{event_uid}?secret={secret}")
+    assert resp.status_code == 200
+    html = resp.get_data(as_text=True)
+
+    # 1. Insights Tab button
+    assert 'data-target="tab-insights"' in html
+    assert "Insights" in html
+
+    # 2. Insights Tab panel
+    assert 'id="tab-insights"' in html
+
+    # 3. Key sections and metrics rendered
+    assert "Kingdom Firepower" in html
+    assert "Alliance Distribution" in html
+    assert "Timezone Demand & Friction" in html
+    assert "Top Contributors & Buff Status" in html
+    assert "Lord Commander" in html
+    assert "GOLD" in html

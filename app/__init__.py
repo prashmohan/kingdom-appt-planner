@@ -29,6 +29,7 @@ from config import Config
 
 from . import database, logic
 from .logic import (
+    compute_event_insights,
     format_minutes,
     generate_short_uid,
     get_ordered_active_days,
@@ -683,6 +684,8 @@ def create_app():
             "locked_appointments", event_uid=event_uid, _external=True
         )
 
+        insights = compute_event_insights(event_uid, db)
+
         return render_template(
             "admin_dashboard.html",
             event=event_dict,
@@ -698,6 +701,7 @@ def create_app():
             alliance_summary=alliance_summary,
             player_url=player_url,
             finalized_url=finalized_url,
+            insights=insights,
         )
 
     @app.route("/event/<event_uid>/schedule")

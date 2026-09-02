@@ -140,6 +140,12 @@
                     {% endif %}
                 </button>
                 {% endfor %}
+                <button class="tab-button whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-1.5" data-target="tab-insights">
+                    <svg class="w-4 h-4 text-kvk-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                    <span>Insights</span>
+                </button>
             </nav>
         </div>
 
@@ -459,6 +465,619 @@
         </div>
         {% endfor %}
 
+        <!-- Insights Tab Content -->
+        <div id="tab-insights" class="tab-content hidden space-y-8">
+            {% if insights %}
+            <!-- Sub-Navigation Pills -->
+            <div class="flex items-center gap-2 border-b border-kvk-gray-700 pb-4 flex-wrap">
+                <span class="text-xs font-bold text-gray-400 uppercase tracking-wider mr-1">View Scope:</span>
+                <button type="button" class="insight-pill px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-kvk-gold text-kvk-gray-900 shadow-md" data-target-scope="scope-overall" onclick="switchInsightScope(this, 'scope-overall')">
+                    👑 Overall (All Days)
+                </button>
+                {% for day in active_days %}
+                <button type="button" class="insight-pill px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all text-gray-400 hover:text-gray-200 hover:bg-kvk-gray-700 bg-kvk-gray-800 border border-kvk-gray-700" data-target-scope="scope-{{ day }}" onclick="switchInsightScope(this, 'scope-{{ day }}')">
+                    {% if day == 'research' %}
+                        🔬 Research (Day {{ event.active_days.research_day if event.active_days.research_day else '5' }})
+                    {% elif day == 'construction' %}
+                        🔨 Construction
+                    {% elif day == 'training' %}
+                        ⚔️ Training
+                    {% else %}
+                        {{ day|capitalize }}
+                    {% endif %}
+                </button>
+                {% endfor %}
+            </div>
+
+            <!-- 1. OVERALL SCOPE PANEL -->
+            <div id="scope-overall" class="insight-scope-panel space-y-8">
+                <!-- Top Firepower KPI Cards -->
+                <div>
+                    <h2 class="text-xl font-extrabold text-gray-100 mb-4 flex items-center gap-2">
+                        <span class="text-kvk-gold">⚡</span> Kingdom Firepower Summary
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- Converted Speedups -->
+                        <div class="bg-kvk-gray-800 border border-kvk-gray-700 p-5 rounded-xl shadow-md">
+                            <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Total Speedups Pledged</div>
+                            <div class="text-3xl font-extrabold text-white tracking-tight">{{ insights.overall.formatted_speedups }}</div>
+                            <div class="text-xs text-kvk-gold mt-1 font-mono">
+                                {{ "{:,}".format(insights.overall.total_speedups_minutes) }} total minutes
+                            </div>
+                        </div>
+
+                        <!-- Secondary Materials -->
+                        <div class="bg-kvk-gray-800 border border-kvk-gray-700 p-5 rounded-xl shadow-md">
+                            <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Total Materials Pledged</div>
+                            <div class="flex flex-wrap gap-2">
+                                {% if insights.overall.materials.truegold > 0 %}
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded text-xs font-bold bg-amber-900/30 text-amber-300 border border-amber-700/40">
+                                        Truegold: {{ "{:,}".format(insights.overall.materials.truegold) }}
+                                    </span>
+                                {% endif %}
+                                {% if insights.overall.materials.tempered_truegold > 0 %}
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded text-xs font-bold bg-orange-900/30 text-orange-300 border border-orange-700/40">
+                                        Tempered: {{ "{:,}".format(insights.overall.materials.tempered_truegold) }}
+                                    </span>
+                                {% endif %}
+                                {% if insights.overall.materials.truegold_dust > 0 %}
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded text-xs font-bold bg-purple-900/30 text-purple-300 border border-purple-700/40">
+                                        Dust: {{ "{:,}".format(insights.overall.materials.truegold_dust) }}
+                                    </span>
+                                {% endif %}
+                                {% if insights.overall.materials.truegold == 0 and insights.overall.materials.tempered_truegold == 0 and insights.overall.materials.truegold_dust == 0 %}
+                                    <span class="text-xs text-gray-500 italic">No extra materials recorded</span>
+                                {% endif %}
+                            </div>
+                            <div class="text-xs text-gray-400 mt-2">Combined across all active days</div>
+                        </div>
+
+                        <!-- Scheduled vs Unscheduled Power Gauge -->
+                        <div class="bg-kvk-gray-800 border border-kvk-gray-700 p-5 rounded-xl shadow-md">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Scheduled Power</span>
+                                <span class="text-xs font-bold text-kvk-gold">{{ insights.overall.scheduled_power_pct }}% Secured</span>
+                            </div>
+                            <div class="w-full bg-kvk-gray-900 rounded-full h-3 overflow-hidden border border-kvk-gray-700 my-2">
+                                <div class="bg-gradient-to-r from-blue-500 to-emerald-400 h-full rounded-full transition-all duration-500" style="width: {{ insights.overall.scheduled_power_pct }}%"></div>
+                            </div>
+                            <div class="flex justify-between text-xs text-gray-400 mt-1">
+                                <span><strong class="text-gray-200">{{ "{:,.0f}".format(insights.overall.total_resources_scheduled) }}</strong> secured</span>
+                                <span><strong class="text-gray-400">{{ "{:,.0f}".format(insights.overall.total_resources_unscheduled) }}</strong> waitlisted</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cross-Day Breakdown (if multiple active days) -->
+                {% if active_days|length > 1 %}
+                <div class="bg-kvk-gray-800 border border-kvk-gray-700 p-6 rounded-xl shadow-md">
+                    <h3 class="text-lg font-bold text-gray-100 mb-3 flex items-center gap-2">
+                        <span>📅</span> Day-by-Day Firepower Comparison
+                    </h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-{{ active_days|length }} gap-4">
+                        {% for day_stat in insights.overall.cross_day_breakdown %}
+                        <div class="bg-kvk-gray-900 p-4 rounded-lg border border-kvk-gray-700">
+                            <div class="text-xs font-bold text-kvk-gold uppercase tracking-wider capitalize">{{ day_stat.day_type }}</div>
+                            <div class="text-2xl font-extrabold text-white mt-1">{{ "{:,.0f}".format(day_stat.total_resources) }} <span class="text-xs font-normal text-gray-400">pts</span></div>
+                            <div class="text-xs text-gray-400 mt-2 flex justify-between">
+                                <span>Submissions: {{ day_stat.submissions }}</span>
+                                <span>Assigned: {{ day_stat.assigned }} ({{ day_stat.scheduled_pct }}%)</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Multi-Day Heavy Hitters & Overall Whale Board in a 2-column Grid -->
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    <!-- Whale Board -->
+                    <div class="bg-kvk-gray-800 border border-kvk-gray-700 p-6 rounded-xl shadow-md">
+                        <div class="flex justify-between items-center mb-4">
+                            <div>
+                                <h3 class="text-lg font-bold text-gray-100 flex items-center gap-2">
+                                    <span>🐋</span> Top Contributors & Buff Status (Top 10 Pledges)
+                                </h3>
+                                <p class="text-[11px] text-gray-400 mt-0.5">Heaviest single-event commitments and whether they received a buff slot.</p>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full text-xs">
+                                <thead class="border-b border-kvk-gray-700 text-gray-400 uppercase">
+                                    <tr>
+                                        <th class="py-2 text-left">#</th>
+                                        <th class="py-2 text-left">Player</th>
+                                        <th class="py-2 text-left">Day</th>
+                                        <th class="py-2 text-right">Points</th>
+                                        <th class="py-2 text-right">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-kvk-gray-700">
+                                    {% for whale in insights.overall.whale_board %}
+                                    <tr class="hover:bg-kvk-gray-750">
+                                        <td class="py-2.5 font-bold text-gray-500">{{ loop.index }}</td>
+                                        <td class="py-2.5 font-semibold text-gray-200">
+                                            <span class="text-kvk-gold font-mono">[{{ whale.alliance_name }}]</span> {{ whale.player_name }}
+                                        </td>
+                                        <td class="py-2.5 text-gray-400 capitalize">{{ whale.day_type }}</td>
+                                        <td class="py-2.5 text-right font-mono font-bold text-gray-300">{{ "{:,.0f}".format(whale.resources) }}</td>
+                                        <td class="py-2.5 text-right">
+                                            {% if whale.is_assigned %}
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-900/40 text-emerald-300 border border-emerald-700/40" title="Assigned Slot">
+                                                    ✓ {{ whale.assigned_slot_label if whale.assigned_slot_label else 'Assigned' }}
+                                                </span>
+                                            {% else %}
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-900/30 text-amber-300 border border-amber-700/40" title="Waitlisted (Selected {{ whale.feasible_slots_count }} slots)">
+                                                    Waitlisted ({{ whale.feasible_slots_count }} slots)
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <tr>
+                                        <td colspan="5" class="py-4 text-center text-gray-500 italic">No submissions recorded yet.</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Multi-Day Grinders -->
+                    <div class="bg-kvk-gray-800 border border-kvk-gray-700 p-6 rounded-xl shadow-md">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-bold text-gray-100 flex items-center gap-2">
+                                <span>🏅</span> Multi-Day Participants
+                            </h3>
+                            <span class="text-xs text-gray-400">{{ insights.overall.multi_day_players|length }} Players</span>
+                        </div>
+                        <div class="overflow-x-auto max-h-80 overflow-y-auto custom-scrollbar pr-1">
+                            <table class="min-w-full text-xs">
+                                <thead class="border-b border-kvk-gray-700 text-gray-400 uppercase">
+                                    <tr>
+                                        <th class="py-2 text-left">Player</th>
+                                        <th class="py-2 text-left">Active Days</th>
+                                        <th class="py-2 text-right">Combined Points</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-kvk-gray-700">
+                                    {% for player in insights.overall.multi_day_players %}
+                                    <tr class="hover:bg-kvk-gray-750">
+                                        <td class="py-2.5 font-semibold text-gray-200">
+                                            <span class="text-kvk-gold font-mono">[{{ player.alliance_name }}]</span> {{ player.player_name }}
+                                        </td>
+                                        <td class="py-2.5">
+                                            <div class="flex gap-1 flex-wrap">
+                                                {% for d in player.days %}
+                                                    <span class="px-1.5 py-0.5 rounded text-[10px] bg-kvk-gray-700 text-gray-300 capitalize border border-kvk-gray-600">{{ d }}</span>
+                                                {% endfor %}
+                                            </div>
+                                        </td>
+                                        <td class="py-2.5 text-right font-mono font-bold text-kvk-gold">{{ "{:,.0f}".format(player.total_resources) }}</td>
+                                    </tr>
+                                    {% else %}
+                                    <tr>
+                                        <td colspan="3" class="py-4 text-center text-gray-500 italic">No players participating across multiple days yet.</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Alliance Distribution Section -->
+                <div class="bg-kvk-gray-800 border border-kvk-gray-700 p-6 rounded-xl shadow-md">
+                    <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-100 flex items-center gap-2">
+                                <span>⚖️</span> Alliance Distribution (Overall)
+                            </h3>
+                            <p class="text-xs text-gray-400 mt-0.5">Compare each alliance's share of kingdom points against their share of granted buff appointments.</p>
+                        </div>
+                        <input type="text" placeholder="Filter alliance..." class="bg-kvk-gray-700 border-kvk-gray-600 rounded-md text-xs text-gray-200 px-3 py-1.5 focus:ring-kvk-gold focus:border-kvk-gold" oninput="filterTable(this, 'overall-alliance-equity-table')">
+                    </div>
+
+                    <!-- Visual Comparison Bars (Top 6 alliances by points) -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6 pt-2">
+                        {% for a in insights.overall.alliance_equity[:6] %}
+                        <div class="bg-kvk-gray-900 border border-kvk-gray-700 rounded-lg p-3.5 space-y-2">
+                            <div class="flex justify-between items-center text-xs">
+                                <span class="font-bold text-gray-200">[{{ a.alliance_name }}]</span>
+                                {% if a.equity_delta > 5 %}
+                                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-900/40 text-blue-300 border border-blue-700/40" title="Granted higher slot share than point share">+{{ a.equity_delta }}% Delta</span>
+                                {% elif a.equity_delta < -5 %}
+                                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-900/40 text-amber-300 border border-amber-700/40" title="Granted lower slot share than point share">{{ a.equity_delta }}% Delta</span>
+                                {% else %}
+                                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-900/40 text-emerald-300 border border-emerald-700/40" title="Proportional distribution">Balanced ({{ a.equity_delta }}%)</span>
+                                {% endif %}
+                            </div>
+                            <div class="space-y-1 text-[11px]">
+                                <div class="flex justify-between text-gray-400">
+                                    <span>Power Share</span>
+                                    <span class="font-mono font-bold text-amber-400">{{ a.share_of_resources_pct }}%</span>
+                                </div>
+                                <div class="w-full bg-kvk-gray-800 rounded-full h-1.5 overflow-hidden">
+                                    <div class="bg-amber-400 h-full rounded-full" style="width: {{ a.share_of_resources_pct }}%"></div>
+                                </div>
+                                <div class="flex justify-between text-gray-400 pt-0.5">
+                                    <span>Buff Slots Share</span>
+                                    <span class="font-mono font-bold text-blue-400">{{ a.share_of_slots_pct }}%</span>
+                                </div>
+                                <div class="w-full bg-kvk-gray-800 rounded-full h-1.5 overflow-hidden">
+                                    <div class="bg-blue-400 h-full rounded-full" style="width: {{ a.share_of_slots_pct }}%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Sortable Detailed Alliance Table -->
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-xs" id="overall-alliance-equity-table">
+                            <thead class="border-b border-kvk-gray-700 text-gray-400 uppercase">
+                                <tr>
+                                    <th class="px-3 py-2.5 text-left cursor-pointer hover:text-kvk-gold" onclick="sortTable('overall-alliance-equity-table', 0)">Alliance ↕</th>
+                                    <th class="px-3 py-2.5 text-right cursor-pointer hover:text-kvk-gold" onclick="sortTable('overall-alliance-equity-table', 1, true)">Total Pts ↕</th>
+                                    <th class="px-3 py-2.5 text-right cursor-pointer hover:text-kvk-gold" onclick="sortTable('overall-alliance-equity-table', 2, true)">% Power ↕</th>
+                                    <th class="px-3 py-2.5 text-right cursor-pointer hover:text-kvk-gold" onclick="sortTable('overall-alliance-equity-table', 3, true)">Slots Won ↕</th>
+                                    <th class="px-3 py-2.5 text-right cursor-pointer hover:text-kvk-gold" onclick="sortTable('overall-alliance-equity-table', 4, true)">% Slots ↕</th>
+                                    <th class="px-3 py-2.5 text-right cursor-pointer hover:text-kvk-gold" onclick="sortTable('overall-alliance-equity-table', 5, true)">Equity Delta ↕</th>
+                                    <th class="px-3 py-2.5 text-right cursor-pointer hover:text-kvk-gold" onclick="sortTable('overall-alliance-equity-table', 6, true)">Acceptance Rate ↕</th>
+                                    <th class="px-3 py-2.5 text-right cursor-pointer hover:text-kvk-gold" onclick="sortTable('overall-alliance-equity-table', 7, true)">Unscheduled Pts ↕</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-kvk-gray-700">
+                                {% for item in insights.overall.alliance_equity %}
+                                <tr class="hover:bg-kvk-gray-750">
+                                    <td class="px-3 py-2.5 font-bold text-gray-200">{{ item.alliance_name }}</td>
+                                    <td class="px-3 py-2.5 text-right font-mono text-gray-300" data-value="{{ item.total_resources }}">{{ "{:,.0f}".format(item.total_resources) }}</td>
+                                    <td class="px-3 py-2.5 text-right font-mono text-amber-400 font-bold" data-value="{{ item.share_of_resources_pct }}">{{ item.share_of_resources_pct }}%</td>
+                                    <td class="px-3 py-2.5 text-right font-mono text-gray-300" data-value="{{ item.assigned_count }}">{{ item.assigned_count }}</td>
+                                    <td class="px-3 py-2.5 text-right font-mono text-blue-400 font-bold" data-value="{{ item.share_of_slots_pct }}">{{ item.share_of_slots_pct }}%</td>
+                                    <td class="px-3 py-2.5 text-right font-mono font-bold" data-value="{{ item.equity_delta }}">
+                                        {% if item.equity_delta > 0 %}
+                                            <span class="text-blue-400">+{{ item.equity_delta }}%</span>
+                                        {% elif item.equity_delta < 0 %}
+                                            <span class="text-amber-400">{{ item.equity_delta }}%</span>
+                                        {% else %}
+                                            <span class="text-emerald-400">0.0%</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-3 py-2.5 text-right font-mono text-gray-300" data-value="{{ item.acceptance_rate_pct }}">{{ item.acceptance_rate_pct }}%</td>
+                                    <td class="px-3 py-2.5 text-right font-mono text-gray-400" data-value="{{ item.unscheduled_resources }}">{{ "{:,.0f}".format(item.unscheduled_resources) }}</td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="8" class="py-4 text-center text-gray-500 italic">No submissions to compute alliance equity.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. PER-DAY SCOPE PANELS -->
+            {% for day in active_days %}
+            {% set day_insight = insights.by_day[day] %}
+            <div id="scope-{{ day }}" class="insight-scope-panel hidden space-y-8">
+                <!-- Day Firepower KPI Cards -->
+                <div>
+                    <h2 class="text-xl font-extrabold text-gray-100 mb-4 flex items-center gap-2 capitalize">
+                        <span class="text-kvk-gold">⚡</span> {{ day }} Firepower & Resource Commitment
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- Speedups -->
+                        <div class="bg-kvk-gray-800 border border-kvk-gray-700 p-5 rounded-xl shadow-md">
+                            <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Speedups Pledged</div>
+                            <div class="text-3xl font-extrabold text-white tracking-tight">{{ day_insight.formatted_speedups }}</div>
+                            <div class="text-xs text-kvk-gold mt-1 font-mono">
+                                {{ "{:,}".format(day_insight.total_speedups_minutes) }} total minutes
+                            </div>
+                        </div>
+
+                        <!-- Materials -->
+                        <div class="bg-kvk-gray-800 border border-kvk-gray-700 p-5 rounded-xl shadow-md">
+                            <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Materials Pledged</div>
+                            <div class="flex flex-wrap gap-2">
+                                {% if day == 'construction' %}
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded text-xs font-bold bg-amber-900/30 text-amber-300 border border-amber-700/40">
+                                        Truegold: {{ "{:,}".format(day_insight.materials.truegold) }}
+                                    </span>
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded text-xs font-bold bg-orange-900/30 text-orange-300 border border-orange-700/40">
+                                        Tempered: {{ "{:,}".format(day_insight.materials.tempered_truegold) }}
+                                    </span>
+                                {% elif day == 'research' %}
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded text-xs font-bold bg-purple-900/30 text-purple-300 border border-purple-700/40">
+                                        Dust: {{ "{:,}".format(day_insight.materials.truegold_dust) }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-xs text-gray-400">Training Speedups Focus</span>
+                                {% endif %}
+                            </div>
+                            <div class="text-xs text-gray-400 mt-2">{{ day_insight.total_submissions }} players submitted for {{ day }}</div>
+                        </div>
+
+                        <!-- Scheduled Power -->
+                        <div class="bg-kvk-gray-800 border border-kvk-gray-700 p-5 rounded-xl shadow-md">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Scheduled Power</span>
+                                <span class="text-xs font-bold text-kvk-gold">{{ day_insight.scheduled_power_pct }}% Secured</span>
+                            </div>
+                            <div class="w-full bg-kvk-gray-900 rounded-full h-3 overflow-hidden border border-kvk-gray-700 my-2">
+                                <div class="bg-gradient-to-r from-blue-500 to-emerald-400 h-full rounded-full transition-all duration-500" style="width: {{ day_insight.scheduled_power_pct }}%"></div>
+                            </div>
+                            <div class="flex justify-between text-xs text-gray-400 mt-1">
+                                <span><strong class="text-gray-200">{{ "{:,.0f}".format(day_insight.total_resources_scheduled) }}</strong> secured</span>
+                                <span><strong class="text-gray-400">{{ "{:,.0f}".format(day_insight.total_resources_unscheduled) }}</strong> waitlisted</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Day Whale Board -->
+                <div class="bg-kvk-gray-800 border border-kvk-gray-700 p-6 rounded-xl shadow-md">
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-100 flex items-center gap-2">
+                                <span>🐋</span> {{ day|capitalize }} Top Contributors & Buff Status (Top 10)
+                            </h3>
+                            <p class="text-[11px] text-gray-400 mt-0.5">Heaviest {{ day }} pledges and their appointment status.</p>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-xs">
+                            <thead class="border-b border-kvk-gray-700 text-gray-400 uppercase">
+                                <tr>
+                                    <th class="py-2 text-left">#</th>
+                                    <th class="py-2 text-left">Player</th>
+                                    <th class="py-2 text-right">Pledged Points</th>
+                                    <th class="py-2 text-center">Flexibility</th>
+                                    <th class="py-2 text-right">Appointment Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-kvk-gray-700">
+                                {% for whale in day_insight.whale_board %}
+                                <tr class="hover:bg-kvk-gray-750">
+                                    <td class="py-2.5 font-bold text-gray-500">{{ loop.index }}</td>
+                                    <td class="py-2.5 font-semibold text-gray-200">
+                                        <span class="text-kvk-gold font-mono">[{{ whale.alliance_name }}]</span> {{ whale.player_name }}
+                                    </td>
+                                    <td class="py-2.5 text-right font-mono font-bold text-gray-300">{{ "{:,.0f}".format(whale.resources) }}</td>
+                                    <td class="py-2.5 text-center text-gray-400">{{ whale.feasible_slots_count }} slots chosen</td>
+                                    <td class="py-2.5 text-right">
+                                        {% if whale.is_assigned %}
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-900/40 text-emerald-300 border border-emerald-700/40">
+                                                ✓ Slot {{ whale.assigned_slot }}: {{ whale.assigned_slot_label }}
+                                            </span>
+                                        {% else %}
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-900/30 text-amber-300 border border-amber-700/40">
+                                                Waitlisted
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="5" class="py-4 text-center text-gray-500 italic">No submissions for {{ day }}.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Day Alliance Distribution Table -->
+                <div class="bg-kvk-gray-800 border border-kvk-gray-700 p-6 rounded-xl shadow-md">
+                    <div class="flex justify-between items-center mb-4 flex-wrap gap-2">
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-100 flex items-center gap-2">
+                                <span>⚖️</span> Alliance Distribution: {{ day|capitalize }}
+                            </h3>
+                            <p class="text-xs text-gray-400 mt-0.5">Points share vs buff slots share for this specific day.</p>
+                        </div>
+                        <input type="text" placeholder="Filter alliance..." class="bg-kvk-gray-700 border-kvk-gray-600 rounded-md text-xs text-gray-200 px-3 py-1.5 focus:ring-kvk-gold focus:border-kvk-gold" oninput="filterTable(this, 'day-alliance-equity-table-{{ day }}')">
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-xs" id="day-alliance-equity-table-{{ day }}">
+                            <thead class="border-b border-kvk-gray-700 text-gray-400 uppercase">
+                                <tr>
+                                    <th class="px-3 py-2.5 text-left cursor-pointer hover:text-kvk-gold" onclick="sortTable('day-alliance-equity-table-{{ day }}', 0)">Alliance ↕</th>
+                                    <th class="px-3 py-2.5 text-right cursor-pointer hover:text-kvk-gold" onclick="sortTable('day-alliance-equity-table-{{ day }}', 1, true)">Total Pts ↕</th>
+                                    <th class="px-3 py-2.5 text-right cursor-pointer hover:text-kvk-gold" onclick="sortTable('day-alliance-equity-table-{{ day }}', 2, true)">% Power ↕</th>
+                                    <th class="px-3 py-2.5 text-right cursor-pointer hover:text-kvk-gold" onclick="sortTable('day-alliance-equity-table-{{ day }}', 3, true)">Slots Won ↕</th>
+                                    <th class="px-3 py-2.5 text-right cursor-pointer hover:text-kvk-gold" onclick="sortTable('day-alliance-equity-table-{{ day }}', 4, true)">% Slots ↕</th>
+                                    <th class="px-3 py-2.5 text-right cursor-pointer hover:text-kvk-gold" onclick="sortTable('day-alliance-equity-table-{{ day }}', 5, true)">Equity Delta ↕</th>
+                                    <th class="px-3 py-2.5 text-right cursor-pointer hover:text-kvk-gold" onclick="sortTable('day-alliance-equity-table-{{ day }}', 6, true)">Acceptance Rate ↕</th>
+                                    <th class="px-3 py-2.5 text-right cursor-pointer hover:text-kvk-gold" onclick="sortTable('day-alliance-equity-table-{{ day }}', 7, true)">Unscheduled Pts ↕</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-kvk-gray-700">
+                                {% for item in day_insight.alliance_equity %}
+                                <tr class="hover:bg-kvk-gray-750">
+                                    <td class="px-3 py-2.5 font-bold text-gray-200">{{ item.alliance_name }}</td>
+                                    <td class="px-3 py-2.5 text-right font-mono text-gray-300" data-value="{{ item.total_resources }}">{{ "{:,.0f}".format(item.total_resources) }}</td>
+                                    <td class="px-3 py-2.5 text-right font-mono text-amber-400 font-bold" data-value="{{ item.share_of_resources_pct }}">{{ item.share_of_resources_pct }}%</td>
+                                    <td class="px-3 py-2.5 text-right font-mono text-gray-300" data-value="{{ item.assigned_count }}">{{ item.assigned_count }}</td>
+                                    <td class="px-3 py-2.5 text-right font-mono text-blue-400 font-bold" data-value="{{ item.share_of_slots_pct }}">{{ item.share_of_slots_pct }}%</td>
+                                    <td class="px-3 py-2.5 text-right font-mono font-bold" data-value="{{ item.equity_delta }}">
+                                        {% if item.equity_delta > 0 %}
+                                            <span class="text-blue-400">+{{ item.equity_delta }}%</span>
+                                        {% elif item.equity_delta < 0 %}
+                                            <span class="text-amber-400">{{ item.equity_delta }}%</span>
+                                        {% else %}
+                                            <span class="text-emerald-400">0.0%</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-3 py-2.5 text-right font-mono text-gray-300" data-value="{{ item.acceptance_rate_pct }}">{{ item.acceptance_rate_pct }}%</td>
+                                    <td class="px-3 py-2.5 text-right font-mono text-gray-400" data-value="{{ item.unscheduled_resources }}">{{ "{:,.0f}".format(item.unscheduled_resources) }}</td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="8" class="py-4 text-center text-gray-500 italic">No submissions for {{ day }}.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Timezone Demand & Scheduling Friction Section -->
+                <div class="bg-kvk-gray-800 border border-kvk-gray-700 p-6 rounded-xl shadow-md space-y-6">
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-100 flex items-center gap-2">
+                            <span>🕒</span> Timezone Demand & Friction
+                        </h3>
+                        <p class="text-xs text-gray-400 mt-0.5">Identify peak congestion hours, empty slots needing recruitment, and applicant flexibility.</p>
+                    </div>
+
+                    <!-- Highlight Badges Grid -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- Top Contested Slots -->
+                        <div class="bg-kvk-gray-900 border border-kvk-gray-700 p-4 rounded-lg">
+                            <div class="text-xs font-bold text-red-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                Top Contested Slots
+                            </div>
+                            <div class="space-y-1.5">
+                                {% for cs in day_insight.top_contested_slots %}
+                                <div class="flex justify-between items-center text-xs">
+                                    <span class="font-mono text-gray-300">{{ cs.slot_label }}</span>
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-900/40 text-red-300 border border-red-700/40">
+                                        {{ cs.applicant_count }} applicants
+                                    </span>
+                                </div>
+                                {% else %}
+                                <div class="text-xs text-gray-500 italic">No slot contention yet.</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <!-- Dead / Empty Slots -->
+                        <div class="bg-kvk-gray-900 border border-kvk-gray-700 p-4 rounded-lg">
+                            <div class="text-xs font-bold text-amber-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                Zero-Applicant Dead Slots
+                            </div>
+                            <div class="text-xs text-gray-300">
+                                <span class="text-2xl font-extrabold text-white">{{ day_insight.dead_slots|length }}</span>
+                                <span class="text-gray-400">of {{ event.slot_count or 49 }} slots empty</span>
+                            </div>
+                            <div class="mt-2 text-[11px] text-gray-400 max-h-16 overflow-y-auto custom-scrollbar">
+                                {% if day_insight.dead_slots|length > 0 %}
+                                    {% for ds in day_insight.dead_slots[:6] %}
+                                        <span class="inline-block bg-kvk-gray-800 text-gray-400 font-mono px-1.5 py-0.5 rounded text-[10px] mr-1 mb-1">{{ ds.slot_label }}</span>
+                                    {% endfor %}
+                                    {% if day_insight.dead_slots|length > 6 %}
+                                        <span class="text-[10px] text-gray-500">+{{ day_insight.dead_slots|length - 6 }} more</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-emerald-400">All slots have applicants!</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Player Flexibility Index -->
+                        <div class="bg-kvk-gray-900 border border-kvk-gray-700 p-4 rounded-lg">
+                            <div class="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                Player Flexibility
+                            </div>
+                            <div class="text-3xl font-extrabold text-white">
+                                {{ "%.1f"|format(day_insight.player_flexibility_avg) }}
+                                <span class="text-xs font-normal text-gray-400">avg slots / player</span>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-2">
+                                {% if day_insight.player_flexibility_avg >= 4 %}
+                                    <span class="text-emerald-400">High availability.</span> Players are very flexible.
+                                {% elif day_insight.player_flexibility_avg >= 2 %}
+                                    <span class="text-blue-400">Moderate availability.</span> Good scheduling flexibility.
+                                {% else %}
+                                    <span class="text-amber-400">Rigid availability.</span> Most players only pick 1-2 slots.
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- 24-Hour Demand Histogram Chart -->
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs font-bold text-gray-300 uppercase tracking-wider">24-Hour Demand Curve (UTC)</span>
+                            <span class="text-xs text-gray-500">Applicant volume per hour</span>
+                        </div>
+                        <div class="bg-kvk-gray-900 border border-kvk-gray-700 p-4 rounded-xl">
+                            <!-- Bars Container -->
+                            {% set max_applicants = 1 %}
+                            {% for h in day_insight.hourly_demand %}
+                                {% if h.applicants > max_applicants %}
+                                    {% set max_applicants = h.applicants %}
+                                {% endif %}
+                            {% endfor %}
+                            <div class="flex items-end gap-1 h-32 pt-4 px-1">
+                                {% for h in day_insight.hourly_demand %}
+                                    {% set bar_height = (h.applicants / max_applicants * 100) if max_applicants > 0 else 0 %}
+                                    <div class="flex-1 flex flex-col items-center h-full justify-end group relative" title="{{ h.label }} UTC: {{ h.applicants }} applicants">
+                                        <!-- Tooltip -->
+                                        <div class="opacity-0 group-hover:opacity-100 transition-opacity bg-kvk-gray-800 text-kvk-gold text-[10px] font-bold py-0.5 px-1.5 rounded absolute -top-7 whitespace-nowrap border border-kvk-gold/30 z-20 pointer-events-none">
+                                            {{ h.applicants }}
+                                        </div>
+                                        <!-- Bar -->
+                                        <div class="w-full rounded-t transition-all duration-300 {% if h.applicants > 0 %}bg-gradient-to-t from-kvk-blue to-kvk-gold hover:from-blue-400 hover:to-amber-300{% else %}bg-kvk-gray-800{% endif %}"
+                                             style="height: {{ [bar_height, 4]|max if h.applicants > 0 else 2 }}%;"></div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            <!-- Hour Labels -->
+                            <div class="flex justify-between text-[9px] text-gray-500 font-mono mt-2 pt-1 border-t border-kvk-gray-800">
+                                <span>00:00</span>
+                                <span>04:00</span>
+                                <span>08:00</span>
+                                <span>12:00</span>
+                                <span>16:00</span>
+                                <span>20:00</span>
+                                <span>23:00</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rigid Whales Callout -->
+                    {% if day_insight.rigid_whales|length > 0 %}
+                    <div class="bg-amber-950/20 border border-amber-500/30 rounded-xl p-4">
+                        <div class="flex items-center gap-2 mb-2 text-amber-400 text-sm font-bold">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                            High-Value Players with Rigid Availability (Unassigned)
+                        </div>
+                        <p class="text-xs text-gray-300 mb-3">
+                            These players have high point commitments but could not be scheduled because they only selected 1 or 2 narrow timeslots:
+                        </p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {% for rw in day_insight.rigid_whales %}
+                            <div class="bg-kvk-gray-900/90 border border-amber-500/20 rounded p-2.5 flex justify-between items-center text-xs">
+                                <div>
+                                    <span class="font-bold text-gray-200">[{{ rw.alliance_name }}] {{ rw.player_name }}</span>
+                                    <div class="text-[10px] text-gray-400 font-mono mt-0.5">
+                                        Wanted: {{ rw.requested_slots|join(', ') if rw.requested_slots else 'None' }}
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="font-mono font-bold text-kvk-gold">{{ "{:,.0f}".format(rw.resources) }}</div>
+                                    <span class="text-[9px] text-amber-400 uppercase tracking-tight">{{ rw.slots_count }} slot{{ 's' if rw.slots_count > 1 else '' }} only</span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+            {% endif %}
+        </div>
+
+
         <form id="hidden-assign-form" action="{{ url_for('manual_assign', event_uid=event.uid) }}" method="POST" style="display: none;">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="secret" value="{{ secret }}">
@@ -758,6 +1377,21 @@
         
         const form = document.getElementById('hidden-assign-form');
         handleFormSubmit({ target: form, preventDefault: () => {} });
+    }
+
+    function switchInsightScope(btn, scopeId) {
+        const pills = document.querySelectorAll('.insight-pill');
+        pills.forEach(p => {
+            p.classList.remove('bg-kvk-gold', 'text-kvk-gray-900', 'shadow-md');
+            p.classList.add('text-gray-400', 'hover:text-gray-200', 'hover:bg-kvk-gray-700', 'bg-kvk-gray-800');
+        });
+        btn.classList.add('bg-kvk-gold', 'text-kvk-gray-900', 'shadow-md');
+        btn.classList.remove('text-gray-400', 'hover:text-gray-200', 'hover:bg-kvk-gray-700', 'bg-kvk-gray-800');
+
+        const scopes = document.querySelectorAll('.insight-scope-panel');
+        scopes.forEach(s => s.classList.add('hidden'));
+        const targetScope = document.getElementById(scopeId);
+        if (targetScope) targetScope.classList.remove('hidden');
     }
 </script>
 </body>

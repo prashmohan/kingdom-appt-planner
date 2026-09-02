@@ -847,3 +847,249 @@ def test_get_superadmin_metrics_corrupted_data_and_fallbacks(temp_db):
     assert metrics["global_fill_rate"] == 0.0
     assert metrics["events"][0]["slot_count"] == 49
     assert metrics["events"][0]["active_days"] == []
+
+
+def test_compute_event_insights_empty_event(temp_db):
+    from app.logic import compute_event_insights
+
+    temp_db.execute(
+        "INSERT INTO events (uid, name, active_days, admin_secret, slot_count) VALUES (?, ?, ?, ?, ?)",
+        ("empty_evt", "Empty Event", json.dumps({"construction": True}), "sec", 49),
+    )
+    temp_db.commit()
+
+    insights = compute_event_insights("empty_evt", db=temp_db)
+    assert insights is not None
+    assert "overall" in insights
+    assert "by_day" in insights
+    assert "construction" in insights["by_day"]
+
+    overall = insights["overall"]
+    assert overall["total_submissions"] == 0
+    assert overall["total_assigned"] == 0
+    assert overall["total_resources_pledged"] == 0.0
+    assert overall["scheduled_power_pct"] == 0.0
+    assert overall["whale_board"] == []
+    assert overall["alliance_equity"] == []
+    assert overall["multi_day_players"] == []
+
+    c_day = insights["by_day"]["construction"]
+    assert c_day["total_submissions"] == 0
+    assert c_day["total_assigned"] == 0
+    assert c_day["player_flexibility_avg"] == 0.0
+    assert c_day["top_contested_slots"] == []
+    assert len(c_day["dead_slots"]) == 49
+    assert c_day["rigid_whales"] == []
+
+
+def test_compute_event_insights_single_day(temp_db):
+    from app.logic import compute_event_insights
+
+    temp_db.execute(
+        "INSERT INTO events (uid, name, active_days, admin_secret, slot_count) VALUES (?, ?, ?, ?, ?)",
+        (
+            "evt_single",
+            "Single Day Event",
+            json.dumps({"construction": True}),
+            "sec",
+            49,
+        ),
+    )
+
+    # Player 1: Alliance WAR, 10000 pts, slots [2, 3], assigned to slot 2 (locked)
+    temp_db.execute(
+        "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            "sub1",
+            "evt_single",
+            "construction",
+            "PlayerOne",
+            "P1",
+            "WAR",
+            10000.0,
+            json.dumps({"speedups": 600, "truegold": 50, "tempered_truegold": 10}),
+            json.dumps([2, 3]),
+            "Assigned",
+        ),
+    )
+    temp_db.execute(
+        "INSERT INTO assignments (event_uid, day_type, slot_index, player_id, is_locked) VALUES (?, ?, ?, ?, ?)",
+        ("evt_single", "construction", 2, "P1", 1),
+    )
+
+    # Player 2: Alliance PEAC, 5000 pts, slots [2, 4], assigned to slot 4
+    temp_db.execute(
+        "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            "sub2",
+            "evt_single",
+            "construction",
+            "PlayerTwo",
+            "P2",
+            "PEAC",
+            5000.0,
+            json.dumps({"speedups": 300, "truegold": 25}),
+            json.dumps([2, 4]),
+            "Assigned",
+        ),
+    )
+    temp_db.execute(
+        "INSERT INTO assignments (event_uid, day_type, slot_index, player_id, is_locked) VALUES (?, ?, ?, ?, ?)",
+        ("evt_single", "construction", 4, "P2", 0),
+    )
+
+    # Player 3: Alliance WAR, 25000 pts (Whale!), slots [2] only (rigid!), not assigned
+    temp_db.execute(
+        "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            "sub3",
+            "evt_single",
+            "construction",
+            "BigWhale",
+            "P3",
+            "WAR",
+            25000.0,
+            json.dumps({"speedups": 1500, "truegold": 100, "tempered_truegold": 20}),
+            json.dumps([2]),
+            "Pending",
+        ),
+    )
+    temp_db.commit()
+
+    insights = compute_event_insights("evt_single", db=temp_db)
+    day = insights["by_day"]["construction"]
+
+    # Firepower Checks
+    assert day["total_submissions"] == 3
+    assert day["total_assigned"] == 2
+    assert day["total_resources_pledged"] == 40000.0
+    assert day["total_resources_scheduled"] == 15000.0
+    assert day["total_resources_unscheduled"] == 25000.0
+    # 15000 / 40000 = 37.5%
+    assert day["scheduled_power_pct"] == 37.5
+    # Speedups sum: 600 + 300 + 1500 = 2400 minutes (40h)
+    assert day["total_speedups_minutes"] == 2400
+    assert day["materials"]["truegold"] == 175
+    assert day["materials"]["tempered_truegold"] == 30
+
+    # Whale Board Checks
+    assert len(day["whale_board"]) == 3
+    assert day["whale_board"][0]["player_name"] == "BigWhale"
+    assert day["whale_board"][0]["is_assigned"] is False
+    assert day["whale_board"][0]["feasible_slots_count"] == 1
+    assert day["whale_board"][1]["player_name"] == "PlayerOne"
+    assert day["whale_board"][1]["is_assigned"] is True
+    assert day["whale_board"][1]["assigned_slot"] == 2
+
+    # Alliance Equity Checks
+    # WAR: 35,000 pts (87.5% of pts), 1 slot out of 2 (50% of slots) -> delta = 50 - 87.5 = -37.5%
+    # PEAC: 5,000 pts (12.5% of pts), 1 slot out of 2 (50% of slots) -> delta = 50 - 12.5 = +37.5%
+    equity_map = {a["alliance_name"]: a for a in day["alliance_equity"]}
+    assert "WAR" in equity_map
+    assert "PEAC" in equity_map
+    war = equity_map["WAR"]
+    peac = equity_map["PEAC"]
+
+    assert war["total_resources"] == 35000.0
+    assert war["share_of_resources_pct"] == 87.5
+    assert war["share_of_slots_pct"] == 50.0
+    assert war["equity_delta"] == -37.5
+    assert war["unscheduled_resources"] == 25000.0
+
+    assert peac["total_resources"] == 5000.0
+    assert peac["share_of_resources_pct"] == 12.5
+    assert peac["share_of_slots_pct"] == 50.0
+    assert peac["equity_delta"] == 37.5
+
+    # Timezone & Friction Checks
+    # Slot 2 had 3 applicants (P1, P2, P3) -> Most contested
+    assert len(day["top_contested_slots"]) >= 1
+    assert day["top_contested_slots"][0]["slot_index"] == 2
+    assert day["top_contested_slots"][0]["applicant_count"] == 3
+
+    # Player Flexibility: P1 has 2 slots, P2 has 2 slots, P3 has 1 slot -> avg = 5/3 = 1.67
+    assert round(day["player_flexibility_avg"], 2) == 1.67
+
+    # Rigid Whale Alert: BigWhale has 25k resources (top resource holder), unassigned, only 1 slot
+    assert len(day["rigid_whales"]) == 1
+    assert day["rigid_whales"][0]["player_name"] == "BigWhale"
+    assert day["rigid_whales"][0]["slots_count"] == 1
+
+
+def test_compute_event_insights_multi_day(temp_db):
+    from app.logic import compute_event_insights
+
+    temp_db.execute(
+        "INSERT INTO events (uid, name, active_days, admin_secret, slot_count) VALUES (?, ?, ?, ?, ?)",
+        (
+            "evt_multi",
+            "Multi Day Event",
+            json.dumps({"construction": True, "training": True}),
+            "sec",
+            49,
+        ),
+    )
+
+    # Player 1 participates in BOTH construction and training
+    temp_db.execute(
+        "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            "m_sub1",
+            "evt_multi",
+            "construction",
+            "MultiHero",
+            "P100",
+            "HERO",
+            1000.0,
+            json.dumps({"speedups": 100}),
+            json.dumps([1]),
+            "Assigned",
+        ),
+    )
+    temp_db.execute(
+        "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            "m_sub2",
+            "evt_multi",
+            "training",
+            "MultiHero",
+            "P100",
+            "HERO",
+            2000.0,
+            json.dumps({"speedups": 200}),
+            json.dumps([2]),
+            "Assigned",
+        ),
+    )
+    # Player 2 participates ONLY in training
+    temp_db.execute(
+        "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            "m_sub3",
+            "evt_multi",
+            "training",
+            "TrainOnly",
+            "P200",
+            "TRAIN",
+            500.0,
+            json.dumps({"speedups": 50}),
+            json.dumps([3]),
+            "Pending",
+        ),
+    )
+    temp_db.commit()
+
+    insights = compute_event_insights("evt_multi", db=temp_db)
+    overall = insights["overall"]
+
+    assert overall["total_submissions"] == 3
+    assert overall["total_resources_pledged"] == 3500.0
+    assert len(overall["multi_day_players"]) == 1
+    assert overall["multi_day_players"][0]["player_name"] == "MultiHero"
+    assert overall["multi_day_players"][0]["days_count"] == 2
+
+    # Check by_day separation
+    assert "construction" in insights["by_day"]
+    assert "training" in insights["by_day"]
+    assert insights["by_day"]["construction"]["total_submissions"] == 1
+    assert insights["by_day"]["training"]["total_submissions"] == 2

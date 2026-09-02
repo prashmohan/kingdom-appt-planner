@@ -3,7 +3,7 @@ import re
 import secrets
 import sqlite3
 import string
-from collections import Counter
+from collections import Counter, defaultdict
 from typing import Any
 
 from . import database
@@ -567,4 +567,510 @@ def get_superadmin_metrics(
         "superlatives": superlatives,
         "top_events": top_events,
         "events": events_data,
+    }
+
+
+def generate_slot_labels(slot_count: int = 49) -> list[str]:
+    labels = []
+    for i in range(slot_count):
+        if slot_count == 48:
+            start_total_minutes = i * 30
+        else:
+            start_total_minutes = (i * 30) - 15
+
+        if start_total_minutes < 0:
+            start_total_minutes += 24 * 60
+
+        start_hour = start_total_minutes // 60
+        start_min = start_total_minutes % 60
+
+        end_total_minutes = start_total_minutes + 30
+        end_hour = (end_total_minutes // 60) % 24
+        end_min = end_total_minutes % 60
+
+        labels.append(
+            f"{start_hour:02d}:{start_min:02d}-\u200b{end_hour:02d}:{end_min:02d}"
+        )
+    return labels
+
+
+def compute_event_insights(
+    event_uid: str, db: sqlite3.Connection | None = None
+) -> dict[str, Any] | None:
+    """
+    Computes comprehensive operational and strategic insights for an event,
+    covering Kingdom Firepower, Alliance Equity, and Timezone Demand/Friction.
+    Returns both overall aggregates and day-by-day breakdowns.
+    """
+    if db is None:
+        db = database.get_db()
+
+    # Ensure row_factory is set or description is used
+    db.row_factory = sqlite3.Row
+
+    event_row = db.execute(
+        "SELECT uid, name, active_days, slot_count, server_id FROM events WHERE uid = ?",
+        (event_uid,),
+    ).fetchone()
+    if not event_row:
+        return None
+
+    slot_count = event_row["slot_count"] if event_row["slot_count"] is not None else 49
+    active_days = get_ordered_active_days(event_row["active_days"])
+    slot_labels = generate_slot_labels(slot_count)
+
+    sub_cur = db.execute(
+        "SELECT id, event_uid, day_type, player_name, player_id, avatar_url, backpack_url, alliance_name, resources, raw_data, feasible_slots, timestamp, status "
+        "FROM submissions WHERE event_uid = ? ORDER BY resources DESC",
+        (event_uid,),
+    )
+    sub_cols = [c[0] for c in sub_cur.description] if sub_cur.description else []
+    all_submissions = [dict(zip(sub_cols, r)) for r in sub_cur.fetchall()]
+
+    ass_cur = db.execute(
+        "SELECT event_uid, day_type, slot_index, player_id, is_locked FROM assignments WHERE event_uid = ?",
+        (event_uid,),
+    )
+    ass_cols = [c[0] for c in ass_cur.description] if ass_cur.description else []
+    all_assignments = [dict(zip(ass_cols, r)) for r in ass_cur.fetchall()]
+
+    # Map assignments: by day -> player_id -> assignment, and pair set
+    all_assigned_pairs = {
+        (a["day_type"], a["player_id"]) for a in all_assignments if a.get("player_id")
+    }
+
+    by_day: dict[str, Any] = {}
+
+    for day in active_days:
+        day_subs = [s for s in all_submissions if s["day_type"] == day]
+        day_asses = [a for a in all_assignments if a["day_type"] == day]
+
+        assigned_map = {a["player_id"]: a for a in day_asses if a.get("player_id")}
+        assigned_pids = set(assigned_map.keys())
+
+        # 1. Firepower metrics
+        total_subs = len(day_subs)
+        total_assigned = len(day_asses)
+        total_res_pledged = sum(float(s["resources"] or 0) for s in day_subs)
+        total_res_scheduled = sum(
+            float(s["resources"] or 0)
+            for s in day_subs
+            if s["player_id"] in assigned_pids
+        )
+        total_res_unscheduled = total_res_pledged - total_res_scheduled
+        scheduled_pct = (
+            round((total_res_scheduled / total_res_pledged * 100), 1)
+            if total_res_pledged > 0
+            else 0.0
+        )
+
+        total_speedups = 0
+        materials = {
+            "truegold": 0,
+            "tempered_truegold": 0,
+            "truegold_dust": 0,
+        }
+
+        for s in day_subs:
+            try:
+                raw_data = json.loads(s["raw_data"])
+            except (json.JSONDecodeError, TypeError):
+                raw_data = {}
+            if not isinstance(raw_data, dict):
+                raw_data = {}
+            total_speedups += int(raw_data.get("speedups", 0) or 0)
+            materials["truegold"] += int(raw_data.get("truegold", 0) or 0)
+            materials["tempered_truegold"] += int(
+                raw_data.get("tempered_truegold", 0) or 0
+            )
+            materials["truegold_dust"] += int(raw_data.get("truegold_dust", 0) or 0)
+
+        # 2. Whale Board
+        whale_board = []
+        for s in day_subs[:10]:
+            pid = s["player_id"]
+            is_assigned = pid in assigned_pids
+            assigned_slot = assigned_map[pid]["slot_index"] if is_assigned else None
+            assigned_slot_label = (
+                slot_labels[assigned_slot]
+                if (
+                    is_assigned
+                    and assigned_slot is not None
+                    and 0 <= assigned_slot < len(slot_labels)
+                )
+                else None
+            )
+            try:
+                fslots = json.loads(s["feasible_slots"])
+            except (json.JSONDecodeError, TypeError):
+                fslots = []
+            if not isinstance(fslots, list):
+                fslots = []
+
+            whale_board.append(
+                {
+                    "player_name": s["player_name"],
+                    "player_id": s["player_id"],
+                    "alliance_name": (s["alliance_name"] or "No Alliance").strip()
+                    or "No Alliance",
+                    "avatar_url": s.get("avatar_url"),
+                    "resources": float(s["resources"] or 0),
+                    "is_assigned": is_assigned,
+                    "assigned_slot": assigned_slot,
+                    "assigned_slot_label": assigned_slot_label,
+                    "feasible_slots_count": len(fslots),
+                }
+            )
+
+        # 3. Alliance Equity
+        alliance_data: dict[str, dict[str, Any]] = defaultdict(
+            lambda: {
+                "total_resources": 0.0,
+                "submissions_count": 0,
+                "assigned_count": 0,
+                "unscheduled_resources": 0.0,
+            }
+        )
+        for s in day_subs:
+            alliance = (s["alliance_name"] or "No Alliance").strip() or "No Alliance"
+            res = float(s["resources"] or 0)
+            alliance_data[alliance]["total_resources"] += res
+            alliance_data[alliance]["submissions_count"] += 1
+            if s["player_id"] in assigned_pids:
+                alliance_data[alliance]["assigned_count"] += 1
+            else:
+                alliance_data[alliance]["unscheduled_resources"] += res
+
+        alliance_equity = []
+        for alliance_name, d in alliance_data.items():
+            share_res = (
+                (d["total_resources"] / total_res_pledged * 100)
+                if total_res_pledged > 0
+                else 0.0
+            )
+            share_slots = (
+                (d["assigned_count"] / total_assigned * 100)
+                if total_assigned > 0
+                else 0.0
+            )
+            delta = share_slots - share_res
+            acc_rate = (
+                (d["assigned_count"] / d["submissions_count"] * 100)
+                if d["submissions_count"] > 0
+                else 0.0
+            )
+            avg_res = (
+                (d["total_resources"] / d["submissions_count"])
+                if d["submissions_count"] > 0
+                else 0.0
+            )
+            alliance_equity.append(
+                {
+                    "alliance_name": alliance_name,
+                    "total_resources": d["total_resources"],
+                    "submissions_count": d["submissions_count"],
+                    "assigned_count": d["assigned_count"],
+                    "unscheduled_resources": d["unscheduled_resources"],
+                    "share_of_resources_pct": round(share_res, 1),
+                    "share_of_slots_pct": round(share_slots, 1),
+                    "equity_delta": round(delta, 1),
+                    "acceptance_rate_pct": round(acc_rate, 1),
+                    "avg_resources": round(avg_res, 1),
+                }
+            )
+        alliance_equity.sort(key=lambda a: a["total_resources"], reverse=True)
+
+        # 4. Timezone Demand & Friction
+        slot_density = [0] * slot_count
+        feasible_counts = []
+        for s in day_subs:
+            try:
+                fslots = json.loads(s["feasible_slots"])
+            except (json.JSONDecodeError, TypeError):
+                fslots = []
+            if not isinstance(fslots, list):
+                fslots = []
+            feasible_counts.append(len(fslots))
+            for idx in fslots:
+                if 0 <= idx < slot_count:
+                    slot_density[idx] += 1
+
+        player_flexibility_avg = (
+            sum(feasible_counts) / len(feasible_counts) if feasible_counts else 0.0
+        )
+
+        sorted_slots = sorted(
+            [(i, slot_density[i]) for i in range(slot_count) if slot_density[i] > 0],
+            key=lambda x: (-x[1], x[0]),
+        )
+        top_contested = [
+            {
+                "slot_index": i,
+                "slot_label": slot_labels[i],
+                "applicant_count": count,
+            }
+            for i, count in sorted_slots[:3]
+        ]
+
+        dead_slots = [
+            {
+                "slot_index": i,
+                "slot_label": slot_labels[i],
+                "applicant_count": slot_density[i],
+            }
+            for i in range(slot_count)
+            if slot_density[i] == 0
+        ]
+
+        # Hourly demand (24 bins)
+        hourly_demand = [
+            {"hour": h, "label": f"{h:02d}:00", "applicants": 0} for h in range(24)
+        ]
+        for i in range(slot_count):
+            if slot_count == 48:
+                s_min = i * 30
+            else:
+                s_min = (i * 30) - 15
+            if s_min < 0:
+                s_min += 1440
+            h = (s_min // 60) % 24
+            hourly_demand[h]["applicants"] += slot_density[i]
+
+        # Rigid Whales (unassigned high-resource with <= 2 slots)
+        rigid_whales = []
+        if day_subs:
+            sorted_res = sorted(float(s["resources"] or 0) for s in day_subs)
+            p75_idx = min(int(len(sorted_res) * 0.75), len(sorted_res) - 1)
+            threshold = sorted_res[p75_idx]
+            for s in day_subs:
+                if s["player_id"] not in assigned_pids:
+                    try:
+                        fslots = json.loads(s["feasible_slots"])
+                    except (json.JSONDecodeError, TypeError):
+                        fslots = []
+                    if not isinstance(fslots, list):
+                        fslots = []
+                    res_val = float(s["resources"] or 0)
+                    if len(fslots) <= 2 and res_val >= threshold:
+                        rigid_whales.append(
+                            {
+                                "player_name": s["player_name"],
+                                "player_id": s["player_id"],
+                                "alliance_name": (
+                                    s["alliance_name"] or "No Alliance"
+                                ).strip()
+                                or "No Alliance",
+                                "resources": res_val,
+                                "slots_count": len(fslots),
+                                "requested_slots": [
+                                    slot_labels[idx]
+                                    for idx in fslots
+                                    if 0 <= idx < slot_count
+                                ],
+                            }
+                        )
+            rigid_whales.sort(key=lambda w: w["resources"], reverse=True)
+
+        by_day[day] = {
+            "day_type": day,
+            "total_submissions": total_subs,
+            "total_assigned": total_assigned,
+            "total_resources_pledged": total_res_pledged,
+            "total_resources_scheduled": total_res_scheduled,
+            "total_resources_unscheduled": total_res_unscheduled,
+            "scheduled_power_pct": scheduled_pct,
+            "total_speedups_minutes": total_speedups,
+            "formatted_speedups": format_minutes(total_speedups),
+            "materials": materials,
+            "whale_board": whale_board,
+            "alliance_equity": alliance_equity,
+            "player_flexibility_avg": player_flexibility_avg,
+            "top_contested_slots": top_contested,
+            "dead_slots": dead_slots,
+            "hourly_demand": hourly_demand,
+            "rigid_whales": rigid_whales,
+        }
+
+    # --- Overall calculations ---
+    total_submissions = len(all_submissions)
+    total_assigned = len(all_assignments)
+    total_resources_pledged = sum(float(s["resources"] or 0) for s in all_submissions)
+    total_resources_scheduled = sum(
+        float(s["resources"] or 0)
+        for s in all_submissions
+        if (s["day_type"], s["player_id"]) in all_assigned_pairs
+    )
+    total_resources_unscheduled = total_resources_pledged - total_resources_scheduled
+    scheduled_power_pct = (
+        round((total_resources_scheduled / total_resources_pledged * 100), 1)
+        if total_resources_pledged > 0
+        else 0.0
+    )
+    total_speedups_minutes = sum(
+        by_day[d]["total_speedups_minutes"] for d in active_days
+    )
+    materials_combined = {
+        "truegold": sum(by_day[d]["materials"]["truegold"] for d in active_days),
+        "tempered_truegold": sum(
+            by_day[d]["materials"]["tempered_truegold"] for d in active_days
+        ),
+        "truegold_dust": sum(
+            by_day[d]["materials"]["truegold_dust"] for d in active_days
+        ),
+    }
+
+    # Overall Whale Board
+    overall_whale_board = []
+    for s in all_submissions[:10]:
+        pid = s["player_id"]
+        day = s["day_type"]
+        is_assigned = (day, pid) in all_assigned_pairs
+        assigned_row = next(
+            (
+                a
+                for a in all_assignments
+                if a["day_type"] == day and a["player_id"] == pid
+            ),
+            None,
+        )
+        assigned_slot = assigned_row["slot_index"] if assigned_row else None
+        assigned_slot_label = (
+            slot_labels[assigned_slot]
+            if (assigned_slot is not None and 0 <= assigned_slot < len(slot_labels))
+            else None
+        )
+        try:
+            fslots = json.loads(s["feasible_slots"])
+        except (json.JSONDecodeError, TypeError):
+            fslots = []
+        if not isinstance(fslots, list):
+            fslots = []
+
+        overall_whale_board.append(
+            {
+                "player_name": s["player_name"],
+                "player_id": s["player_id"],
+                "day_type": s["day_type"],
+                "alliance_name": (s["alliance_name"] or "No Alliance").strip()
+                or "No Alliance",
+                "avatar_url": s.get("avatar_url"),
+                "resources": float(s["resources"] or 0),
+                "is_assigned": is_assigned,
+                "assigned_slot": assigned_slot,
+                "assigned_slot_label": assigned_slot_label,
+                "feasible_slots_count": len(fslots),
+            }
+        )
+
+    # Multi-day players
+    players_map: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for s in all_submissions:
+        players_map[s["player_id"]].append(s)
+
+    multi_day_players = []
+    for pid, subs in players_map.items():
+        distinct_days = sorted({s["day_type"] for s in subs})
+        if len(distinct_days) >= 2:
+            multi_day_players.append(
+                {
+                    "player_name": subs[0]["player_name"],
+                    "player_id": pid,
+                    "alliance_name": (subs[0]["alliance_name"] or "No Alliance").strip()
+                    or "No Alliance",
+                    "avatar_url": subs[0].get("avatar_url"),
+                    "days": distinct_days,
+                    "days_count": len(distinct_days),
+                    "total_resources": sum(float(s["resources"] or 0) for s in subs),
+                }
+            )
+    multi_day_players.sort(key=lambda p: p["total_resources"], reverse=True)
+
+    # Cross day point breakdown
+    cross_day_breakdown = [
+        {
+            "day_type": d,
+            "total_resources": by_day[d]["total_resources_pledged"],
+            "submissions": by_day[d]["total_submissions"],
+            "assigned": by_day[d]["total_assigned"],
+            "scheduled_pct": by_day[d]["scheduled_power_pct"],
+        }
+        for d in active_days
+    ]
+
+    # Overall Alliance Equity
+    all_alliance_data: dict[str, dict[str, Any]] = defaultdict(
+        lambda: {
+            "total_resources": 0.0,
+            "submissions_count": 0,
+            "assigned_count": 0,
+            "unscheduled_resources": 0.0,
+        }
+    )
+    for s in all_submissions:
+        alliance = (s["alliance_name"] or "No Alliance").strip() or "No Alliance"
+        res = float(s["resources"] or 0)
+        all_alliance_data[alliance]["total_resources"] += res
+        all_alliance_data[alliance]["submissions_count"] += 1
+        if (s["day_type"], s["player_id"]) in all_assigned_pairs:
+            all_alliance_data[alliance]["assigned_count"] += 1
+        else:
+            all_alliance_data[alliance]["unscheduled_resources"] += res
+
+    overall_alliance_equity = []
+    for alliance_name, d in all_alliance_data.items():
+        share_res = (
+            (d["total_resources"] / total_resources_pledged * 100)
+            if total_resources_pledged > 0
+            else 0.0
+        )
+        share_slots = (
+            (d["assigned_count"] / total_assigned * 100) if total_assigned > 0 else 0.0
+        )
+        delta = share_slots - share_res
+        acc_rate = (
+            (d["assigned_count"] / d["submissions_count"] * 100)
+            if d["submissions_count"] > 0
+            else 0.0
+        )
+        avg_res = (
+            (d["total_resources"] / d["submissions_count"])
+            if d["submissions_count"] > 0
+            else 0.0
+        )
+        overall_alliance_equity.append(
+            {
+                "alliance_name": alliance_name,
+                "total_resources": d["total_resources"],
+                "submissions_count": d["submissions_count"],
+                "assigned_count": d["assigned_count"],
+                "unscheduled_resources": d["unscheduled_resources"],
+                "share_of_resources_pct": round(share_res, 1),
+                "share_of_slots_pct": round(share_slots, 1),
+                "equity_delta": round(delta, 1),
+                "acceptance_rate_pct": round(acc_rate, 1),
+                "avg_resources": round(avg_res, 1),
+            }
+        )
+    overall_alliance_equity.sort(key=lambda a: a["total_resources"], reverse=True)
+
+    return {
+        "event_uid": event_uid,
+        "active_days": active_days,
+        "slot_count": slot_count,
+        "overall": {
+            "total_submissions": total_submissions,
+            "total_assigned": total_assigned,
+            "total_resources_pledged": total_resources_pledged,
+            "total_resources_scheduled": total_resources_scheduled,
+            "total_resources_unscheduled": total_resources_unscheduled,
+            "scheduled_power_pct": scheduled_power_pct,
+            "total_speedups_minutes": total_speedups_minutes,
+            "formatted_speedups": format_minutes(total_speedups_minutes),
+            "materials": materials_combined,
+            "whale_board": overall_whale_board,
+            "alliance_equity": overall_alliance_equity,
+            "multi_day_players": multi_day_players,
+            "cross_day_breakdown": cross_day_breakdown,
+        },
+        "by_day": by_day,
     }
