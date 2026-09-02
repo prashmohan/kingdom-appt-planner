@@ -152,9 +152,9 @@
         <!-- Tab Content -->
         {% for day in active_days %}
         <div id="tab-{{day}}" class="tab-content hidden space-y-6">
-            <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Schedule Grid -->
-                <div class="bg-kvk-gray-800 p-6 rounded-xl shadow-md border border-kvk-gray-700">
+                <div class="lg:col-span-2 bg-kvk-gray-800 p-6 rounded-xl shadow-md border border-kvk-gray-700">
                     <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
                         <h2 class="text-2xl font-bold text-gray-100">
                             Schedule Heatmap: 
@@ -221,57 +221,19 @@
                             </div>
                         {% endfor %}
                     </div>
-
-                    <!-- Mobile Selection Drawer -->
-                    <div id="drawer-{{ day }}" class="mt-6 p-4 bg-kvk-gray-900 border border-kvk-gray-700 rounded-lg"
-                         data-slot-players="{{ slot_players[day]|tojson|forceescape }}"
-                         data-current-assignments="{{ assignments[day]|tojson|forceescape }}">
-                        <div class="flex justify-between items-center mb-3">
-                            <h3 id="drawer-title-{{ day }}" class="text-sm font-bold text-gray-400 uppercase tracking-wider">Slot Details</h3>
-                            <span id="drawer-count-{{ day }}" class="text-[10px] bg-kvk-gold/20 text-kvk-gold px-2 py-0.5 rounded font-bold">Select a slot</span>
-                        </div>
-                        <div id="drawer-content-{{ day }}" class="space-y-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar text-sm text-gray-500 italic">
-                            Tap a slot in the heatmap to see potential players and their points.
-                        </div>
-                    </div>
                 </div>
-                
-                <!-- Alliance Summary -->
-                <div class="bg-kvk-gray-800 p-6 rounded-xl shadow-md border border-kvk-gray-700">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-2xl font-bold text-gray-100">
-                            Alliance Impact: 
-                            <span class="capitalize">
-                                {% if day == 'research' %}
-                                    Research (Day {{ event.active_days.research_day if event.active_days.research_day else '5' }})
-                                {% else %}
-                                    {{ day }}
-                                {% endif %}
-                            </span>
-                        </h2>
-                        <input type="text" placeholder="Search alliance..." class="bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-sm text-gray-200 px-3 py-1 focus:ring-kvk-gold focus:border-kvk-gold" oninput="filterTable(this, 'alliance-table-{{day}}')">
+
+                <!-- Slot Selection & Assignment Drawer -->
+                <div id="drawer-{{ day }}" class="lg:col-span-1 bg-kvk-gray-800 p-6 rounded-xl shadow-md border border-kvk-gray-700 flex flex-col"
+                     data-slot-players="{{ slot_players[day]|tojson|forceescape }}"
+                     data-current-assignments="{{ assignments[day]|tojson|forceescape }}">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 id="drawer-title-{{ day }}" class="text-lg font-bold text-gray-100 flex items-center gap-2">Slot Details</h3>
+                        <span id="drawer-count-{{ day }}" class="text-xs bg-kvk-gold/20 text-kvk-gold px-2.5 py-1 rounded font-bold">Select a slot</span>
                     </div>
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full" id="alliance-table-{{day}}">
-                            <thead class="border-b border-kvk-gray-700">
-                                <tr>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-kvk-gold transition-colors" onclick="sortTable('alliance-table-{{day}}', 0)">Alliance ↕</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-kvk-gold transition-colors" onclick="sortTable('alliance-table-{{day}}', 1, true)">Total Score ↕</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-kvk-gold transition-colors" onclick="sortTable('alliance-table-{{day}}', 2, true)">Submissions ↕</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-kvk-gold transition-colors" onclick="sortTable('alliance-table-{{day}}', 3, true)">Assignments ↕</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for name, data in alliance_summary[day].items() %}
-                                <tr class="border-b border-kvk-gray-700">
-                                    <td class="px-4 py-3 whitespace-nowrap font-bold text-gray-200">{{ name }}</td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-gray-300" data-value="{{ data.total_resources }}">{{ "%.0f"|format(data.total_resources) }}</td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-gray-300" data-value="{{ data.submissions_count }}">{{ data.submissions_count }}</td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-gray-300" data-value="{{ data.assigned_count }}">{{ data.assigned_count }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                    <p class="text-xs text-gray-400 mb-3">Click any slot in the heatmap to inspect applicants and manually assign appointments.</p>
+                    <div id="drawer-content-{{ day }}" class="space-y-2 flex-1 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar text-sm text-gray-500 italic">
+                        Tap a slot in the heatmap to see potential players and their points.
                     </div>
                 </div>
             </div>

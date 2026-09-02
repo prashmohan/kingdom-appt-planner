@@ -578,7 +578,6 @@ def create_app():
         slot_players = {day: {i: [] for i in range(slot_count)} for day in active_days}
         max_density = {day: 1 for day in active_days}
         available_slots = {day: [] for day in active_days}
-        alliance_summary = {day: {} for day in active_days}
 
         slot_labels = generate_slot_labels(slot_count)
 
@@ -659,25 +658,6 @@ def create_app():
                 i for i in range(slot_count) if i not in assigned_slots_for_day
             ]
 
-            # Alliance Summary
-            day_summary = {}
-            for sub in submissions_by_day[day]:
-                alliance_name = sub["alliance_name"] or "No Alliance"
-                if alliance_name not in day_summary:
-                    day_summary[alliance_name] = {
-                        "total_resources": 0,
-                        "submissions_count": 0,
-                        "assigned_count": 0,
-                    }
-                day_summary[alliance_name]["total_resources"] += sub["resources"]
-                day_summary[alliance_name]["submissions_count"] += 1
-
-            for assignment in rich_assignments[day].values():
-                alliance_name = assignment["alliance_name"] or "No Alliance"
-                if alliance_name in day_summary:
-                    day_summary[alliance_name]["assigned_count"] += 1
-            alliance_summary[day] = day_summary
-
         # Generate URLs for the admin dashboard links
         player_url = url_for("player_form", event_uid=event_uid, _external=True)
         finalized_url = url_for(
@@ -698,7 +678,6 @@ def create_app():
             slot_density=slot_density,
             slot_players=slot_players,
             max_density=max_density,
-            alliance_summary=alliance_summary,
             player_url=player_url,
             finalized_url=finalized_url,
             insights=insights,
