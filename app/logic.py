@@ -836,6 +836,34 @@ def compute_event_insights(
             h = (s_min // 60) % 24
             hourly_demand[h]["applicants"] += slot_density[i]
 
+        # Slot demand (per-slot bins, normalized against total player submissions)
+        slot_demand = []
+        for i in range(slot_count):
+            cnt = slot_density[i]
+            pct = (cnt / total_subs * 100) if total_subs > 0 else 0.0
+            tier = "low" if pct < 15.0 else ("medium" if pct <= 35.0 else "high")
+
+            # Continuous heatmap calculation: 0% -> hue 140 (emerald green) down to 40%+ -> hue 0 (crimson red)
+            t = min(max(pct / 40.0, 0.0), 1.0)
+            hue = 140.0 - (t * 140.0)
+            slot_demand.append(
+                {
+                    "slot_index": i,
+                    "slot_label": slot_labels[i],
+                    "applicants": cnt,
+                    "demand_pct": round(pct, 1),
+                    "tier": tier,
+                    "heatmap_gradient": (
+                        f"linear-gradient(to top, hsl({hue:.0f}, 80%, 38%), hsl({hue:.0f}, 92%, 54%))"
+                        if cnt > 0
+                        else ""
+                    ),
+                    "heatmap_glow": (
+                        f"0 0 6px hsla({hue:.0f}, 90%, 50%, 0.35)" if cnt > 0 else ""
+                    ),
+                }
+            )
+
         # Rigid Whales (unassigned high-resource with <= 2 slots)
         rigid_whales = []
         if day_subs:
@@ -888,6 +916,7 @@ def compute_event_insights(
             "top_contested_slots": top_contested,
             "dead_slots": dead_slots,
             "hourly_demand": hourly_demand,
+            "slot_demand": slot_demand,
             "rigid_whales": rigid_whales,
         }
 

@@ -1015,6 +1015,21 @@ def test_compute_event_insights_single_day(temp_db):
     assert day["rigid_whales"][0]["player_name"] == "BigWhale"
     assert day["rigid_whales"][0]["slots_count"] == 1
 
+    # Slot Demand Checks (normalized)
+    assert "slot_demand" in day
+    assert len(day["slot_demand"]) == 49
+    # Slot 2 had 3 applicants out of 3 total submissions = 100% -> high tier
+    assert day["slot_demand"][2]["applicants"] == 3
+    assert day["slot_demand"][2]["demand_pct"] == 100.0
+    assert day["slot_demand"][2]["tier"] == "high"
+    assert "hsl(0" in day["slot_demand"][2]["heatmap_gradient"]
+    assert "hsla(0" in day["slot_demand"][2]["heatmap_glow"]
+    # Slot 0 had 0 applicants = 0% -> low tier
+    assert day["slot_demand"][0]["applicants"] == 0
+    assert day["slot_demand"][0]["demand_pct"] == 0.0
+    assert day["slot_demand"][0]["tier"] == "low"
+    assert day["slot_demand"][0]["heatmap_gradient"] == ""
+
 
 def test_compute_event_insights_multi_day(temp_db):
     from app.logic import compute_event_insights

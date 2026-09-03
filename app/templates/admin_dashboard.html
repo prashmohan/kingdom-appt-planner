@@ -964,31 +964,39 @@
                         </div>
                     </div>
 
-                    <!-- 24-Hour Demand Histogram Chart -->
+                    <!-- 24-Hour Slot Demand Heatmap Chart -->
                     <div>
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-xs font-bold text-gray-300 uppercase tracking-wider">24-Hour Demand Curve (UTC)</span>
-                            <span class="text-xs text-gray-500">Applicant volume per hour</span>
+                        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-2">
+                            <div>
+                                <span class="text-xs font-bold text-gray-300 uppercase tracking-wider">24-Hour Slot Demand Heatmap (UTC)</span>
+                                <span class="block text-[10px] text-gray-500">Contention per 30-min slot (normalized % of total players)</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-[10px] text-gray-400 bg-kvk-gray-950/60 px-2.5 py-1 rounded-md border border-kvk-gray-800 self-start sm:self-auto">
+                                <span class="text-emerald-400 font-medium">Low (0%)</span>
+                                <div class="w-20 sm:w-28 h-2 rounded-full" style="background: linear-gradient(to right, hsl(140, 85%, 45%), hsl(65, 95%, 48%), hsl(25, 95%, 50%), hsl(0, 90%, 52%));"></div>
+                                <span class="text-rose-400 font-medium">High (40%+)</span>
+                            </div>
                         </div>
                         <div class="bg-kvk-gray-900 border border-kvk-gray-700 p-4 rounded-xl">
                             <!-- Bars Container -->
                             {% set max_applicants = 1 %}
-                            {% for h in day_insight.hourly_demand %}
-                                {% if h.applicants > max_applicants %}
-                                    {% set max_applicants = h.applicants %}
+                            {% for s in day_insight.slot_demand %}
+                                {% if s.applicants > max_applicants %}
+                                    {% set max_applicants = s.applicants %}
                                 {% endif %}
                             {% endfor %}
-                            <div class="flex items-end gap-1 h-32 pt-4 px-1">
-                                {% for h in day_insight.hourly_demand %}
-                                    {% set bar_height = (h.applicants / max_applicants * 100) if max_applicants > 0 else 0 %}
-                                    <div class="flex-1 flex flex-col items-center h-full justify-end group relative" title="{{ h.label }} UTC: {{ h.applicants }} applicants">
+                            <div class="flex items-end gap-0.5 sm:gap-1 h-32 pt-4 px-1">
+                                {% for s in day_insight.slot_demand %}
+                                    {% set bar_height = (s.applicants / max_applicants * 100) if max_applicants > 0 else 0 %}
+                                    <div class="flex-1 flex flex-col items-center h-full justify-end group relative" title="{{ s.slot_label }} UTC: {{ s.applicants }} applicant{% if s.applicants != 1 %}s{% endif %} ({{ s.demand_pct }}% of players - {{ s.tier|capitalize }} demand)">
                                         <!-- Tooltip -->
-                                        <div class="opacity-0 group-hover:opacity-100 transition-opacity bg-kvk-gray-800 text-kvk-gold text-[10px] font-bold py-0.5 px-1.5 rounded absolute -top-7 whitespace-nowrap border border-kvk-gold/30 z-20 pointer-events-none">
-                                            {{ h.applicants }}
+                                        <div class="opacity-0 group-hover:opacity-100 transition-opacity bg-kvk-gray-800 text-white text-[10px] font-bold py-0.5 px-1.5 rounded absolute -top-8 whitespace-nowrap border border-kvk-gray-700 shadow-lg z-20 pointer-events-none flex flex-col items-center">
+                                            <span class="text-kvk-gold">{{ s.applicants }} app{% if s.applicants != 1 %}s{% endif %} ({{ s.demand_pct }}%)</span>
+                                            <span class="text-[8px] text-gray-400 font-mono">{{ s.slot_label }}</span>
                                         </div>
                                         <!-- Bar -->
-                                        <div class="w-full rounded-t transition-all duration-300 {% if h.applicants > 0 %}bg-gradient-to-t from-kvk-blue to-kvk-gold hover:from-blue-400 hover:to-amber-300{% else %}bg-kvk-gray-800{% endif %}"
-                                             style="height: {{ [bar_height, 4]|max if h.applicants > 0 else 2 }}%;"></div>
+                                        <div class="w-full rounded-t transition-all duration-300 {% if s.applicants == 0 %}bg-kvk-gray-800/60 hover:bg-kvk-gray-700{% else %}hover:brightness-125{% endif %}"
+                                             style="height: {{ [bar_height, 4]|max if s.applicants > 0 else 2 }}%; {% if s.applicants > 0 %}background: {{ s.heatmap_gradient }}; box-shadow: {{ s.heatmap_glow }};{% endif %}"></div>
                                     </div>
                                 {% endfor %}
                             </div>
@@ -1000,7 +1008,7 @@
                                 <span>12:00</span>
                                 <span>16:00</span>
                                 <span>20:00</span>
-                                <span>23:00</span>
+                                <span>24:00</span>
                             </div>
                         </div>
                     </div>
