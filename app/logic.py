@@ -595,7 +595,9 @@ def generate_slot_labels(slot_count: int = 49) -> list[str]:
 
 
 def compute_event_insights(
-    event_uid: str, db: sqlite3.Connection | None = None
+    event_uid: str,
+    db: sqlite3.Connection | None = None,
+    max_rigid_slots: int = 8,
 ) -> dict[str, Any] | None:
     """
     Computes comprehensive operational and strategic insights for an event,
@@ -879,7 +881,7 @@ def compute_event_insights(
                     if not isinstance(fslots, list):
                         fslots = []
                     res_val = float(s["resources"] or 0)
-                    if len(fslots) <= 2 and res_val >= threshold:
+                    if len(fslots) <= max_rigid_slots and res_val >= threshold:
                         rigid_whales.append(
                             {
                                 "player_name": s["player_name"],

@@ -1108,3 +1108,92 @@ def test_compute_event_insights_multi_day(temp_db):
     assert "training" in insights["by_day"]
     assert insights["by_day"]["construction"]["total_submissions"] == 1
     assert insights["by_day"]["training"]["total_submissions"] == 2
+
+
+def test_compute_event_insights_rigid_whales_slider(temp_db):
+    import json
+
+    from app.logic import compute_event_insights
+
+    temp_db.execute(
+        "INSERT INTO events (uid, name, active_days, admin_secret, slot_count) VALUES (?, ?, ?, ?, ?)",
+        (
+            "evt_rigid_test",
+            "Rigid Test Event",
+            json.dumps(["construction"]),
+            "secret",
+            49,
+        ),
+    )
+
+    # Insert 10 unassigned whales + 1 over-slot whale + 1 low-resource player
+    whales = [
+        ("w1", "WhaleOne", 50000.0, [2]),
+        ("w2", "WhaleTwo", 45000.0, [2, 3]),
+        ("w3", "WhaleThree", 40000.0, [1, 2, 3]),
+        ("w4", "WhaleFour", 35000.0, [1, 2, 3, 4]),
+        ("w5", "WhaleFive", 30000.0, [1, 2, 3, 4, 5]),
+        ("w6", "WhaleSix", 25000.0, [1, 2, 3, 4, 5, 6]),
+        ("w7", "WhaleSeven", 20000.0, [1, 2, 3, 4, 5, 6, 7]),
+        ("w8", "WhaleEight", 18000.0, [0, 1, 2, 3, 4, 5, 6, 7]),
+        ("w9", "WhaleNine_TooManySlots", 15000.0, [0, 1, 2, 3, 4, 5, 6, 7, 8]),
+        ("p_low", "LowPledger", 1000.0, [2]),
+    ]
+
+    for pid, name, res, slots in whales:
+        temp_db.execute(
+            "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                f"sub_{pid}",
+                "evt_rigid_test",
+                "construction",
+                name,
+                pid,
+                "TOP",
+                res,
+                json.dumps({"speedups": int(res / 10)}),
+                json.dumps(slots),
+                "Pending",
+            ),
+        )
+
+    # Insert 25 low-pledge players so the whales sit cleanly above the 75th percentile
+    for i in range(25):
+        temp_db.execute(
+            "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                f"sub_regular_{i}",
+                "evt_rigid_test",
+                "construction",
+                f"Regular_{i}",
+                f"reg_{i}",
+                "TOP",
+                500.0,
+                json.dumps({"speedups": 50}),
+                json.dumps([10, 11, 12]),
+                "Pending",
+            ),
+        )
+    temp_db.commit()
+
+    # Default max_rigid_slots = 8
+    insights = compute_event_insights("evt_rigid_test", db=temp_db)
+    rw = insights["by_day"]["construction"]["rigid_whales"]
+
+    # Whales 1 to 8 should be present (8 players total)
+    assert len(rw) == 8
+    assert rw[0]["player_name"] == "WhaleOne"
+    assert rw[0]["slots_count"] == 1
+    assert rw[7]["player_name"] == "WhaleEight"
+    assert rw[7]["slots_count"] == 8
+
+    # WhaleNine (>8 slots) and LowPledger (<threshold) excluded
+    names = [w["player_name"] for w in rw]
+    assert "WhaleNine_TooManySlots" not in names
+    assert "LowPledger" not in names
+
+    # Configurable threshold max_rigid_slots = 3
+    insights_3 = compute_event_insights("evt_rigid_test", db=temp_db, max_rigid_slots=3)
+    rw_3 = insights_3["by_day"]["construction"]["rigid_whales"]
+    assert len(rw_3) == 3
+    assert [w["player_name"] for w in rw_3] == ["WhaleOne", "WhaleTwo", "WhaleThree"]

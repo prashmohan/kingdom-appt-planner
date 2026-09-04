@@ -1015,29 +1015,57 @@
 
                     <!-- Rigid Whales Callout -->
                     {% if day_insight.rigid_whales|length > 0 %}
+                    {% set count_le_2 = day_insight.rigid_whales|selectattr('slots_count', 'le', 2)|list|length %}
+                    {% set initial_visible_count = [count_le_2, 10]|min %}
                     <div class="bg-amber-950/20 border border-amber-500/30 rounded-xl p-4">
-                        <div class="flex items-center gap-2 mb-2 text-amber-400 text-sm font-bold">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                            High-Value Players with Rigid Availability (Unassigned)
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                            <div class="flex items-center gap-2 text-amber-400 text-sm font-bold">
+                                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                <span>High-Value Players with Rigid Availability (Unassigned)</span>
+                            </div>
+                            <!-- Rigid Availability Slider Control -->
+                            <div class="flex items-center gap-2.5 bg-kvk-gray-900/90 px-3 py-1.5 rounded-lg border border-amber-500/30 text-xs text-gray-300 self-start sm:self-auto">
+                                <label for="rigid-slider-{{ day }}" class="text-[11px] font-medium whitespace-nowrap text-amber-300/90">
+                                    Max slots: <span id="rigid-val-{{ day }}" class="font-bold text-kvk-gold font-mono text-xs">2</span>
+                                </label>
+                                <input type="range" id="rigid-slider-{{ day }}" min="1" max="8" value="2" step="1"
+                                       class="w-24 sm:w-32 h-1.5 bg-kvk-gray-700 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                                       oninput="updateRigidWhales('{{ day }}', this.value)">
+                                <span class="text-[10px] text-gray-500 font-mono">(1–8)</span>
+                            </div>
                         </div>
-                        <p class="text-xs text-gray-300 mb-3">
-                            These players have high point commitments but could not be scheduled because they only selected 1 or 2 narrow timeslots:
-                        </p>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-1 text-xs text-gray-300 mb-3">
+                            <p id="rigid-desc-{{ day }}">
+                                Unassigned high-value players who selected <strong id="rigid-desc-val-{{ day }}" class="text-amber-300">2 or fewer</strong> timeslots (top 10 by points):
+                            </p>
+                            <span id="rigid-count-badge-{{ day }}" class="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono font-semibold border border-amber-500/30 whitespace-nowrap self-start sm:self-auto">
+                                Showing top {{ initial_visible_count }}
+                            </span>
+                        </div>
+                        <div id="rigid-grid-{{ day }}" class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {% set ns = namespace(shown=0) %}
                             {% for rw in day_insight.rigid_whales %}
-                            <div class="bg-kvk-gray-900/90 border border-amber-500/20 rounded p-2.5 flex justify-between items-center text-xs">
+                            {% set is_match = (rw.slots_count <= 2 and ns.shown < 10) %}
+                            {% if is_match %}{% set ns.shown = ns.shown + 1 %}{% endif %}
+                            <div class="rigid-whale-card bg-kvk-gray-900/90 border border-amber-500/20 rounded p-2.5 flex justify-between items-center text-xs transition-all hover:border-amber-500/40 {% if not is_match %}hidden{% endif %}"
+                                 data-day="{{ day }}"
+                                 data-slots="{{ rw.slots_count }}"
+                                 data-resources="{{ rw.resources }}">
                                 <div>
                                     <span class="font-bold text-gray-200">[{{ rw.alliance_name }}] {{ rw.player_name }}</span>
                                     <div class="text-[10px] text-gray-400 font-mono mt-0.5">
                                         Wanted: {{ rw.requested_slots|join(', ') if rw.requested_slots else 'None' }}
                                     </div>
                                 </div>
-                                <div class="text-right">
+                                <div class="text-right flex-shrink-0 ml-2">
                                     <div class="font-mono font-bold text-kvk-gold">{{ "{:,.0f}".format(rw.resources) }}</div>
-                                    <span class="text-[9px] text-amber-400 uppercase tracking-tight">{{ rw.slots_count }} slot{{ 's' if rw.slots_count > 1 else '' }} only</span>
+                                    <span class="text-[9px] text-amber-400 uppercase tracking-tight font-semibold">{{ rw.slots_count }} slot{{ 's' if rw.slots_count > 1 else '' }} only</span>
                                 </div>
                             </div>
                             {% endfor %}
+                        </div>
+                        <div id="rigid-empty-{{ day }}" class="{% if initial_visible_count > 0 %}hidden{% endif %} text-center py-4 text-xs text-gray-400 italic bg-kvk-gray-900/50 rounded-lg border border-gray-800 mt-2">
+                            No unassigned high-value players found with <span id="rigid-empty-val-{{ day }}">2</span> or fewer slots.
                         </div>
                     </div>
                     {% endif %}
@@ -1066,6 +1094,45 @@
         </footer>
     </div>
 <script>
+    function updateRigidWhales(day, maxSlots) {
+        maxSlots = parseInt(maxSlots, 10);
+        const valEl = document.getElementById(`rigid-val-${day}`);
+        const descValEl = document.getElementById(`rigid-desc-val-${day}`);
+        const emptyValEl = document.getElementById(`rigid-empty-val-${day}`);
+        const badgeEl = document.getElementById(`rigid-count-badge-${day}`);
+        const emptyEl = document.getElementById(`rigid-empty-${day}`);
+        const grid = document.getElementById(`rigid-grid-${day}`);
+
+        if (valEl) valEl.textContent = maxSlots;
+        if (descValEl) descValEl.textContent = maxSlots === 1 ? '1' : `${maxSlots} or fewer`;
+        if (emptyValEl) emptyValEl.textContent = maxSlots;
+
+        if (!grid) return;
+        const cards = grid.querySelectorAll('.rigid-whale-card');
+        let visibleCount = 0;
+
+        cards.forEach(card => {
+            const slots = parseInt(card.dataset.slots, 10);
+            if (slots <= maxSlots && visibleCount < 10) {
+                card.classList.remove('hidden');
+                visibleCount++;
+            } else {
+                card.classList.add('hidden');
+            }
+        });
+
+        if (badgeEl) {
+            badgeEl.textContent = `Showing top ${visibleCount}`;
+        }
+        if (emptyEl) {
+            if (visibleCount === 0) {
+                emptyEl.classList.remove('hidden');
+            } else {
+                emptyEl.classList.add('hidden');
+            }
+        }
+    }
+
     function toggleSubmissionShelf(event, subId) {
         if (event.target.closest('input, button, select, a, form')) {
             return;
@@ -1242,6 +1309,12 @@
     document.addEventListener('DOMContentLoaded', () => {
         initializeTabs();
         document.addEventListener('submit', handleFormSubmit);
+
+        // Initialize rigid availability sliders
+        document.querySelectorAll('[id^="rigid-slider-"]').forEach(slider => {
+            const day = slider.id.replace('rigid-slider-', '');
+            updateRigidWhales(day, slider.value);
+        });
     });
 
     const slotLabels = {{ slot_labels|tojson }};

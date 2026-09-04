@@ -2701,3 +2701,71 @@ def test_public_and_finalized_timezone_toggle(client, app):
     assert "tz-toggle" in html2 or "data-tz" in html2
     assert "UTC" in html2
     assert "Local Time" in html2
+
+
+def test_admin_dashboard_rigid_whales_slider(client, app):
+    import json
+
+    from app import database
+
+    event_uid = "evt_rw_slider"
+    secret = "rw_secret"
+    with app.app_context():
+        db = database.get_db()
+        db.execute(
+            "INSERT INTO events (uid, name, active_days, admin_secret, slot_count) VALUES (?, ?, ?, ?, ?)",
+            (
+                event_uid,
+                "Rigid Slider Event",
+                json.dumps(["construction"]),
+                secret,
+                49,
+            ),
+        )
+        # Insert a whale with 2 slots
+        db.execute(
+            "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                "sub_rw_1",
+                event_uid,
+                "construction",
+                "RigidWhale",
+                "rw1",
+                "TOP",
+                30000.0,
+                json.dumps({"speedups": 3000}),
+                json.dumps([1, 2]),
+                "Pending",
+            ),
+        )
+        # Insert regular players so whale is above 75th percentile
+        for i in range(5):
+            db.execute(
+                "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    f"sub_reg_{i}",
+                    event_uid,
+                    "construction",
+                    f"Reg_{i}",
+                    f"r{i}",
+                    "TOP",
+                    100.0,
+                    json.dumps({"speedups": 10}),
+                    json.dumps([1, 2, 3]),
+                    "Pending",
+                ),
+            )
+        db.commit()
+
+    resp = client.get(f"/admin/{event_uid}?secret={secret}")
+    assert resp.status_code == 200
+    html = resp.get_data(as_text=True)
+
+    # Check slider controls and card elements
+    assert "rigid-slider-construction" in html
+    assert "updateRigidWhales" in html
+    assert "rigid-val-construction" in html
+    assert "rigid-count-badge-construction" in html
+    assert "rigid-whale-card" in html
+    assert 'data-slots="2"' in html
+    assert "RigidWhale" in html
