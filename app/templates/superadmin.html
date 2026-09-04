@@ -125,9 +125,10 @@
                     </div>
                     <div class="mt-4">
                         <div class="text-3xl font-extrabold text-white tracking-tight">{{ metrics.total_unique_players }}</div>
-                        <div class="text-xs text-gray-400 mt-1 flex items-center gap-1">
-                            <span class="text-emerald-400 font-medium">{{ metrics.total_alliances }}</span>
-                            <span>alliances represented</span>
+                        <div class="text-xs text-gray-400 mt-1.5 flex items-center gap-1.5 flex-wrap">
+                            <span><span class="text-kvk-gold font-semibold">{{ metrics.total_kingdoms }}</span> kingdom{{ 's' if metrics.total_kingdoms != 1 else '' }}</span>
+                            <span class="text-gray-600">•</span>
+                            <span><span class="text-emerald-400 font-semibold">{{ metrics.total_alliances }}</span> alliance{{ 's' if metrics.total_alliances != 1 else '' }}</span>
                         </div>
                     </div>
                 </div>

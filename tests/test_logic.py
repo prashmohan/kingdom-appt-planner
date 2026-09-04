@@ -582,6 +582,7 @@ def test_get_superadmin_metrics_empty(temp_db):
     assert metrics["total_submissions"] == 0
     assert metrics["total_unique_players"] == 0
     assert metrics["total_alliances"] == 0
+    assert metrics["total_kingdoms"] == 0
     assert metrics["total_assigned_slots"] == 0
     assert metrics["total_locked_slots"] == 0
     assert metrics["global_fill_rate"] == 0.0
@@ -663,6 +664,7 @@ def test_get_superadmin_metrics_with_data(temp_db):
     assert all_metrics["total_submissions"] == 2
     assert all_metrics["total_unique_players"] == 2
     assert all_metrics["total_alliances"] == 2
+    assert all_metrics["total_kingdoms"] == 1
     assert all_metrics["total_assigned_slots"] == 1
     assert all_metrics["total_locked_slots"] == 1
     assert len(all_metrics["events"]) == 2
@@ -675,6 +677,7 @@ def test_get_superadmin_metrics_with_data(temp_db):
     week_metrics = get_superadmin_metrics(temp_db, time_range="1w")
     assert week_metrics["total_events"] == 1
     assert week_metrics["total_submissions"] == 2
+    assert week_metrics["total_kingdoms"] == 1
     assert len(week_metrics["events"]) == 1
     assert week_metrics["events"][0]["uid"] == "evt1"
 
@@ -844,6 +847,7 @@ def test_get_superadmin_metrics_corrupted_data_and_fallbacks(temp_db):
     assert metrics["total_submissions"] == 1
     assert metrics["total_unique_players"] == 1
     assert metrics["total_alliances"] == 0
+    assert metrics["total_kingdoms"] == 0
     assert metrics["global_fill_rate"] == 0.0
     assert metrics["events"][0]["slot_count"] == 49
     assert metrics["events"][0]["active_days"] == []

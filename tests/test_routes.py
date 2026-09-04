@@ -2390,6 +2390,7 @@ def test_superadmin_template_rendering_empty(client, app):
     assert "Total Events" in html
     assert "Total Submissions" in html
     assert "Unique Players" in html
+    assert "0</span> kingdoms" in html
     assert "Global Slot Fill &amp; Lock" in html or "Global Slot Fill & Lock" in html
 
     # 3. Analytics Grid
@@ -2530,6 +2531,7 @@ def test_superadmin_metrics_and_template_server_id(client, app):
         )
         db.commit()
         metrics = get_superadmin_metrics(db)
+        assert metrics["total_kingdoms"] == 1
         found = [e for e in metrics["events"] if e["uid"] == "sa_srv_uid"]
         assert len(found) == 1
         assert found[0]["server_id"] == 1088
@@ -2540,6 +2542,7 @@ def test_superadmin_metrics_and_template_server_id(client, app):
     html = resp.get_data(as_text=True)
     assert "Kingdom #1088" in html
     assert 'data-server="1088"' in html
+    assert "1</span> kingdom" in html
 
 
 def test_admin_dashboard_insights_tab(client, app):

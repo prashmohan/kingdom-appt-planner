@@ -311,6 +311,7 @@ def get_superadmin_metrics(
             "total_submissions": 0,
             "total_unique_players": 0,
             "total_alliances": 0,
+            "total_kingdoms": 0,
             "total_assigned_slots": 0,
             "total_locked_slots": 0,
             "global_fill_rate": 0.0,
@@ -370,6 +371,9 @@ def get_superadmin_metrics(
             for s in submissions
             if s.get("alliance_name") and str(s.get("alliance_name")).strip()
         }
+    )
+    total_kingdoms = len(
+        {e["server_id"] for e in events if e.get("server_id") is not None}
     )
     total_assigned_slots = len(assignments)
     total_locked_slots = sum(1 for a in assignments if a.get("is_locked"))
@@ -556,6 +560,7 @@ def get_superadmin_metrics(
         "total_submissions": total_submissions,
         "total_unique_players": total_unique_players,
         "total_alliances": total_alliances,
+        "total_kingdoms": total_kingdoms,
         "total_assigned_slots": total_assigned_slots,
         "total_locked_slots": total_locked_slots,
         "global_fill_rate": global_fill_rate,
