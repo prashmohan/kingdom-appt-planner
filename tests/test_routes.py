@@ -2403,6 +2403,8 @@ def test_superadmin_template_rendering_empty(client, app):
 
     # 4. Table and Empty State
     assert "Registered Events Directory" in html
+    assert "Total Points" in html
+    assert 'colspan="7"' in html
     assert "event-search-input" in html
     assert "No kingdom events found in the selected time range" in html
     assert 'id="toast"' in html
@@ -2476,9 +2478,12 @@ def test_superadmin_template_rendering_with_events_and_data(client, app, test_ev
     assert 'data-sort="created"' in html
     assert 'data-sort="submissions"' in html
     assert 'data-sort="players"' in html
+    assert 'data-sort="points"' in html
     assert 'data-sort="fill"' in html
     assert f'data-name="{test_event["name"].lower()}"' in html
     assert f'data-uid="{test_event["uid"].lower()}"' in html
+    assert 'data-points="120000.0"' in html
+    assert "120,000" in html
 
 
 def test_superadmin_template_range_highlighting(client, app):

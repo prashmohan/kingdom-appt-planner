@@ -670,8 +670,10 @@ def test_get_superadmin_metrics_with_data(temp_db):
     assert len(all_metrics["events"]) == 2
     evt1_data = next(e for e in all_metrics["events"] if e["uid"] == "evt1")
     assert evt1_data["server_id"] == 101
+    assert evt1_data["total_resources"] == 3000000.0
     evt2_data = next(e for e in all_metrics["events"] if e["uid"] == "evt2")
     assert evt2_data["server_id"] is None
+    assert evt2_data["total_resources"] == 0.0
 
     # 1w filter (should exclude evt2 created 20 days ago)
     week_metrics = get_superadmin_metrics(temp_db, time_range="1w")
