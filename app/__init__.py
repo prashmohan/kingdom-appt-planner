@@ -32,7 +32,7 @@ from config import Config
 
 from . import database, logic
 from .auth import require_admin, require_superadmin
-from .constants import DEFAULT_SLOT_COUNT, compute_score
+from .constants import DAY_FORM_CONFIG, DEFAULT_SLOT_COUNT, compute_score
 from .logic import (
     compute_event_insights,
     generate_short_uid,
@@ -40,6 +40,11 @@ from .logic import (
     get_ordered_active_days,
     get_superadmin_metrics,
     validate_custom_slug,
+)
+from .services import (
+    create_or_replace_submission,
+    delete_player_submissions_and_assignments,
+    get_event_by_uid,
 )
 from .utils import (
     format_minutes,
@@ -325,11 +330,7 @@ def create_app():
     @app.route("/event/<event_uid>/finalized")
     def locked_appointments(event_uid):
         db = database.get_db()
-        db.row_factory = sqlite3.Row
-        event = db.execute(
-            "SELECT * FROM events WHERE uid = ?", (event_uid,)
-        ).fetchone()
-
+        event = get_event_by_uid(db, event_uid)
         if event is None:
             return "Event not found", 404
 
@@ -384,11 +385,7 @@ def create_app():
     @app.route("/event/<event_uid>")
     def player_form(event_uid):
         db = database.get_db()
-        # Use a dictionary cursor for easier row access
-        db.row_factory = sqlite3.Row
-        event_cursor = db.execute("SELECT * FROM events WHERE uid = ?", (event_uid,))
-        event = event_cursor.fetchone()
-
+        event = get_event_by_uid(db, event_uid)
         if event is None:
             return "Event not found", 404
 
@@ -428,6 +425,10 @@ def create_app():
     @app.route("/event/<event_uid>/submit", methods=["POST"])
     def submit(event_uid):
         db = database.get_db()
+        event = get_event_by_uid(db, event_uid)
+        if event is None:
+            return "Event not found", 404
+
         player_id = request.form.get("player_id", "").strip()
         player_name = request.form.get("player_name", "").strip()
         alliance_name = request.form.get("alliance_name", "").strip()
@@ -479,102 +480,36 @@ def create_app():
                     url_for("static", filename=f"uploads/{filename}")
                 )
 
-        # First, delete all previous submissions and assignments for this player and event.
-        db.execute(
-            "DELETE FROM submissions WHERE event_uid = ? AND player_id = ?",
-            (event_uid, player_id),
-        )
-        db.execute(
-            "DELETE FROM assignments WHERE event_uid = ? AND player_id = ?",
-            (event_uid, player_id),
-        )
+        # Delete all previous submissions and assignments for this player and event.
+        delete_player_submissions_and_assignments(db, event_uid, player_id)
 
         # Then, insert the new submissions from the form.
         avatar_url = validate_safe_url(request.form.get("avatar_url"))
 
-        # --- Process Construction Submission ---
-        construction_speedups = int(request.form.get("speedups-construction") or 0)
-        truegold = int(request.form.get("truegold") or 0)
-        tempered_truegold = int(request.form.get("tempered_truegold") or 0)
-        feasible_slots = request.form.get("slots-construction", "[]")
-        if (
-            construction_speedups > 0 or truegold > 0 or tempered_truegold > 0
-        ) and feasible_slots != "[]":
-            day_type = "construction"
+        for day_type, field_mapping in DAY_FORM_CONFIG.items():
+            feasible_slots = request.form.get(f"slots-{day_type}", "[]")
+            if feasible_slots == "[]":
+                continue
+
             raw_data = {
-                "speedups": construction_speedups,
-                "truegold": truegold,
-                "tempered_truegold": tempered_truegold,
+                field: int(request.form.get(form_field) or 0)
+                for field, form_field in field_mapping.items()
             }
             score = compute_score(day_type, raw_data)
-            submission_id = f"{event_uid}_{player_id}_{day_type}"
-            db.execute(
-                "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, avatar_url, backpack_url, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-                (
-                    submission_id,
-                    event_uid,
-                    day_type,
-                    player_name,
-                    player_id,
-                    avatar_url,
-                    backpack_url,
-                    alliance_name,
-                    score,
-                    json.dumps(raw_data),
-                    feasible_slots,
-                ),
-            )
-
-        # --- Process Training Submission ---
-        training_speedups = int(request.form.get("speedups-training") or 0)
-        feasible_slots = request.form.get("slots-training", "[]")
-        if training_speedups > 0 and feasible_slots != "[]":
-            day_type = "training"
-            raw_data = {"speedups": training_speedups}
-            score = compute_score(day_type, raw_data)
-            submission_id = f"{event_uid}_{player_id}_{day_type}"
-            db.execute(
-                "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, avatar_url, backpack_url, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-                (
-                    submission_id,
-                    event_uid,
-                    day_type,
-                    player_name,
-                    player_id,
-                    avatar_url,
-                    backpack_url,
-                    alliance_name,
-                    score,
-                    json.dumps(raw_data),
-                    feasible_slots,
-                ),
-            )
-
-        # --- Process Research Submission ---
-        research_speedups = int(request.form.get("speedups-research") or 0)
-        truegold_dust = int(request.form.get("truegold_dust") or 0)
-        feasible_slots = request.form.get("slots-research", "[]")
-        if (research_speedups > 0 or truegold_dust > 0) and feasible_slots != "[]":
-            day_type = "research"
-            raw_data = {"speedups": research_speedups, "truegold_dust": truegold_dust}
-            score = compute_score(day_type, raw_data)
-            submission_id = f"{event_uid}_{player_id}_{day_type}"
-            db.execute(
-                "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, avatar_url, backpack_url, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-                (
-                    submission_id,
-                    event_uid,
-                    day_type,
-                    player_name,
-                    player_id,
-                    avatar_url,
-                    backpack_url,
-                    alliance_name,
-                    score,
-                    json.dumps(raw_data),
-                    feasible_slots,
-                ),
-            )
+            if score > 0:
+                create_or_replace_submission(
+                    db=db,
+                    event_uid=event_uid,
+                    day_type=day_type,
+                    player_id=player_id,
+                    player_name=player_name,
+                    alliance_name=alliance_name,
+                    score=score,
+                    raw_data=raw_data,
+                    feasible_slots_json=feasible_slots,
+                    avatar_url=avatar_url,
+                    backpack_url=backpack_url,
+                )
 
         db.commit()
 
@@ -757,11 +692,7 @@ def create_app():
     @app.route("/event/<event_uid>/schedule")
     def public_schedule(event_uid):
         db = database.get_db()
-        db.row_factory = sqlite3.Row
-        event = db.execute(
-            "SELECT * FROM events WHERE uid = ?", (event_uid,)
-        ).fetchone()
-
+        event = get_event_by_uid(db, event_uid)
         if event is None:
             return "Event not found", 404
 

@@ -12,6 +12,21 @@ SCORING_MULTIPLIERS: dict[str, dict[str, int]] = {
     "research": {"speedups": 30, "truegold_dust": 1000},
 }
 
+DAY_FORM_CONFIG: dict[str, dict[str, str]] = {
+    "construction": {
+        "speedups": "speedups-construction",
+        "truegold": "truegold",
+        "tempered_truegold": "tempered_truegold",
+    },
+    "training": {
+        "speedups": "speedups-training",
+    },
+    "research": {
+        "speedups": "speedups-research",
+        "truegold_dust": "truegold_dust",
+    },
+}
+
 RESERVED_SLUGS: set[str] = {
     "admin",
     "create",

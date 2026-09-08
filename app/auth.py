@@ -1,12 +1,11 @@
 """Authentication and authorization decorators."""
 
 import hmac
-import sqlite3
 from functools import wraps
 
 from flask import g, request, session
 
-from . import database
+from . import database, services
 
 
 def require_admin(f):
@@ -19,10 +18,7 @@ def require_admin(f):
     def decorated(event_uid: str, *args, **kwargs):
         secret = request.form.get("secret") or request.args.get("secret")
         db = database.get_db()
-        db.row_factory = sqlite3.Row
-        event = db.execute(
-            "SELECT * FROM events WHERE uid = ?", (event_uid,)
-        ).fetchone()
+        event = services.get_event_by_uid(db, event_uid)
 
         if event is None:
             return "Event not found", 404
