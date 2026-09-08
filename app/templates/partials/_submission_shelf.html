@@ -1,0 +1,73 @@
+<!-- Submission Details & Resource Override Shelf -->
+<tr id="shelf-{{ sub.id }}" class="hidden bg-kvk-gray-900/60 border-b border-kvk-gray-700" onclick="event.stopPropagation()">
+    <td colspan="6" class="px-6 py-4">
+        <div class="bg-kvk-gray-800/80 border border-kvk-gold/30 rounded-lg p-4 max-w-2xl mx-auto shadow-inner" onclick="event.stopPropagation()">
+            <div class="mb-4 pb-4 border-b border-kvk-gray-700">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                        Requested Timeslots ({{ sub.requested_slots_labels|length if sub.requested_slots_labels else 0 }})
+                    </span>
+                </div>
+                {% if sub.requested_slots_labels %}
+                    <div class="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1 custom-scrollbar">
+                        {% for slot_label in sub.requested_slots_labels %}
+                             <span class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-mono font-medium bg-kvk-gray-700 text-kvk-gold border border-kvk-gray-600">
+                                {{ slot_label }}
+                            </span>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-xs text-gray-500 italic">No timeslots selected.</p>
+                {% endif %}
+            </div>
+            <h4 class="text-sm font-bold text-kvk-gold mb-3 uppercase tracking-wider">
+                Override Resources: {{ sub.player_name }}
+            </h4>
+            <form action="{{ url_for('admin.override_resources', event_uid=event.uid) }}" method="POST" class="space-y-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="secret" value="{{ secret }}">
+                <input type="hidden" name="submission_id" value="{{ sub.id }}">
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {% if sub.day_type == 'construction' %}
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400 mb-1">Speedups (mins)</label>
+                            <input type="number" name="speedups" value="{{ sub.raw_resources.get('speedups', 0) }}" class="bg-kvk-gray-700 border-kvk-gray-600 rounded-md text-sm text-gray-200 px-3 py-1.5 w-full focus:ring-kvk-gold focus:border-kvk-gold">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400 mb-1">Truegold</label>
+                            <input type="number" name="truegold" value="{{ sub.raw_resources.get('truegold', 0) }}" class="bg-kvk-gray-700 border-kvk-gray-600 rounded-md text-sm text-gray-200 px-3 py-1.5 w-full focus:ring-kvk-gold focus:border-kvk-gold">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400 mb-1">Tempered Truegold</label>
+                            <input type="number" name="tempered_truegold" value="{{ sub.raw_resources.get('tempered_truegold', 0) }}" class="bg-kvk-gray-700 border-kvk-gray-600 rounded-md text-sm text-gray-200 px-3 py-1.5 w-full focus:ring-kvk-gold focus:border-kvk-gold">
+                        </div>
+                    {% elif sub.day_type == 'training' %}
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400 mb-1">Speedups (mins)</label>
+                            <input type="number" name="speedups" value="{{ sub.raw_resources.get('speedups', 0) }}" class="bg-kvk-gray-700 border-kvk-gray-600 rounded-md text-sm text-gray-200 px-3 py-1.5 w-full focus:ring-kvk-gold focus:border-kvk-gold">
+                        </div>
+                    {% elif sub.day_type == 'research' %}
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400 mb-1">Speedups (mins)</label>
+                            <input type="number" name="speedups" value="{{ sub.raw_resources.get('speedups', 0) }}" class="bg-kvk-gray-700 border-kvk-gray-600 rounded-md text-sm text-gray-200 px-3 py-1.5 w-full focus:ring-kvk-gold focus:border-kvk-gold">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400 mb-1">Truegold Dust</label>
+                            <input type="number" name="truegold_dust" value="{{ sub.raw_resources.get('truegold_dust', 0) }}" class="bg-kvk-gray-700 border-kvk-gray-600 rounded-md text-sm text-gray-200 px-3 py-1.5 w-full focus:ring-kvk-gold focus:border-kvk-gold">
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2 border-t border-kvk-gray-700">
+                    <button type="button" onclick="toggleSubmissionShelf(event, '{{ sub.id }}')" class="bg-kvk-gray-700 text-gray-300 font-bold py-1.5 px-3 rounded-md text-xs hover:bg-kvk-gray-650 transition duration-200">
+                        Cancel
+                    </button>
+                    <button type="submit" class="bg-kvk-gold text-kvk-gray-900 font-bold py-1.5 px-4 rounded-md text-xs hover:bg-amber-500 transition duration-200">
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </td>
+</tr>

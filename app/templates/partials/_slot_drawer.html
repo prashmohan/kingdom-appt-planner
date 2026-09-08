@@ -1,0 +1,13 @@
+<!-- Slot Selection & Assignment Drawer -->
+<div id="drawer-{{ day }}" class="lg:col-span-1 bg-kvk-gray-800 p-6 rounded-xl shadow-md border border-kvk-gray-700 flex flex-col"
+     data-slot-players="{{ slot_players[day]|tojson|forceescape }}"
+     data-current-assignments="{{ assignments[day]|tojson|forceescape }}">
+    <div class="flex justify-between items-center mb-3">
+        <h3 id="drawer-title-{{ day }}" class="text-lg font-bold text-gray-100 flex items-center gap-2">Slot Details</h3>
+        <span id="drawer-count-{{ day }}" class="text-xs bg-kvk-gold/20 text-kvk-gold px-2.5 py-1 rounded font-bold">Select a slot</span>
+    </div>
+    <p class="text-xs text-gray-400 mb-3">Click any slot in the heatmap to inspect applicants and manually assign appointments.</p>
+    <div id="drawer-content-{{ day }}" class="space-y-2 flex-1 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar text-sm text-gray-500 italic">
+        Tap a slot in the heatmap to see potential players and their points.
+    </div>
+</div>
