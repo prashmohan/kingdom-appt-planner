@@ -8,6 +8,7 @@ from typing import Any
 
 from . import database
 from .constants import DEFAULT_SLOT_COUNT, RESERVED_SLUGS
+from .utils import format_minutes, parse_json_dict, parse_json_list
 
 
 def generate_short_uid(length: int = 8) -> str:
@@ -110,15 +111,9 @@ def run_distribution_algorithm(event_uid, day_type=None):
         # 2. Calculate Demand for each slot (static demand based on all submissions for this day)
         slot_demand = {i: 0 for i in range(slot_count)}
         for sub in submissions:
-            try:
-                if not sub["feasible_slots"]:
-                    continue
-                f_slots = json.loads(sub["feasible_slots"])
-                for s in f_slots:
-                    if 0 <= s < slot_count:
-                        slot_demand[s] += 1
-            except (json.JSONDecodeError, TypeError):
-                continue
+            for s in parse_json_list(sub["feasible_slots"]):
+                if isinstance(s, int) and 0 <= s < slot_count:
+                    slot_demand[s] += 1
 
         # 3. Ranking & Allocation for the current day_type
         for submission in submissions:
@@ -127,12 +122,8 @@ def run_distribution_algorithm(event_uid, day_type=None):
                 continue
 
             is_assigned = False
-            try:
-                feasible_slots = json.loads(submission["feasible_slots"])
-            except (json.JSONDecodeError, TypeError):
-                feasible_slots = None
-
-            if not isinstance(feasible_slots, list) or not feasible_slots:
+            feasible_slots = parse_json_list(submission["feasible_slots"])
+            if not feasible_slots:
                 db.execute(
                     "UPDATE submissions SET status = 'Waitlisted' WHERE id = ?",
                     (submission["id"],),
@@ -193,23 +184,6 @@ def run_distribution_algorithm(event_uid, day_type=None):
                 )
 
     db.commit()
-
-
-def format_minutes(total_minutes):
-    if not total_minutes:
-        return "0m"
-    days = total_minutes // 1440
-    hours = (total_minutes % 1440) // 60
-    minutes = total_minutes % 60
-
-    parts = []
-    if days > 0:
-        parts.append(f"{days}d")
-    if hours > 0:
-        parts.append(f"{hours}h")
-    if minutes > 0 or not parts:
-        parts.append(f"{minutes}m")
-    return " ".join(parts)
 
 
 def get_ordered_active_days(active_days_config):
@@ -462,23 +436,9 @@ def get_superadmin_metrics(
     # Peak Time Slots
     slot_counts: Counter[int] = Counter()
     for s in submissions:
-        feasible_slots_raw = s.get("feasible_slots")
-        if not feasible_slots_raw:
-            continue
-        try:
-            if isinstance(feasible_slots_raw, str):
-                f_slots = json.loads(feasible_slots_raw)
-            elif isinstance(feasible_slots_raw, list):
-                f_slots = feasible_slots_raw
-            else:
-                f_slots = []
-        except (json.JSONDecodeError, TypeError):
-            f_slots = []
-
-        if isinstance(f_slots, list):
-            for slot_idx in f_slots:
-                if isinstance(slot_idx, int) and slot_idx >= 0:
-                    slot_counts[slot_idx] += 1
+        for slot_idx in parse_json_list(s.get("feasible_slots")):
+            if isinstance(slot_idx, int) and slot_idx >= 0:
+                slot_counts[slot_idx] += 1
 
     peak_time_slots = []
     for slot_idx, count in slot_counts.most_common(3):
@@ -663,12 +623,7 @@ def compute_event_insights(
         }
 
         for s in day_subs:
-            try:
-                raw_data = json.loads(s["raw_data"])
-            except (json.JSONDecodeError, TypeError):
-                raw_data = {}
-            if not isinstance(raw_data, dict):
-                raw_data = {}
+            raw_data = parse_json_dict(s.get("raw_data"))
             total_speedups += int(raw_data.get("speedups", 0) or 0)
             materials["truegold"] += int(raw_data.get("truegold", 0) or 0)
             materials["tempered_truegold"] += int(
@@ -691,12 +646,7 @@ def compute_event_insights(
                 )
                 else None
             )
-            try:
-                fslots = json.loads(s["feasible_slots"])
-            except (json.JSONDecodeError, TypeError):
-                fslots = []
-            if not isinstance(fslots, list):
-                fslots = []
+            fslots = parse_json_list(s.get("feasible_slots"))
 
             whale_board.append(
                 {
@@ -775,15 +725,10 @@ def compute_event_insights(
         slot_density = [0] * slot_count
         feasible_counts = []
         for s in day_subs:
-            try:
-                fslots = json.loads(s["feasible_slots"])
-            except (json.JSONDecodeError, TypeError):
-                fslots = []
-            if not isinstance(fslots, list):
-                fslots = []
+            fslots = parse_json_list(s.get("feasible_slots"))
             feasible_counts.append(len(fslots))
             for idx in fslots:
-                if 0 <= idx < slot_count:
+                if isinstance(idx, int) and 0 <= idx < slot_count:
                     slot_density[idx] += 1
 
         player_flexibility_avg = (
@@ -863,12 +808,7 @@ def compute_event_insights(
             threshold = sorted_res[p75_idx]
             for s in day_subs:
                 if s["player_id"] not in assigned_pids:
-                    try:
-                        fslots = json.loads(s["feasible_slots"])
-                    except (json.JSONDecodeError, TypeError):
-                        fslots = []
-                    if not isinstance(fslots, list):
-                        fslots = []
+                    fslots = parse_json_list(s.get("feasible_slots"))
                     res_val = float(s["resources"] or 0)
                     if len(fslots) <= max_rigid_slots and res_val >= threshold:
                         rigid_whales.append(
@@ -959,12 +899,7 @@ def compute_event_insights(
             if (assigned_slot is not None and 0 <= assigned_slot < len(slot_labels))
             else None
         )
-        try:
-            fslots = json.loads(s["feasible_slots"])
-        except (json.JSONDecodeError, TypeError):
-            fslots = []
-        if not isinstance(fslots, list):
-            fslots = []
+        fslots = parse_json_list(s.get("feasible_slots"))
 
         overall_whale_board.append(
             {

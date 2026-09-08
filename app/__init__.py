@@ -33,26 +33,21 @@ from . import database, logic
 from .constants import DEFAULT_SLOT_COUNT, compute_score
 from .logic import (
     compute_event_insights,
-    format_minutes,
     generate_short_uid,
     generate_slot_labels,
     get_ordered_active_days,
     get_superadmin_metrics,
     validate_custom_slug,
 )
+from .utils import (
+    format_minutes,
+    parse_json_dict,
+    parse_json_list,
+    validate_safe_url,
+)
 
 # Ensure .js files are served with the correct MIME type
 mimetypes.add_type("application/javascript", ".js")
-
-
-def validate_safe_url(url: str | None) -> str | None:
-    """Ensure URL uses only safe HTTP(S) or static relative schemes."""
-    if not url or not isinstance(url, str):
-        return None
-    cleaned = url.strip()
-    if cleaned.startswith(("http://", "https://", "/static/")):
-        return cleaned
-    return None
 
 
 def fetch_player_info(fid: str) -> dict | None:
@@ -417,13 +412,9 @@ def create_app():
         for sub in submissions:
             dt = sub["day_type"]
             if dt in slot_density and sub["feasible_slots"]:
-                try:
-                    slots = json.loads(sub["feasible_slots"])
-                    for s in slots:
-                        if 0 <= s < slot_count:
-                            slot_density[dt][s] += 1
-                except (json.JSONDecodeError, TypeError):
-                    pass
+                for s in parse_json_list(sub["feasible_slots"]):
+                    if isinstance(s, int) and 0 <= s < slot_count:
+                        slot_density[dt][s] += 1
 
         return render_template(
             "player_form.html",
@@ -627,10 +618,7 @@ def create_app():
             if row["day_type"] in submissions_by_day:
                 # Convert sqlite3.Row to a dictionary to allow item assignment
                 sub_dict = dict(row)
-                try:
-                    sub_dict["raw_resources"] = json.loads(row["raw_data"])
-                except (json.JSONDecodeError, TypeError):
-                    sub_dict["raw_resources"] = {}
+                sub_dict["raw_resources"] = parse_json_dict(row["raw_data"])
                 submissions_by_day[row["day_type"]].append(sub_dict)
 
         # 2. Group assignments and related data by day_type
@@ -673,35 +661,38 @@ def create_app():
                 if not sub["feasible_slots"]:
                     sub["requested_slots_text"] = "No slots selected"
                     sub["requested_slots_labels"] = []
-                    continue
-                try:
-                    feasible_slots = json.loads(sub["feasible_slots"])
-                    # Create human readable labels for hover text and shelf badges
-                    requested_labels = [
-                        slot_labels[i] for i in feasible_slots if 0 <= i < slot_count
-                    ]
-                    sub["requested_slots_labels"] = requested_labels
-                    sub["requested_slots_text"] = (
-                        ", ".join(requested_labels)
-                        if requested_labels
-                        else "No slots selected"
-                    )
+                else:
+                    try:
+                        feasible_slots = json.loads(sub["feasible_slots"])
+                        requested_labels = [
+                            slot_labels[i]
+                            for i in feasible_slots
+                            if isinstance(i, int) and 0 <= i < slot_count
+                        ]
+                        sub["requested_slots_labels"] = requested_labels
+                        sub["requested_slots_text"] = (
+                            ", ".join(requested_labels)
+                            if requested_labels
+                            else "No slots selected"
+                        )
 
-                    for slot_index in feasible_slots:
-                        if 0 <= slot_index < slot_count:
-                            slot_density[day][slot_index] += 1
-                            slot_players[day][slot_index].append(
-                                {
-                                    "player_name": sub["player_name"],
-                                    "alliance_name": sub["alliance_name"],
-                                    "resources": sub["resources"],
-                                    "submission_id": sub["id"],
-                                }
-                            )
-
-                except (json.JSONDecodeError, TypeError, KeyError):
-                    sub["requested_slots_text"] = "Error parsing slots"
-                    sub["requested_slots_labels"] = []
+                        for slot_index in feasible_slots:
+                            if (
+                                isinstance(slot_index, int)
+                                and 0 <= slot_index < slot_count
+                            ):
+                                slot_density[day][slot_index] += 1
+                                slot_players[day][slot_index].append(
+                                    {
+                                        "player_name": sub["player_name"],
+                                        "alliance_name": sub["alliance_name"],
+                                        "resources": sub["resources"],
+                                        "submission_id": sub["id"],
+                                    }
+                                )
+                    except (json.JSONDecodeError, TypeError, KeyError):
+                        sub["requested_slots_text"] = "Error parsing slots"
+                        sub["requested_slots_labels"] = []
 
                 # Resources Hover Text
                 try:

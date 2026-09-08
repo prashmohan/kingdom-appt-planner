@@ -38,4 +38,3 @@ def compute_score(day_type: str, raw_data: dict[str, int]) -> int:
     """Calculate resource score for a given day type using standardized multipliers."""
     multipliers = SCORING_MULTIPLIERS.get(day_type, {})
     return sum(int(raw_data.get(k, 0)) * mult for k, mult in multipliers.items())
-
