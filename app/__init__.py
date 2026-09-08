@@ -32,15 +32,16 @@ def create_app() -> Flask:
     log_dir = os.path.join(app.root_path, "..", "logs")
     os.makedirs(log_dir, exist_ok=True)
 
-    audit_handler = RotatingFileHandler(
-        os.path.join(log_dir, "audit.log"), maxBytes=1000000, backupCount=5
-    )
-    audit_handler.setFormatter(
-        logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-    )
     audit_logger = logging.getLogger("audit")
     audit_logger.setLevel(logging.INFO)
-    audit_logger.addHandler(audit_handler)
+    if not audit_logger.handlers:
+        audit_handler = RotatingFileHandler(
+            os.path.join(log_dir, "audit.log"), maxBytes=1000000, backupCount=5
+        )
+        audit_handler.setFormatter(
+            logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+        )
+        audit_logger.addHandler(audit_handler)
     app.audit_logger = audit_logger
 
     # Register Route Blueprints
