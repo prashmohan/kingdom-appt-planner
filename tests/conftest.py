@@ -4,6 +4,12 @@ import tempfile
 import pytest
 
 from app import create_app, database
+from config import Config
+
+
+@pytest.fixture(autouse=True)
+def setup_test_config(monkeypatch):
+    monkeypatch.setattr(Config, "MIGHTPULSE_API_KEY", "test-mock-api-key")
 
 
 @pytest.fixture

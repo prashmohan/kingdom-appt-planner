@@ -2780,6 +2780,7 @@ def test_fetch_player_info_success(app):
         mock_get.return_value = mock_resp
 
         res = fetch_player_info("12345678")
+        mock_get.assert_called_once()
         assert res is not None
         assert res["nickname"] == "TestHero"
         assert res["avatar_url"] == "https://mightpulse.com/cdn/avatar/test.png"
@@ -2803,6 +2804,7 @@ def test_fetch_player_info_full_avatar_url(app):
         mock_get.return_value = mock_resp
 
         res = fetch_player_info("12345678")
+        mock_get.assert_called_once()
         assert res is not None
         assert res["nickname"] == "TestHero"
         assert res["avatar_url"] == "https://custom-cdn.com/avatar/test.png"
@@ -2819,14 +2821,18 @@ def test_fetch_player_info_not_found(app):
         mock_get.return_value = mock_resp
 
         res = fetch_player_info("99999999")
+        mock_get.assert_called_once()
         assert res is None
 
 
 def test_fetch_player_info_network_error(app):
     from app import fetch_player_info
 
-    with patch("requests.get", side_effect=requests.RequestException("Timeout")):
+    with patch(
+        "requests.get", side_effect=requests.RequestException("Timeout")
+    ) as mock_get:
         res = fetch_player_info("12345678")
+        mock_get.assert_called_once()
         assert res is None
 
 
