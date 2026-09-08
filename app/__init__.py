@@ -16,6 +16,7 @@ from flask import (
     Flask,
     Response,
     flash,
+    g,
     jsonify,
     redirect,
     render_template,
@@ -30,6 +31,7 @@ from werkzeug.utils import secure_filename
 from config import Config
 
 from . import database, logic
+from .auth import require_admin, require_superadmin
 from .constants import DEFAULT_SLOT_COUNT, compute_score
 from .logic import (
     compute_event_insights,
@@ -583,19 +585,11 @@ def create_app():
         return render_template("submission_success.html")
 
     @app.route("/admin/<event_uid>")
+    @require_admin
     def admin_dashboard(event_uid):
         db = database.get_db()
-        db.row_factory = sqlite3.Row
-
-        secret = request.args.get("secret")
-        event = db.execute(
-            "SELECT * FROM events WHERE uid = ?", (event_uid,)
-        ).fetchone()
-
-        if event is None:
-            return "Event not found", 404
-        if not secret or not hmac.compare_digest(event["admin_secret"], secret):
-            return "Forbidden", 403
+        event = g.event
+        secret = g.admin_secret
 
         active_days_config = json.loads(event["active_days"])
         active_days = get_ordered_active_days(active_days_config)
@@ -800,17 +794,11 @@ def create_app():
         )
 
     @app.route("/admin/<event_uid>/manual_assign", methods=["POST"])
+    @require_admin
     def manual_assign(event_uid):
-        secret = request.form.get("secret")
         db = database.get_db()
-        db.row_factory = sqlite3.Row
-        event = db.execute(
-            "SELECT * FROM events WHERE uid = ?", (event_uid,)
-        ).fetchone()
-        if event is None:
-            return "Event not found", 404
-        if not secret or not hmac.compare_digest(event["admin_secret"], secret):
-            return "Forbidden", 403
+        event = g.event
+        secret = g.admin_secret
 
         submission_id = request.form.get("submission_id")
         slot_index = request.form.get("slot_index")
@@ -880,17 +868,9 @@ def create_app():
         return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
 
     @app.route("/admin/<event_uid>/distribute", methods=["POST"])
+    @require_admin
     def distribute(event_uid):
-        secret = request.form.get("secret")
-        db = database.get_db()
-        db.row_factory = sqlite3.Row
-        event = db.execute(
-            "SELECT * FROM events WHERE uid = ?", (event_uid,)
-        ).fetchone()
-        if event is None:
-            return "Event not found", 404
-        if not secret or not hmac.compare_digest(event["admin_secret"], secret):
-            return "Forbidden", 403
+        secret = g.admin_secret
 
         day_type = request.form.get("day_type")
         app.audit_logger.info(
@@ -901,17 +881,10 @@ def create_app():
         return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
 
     @app.route("/admin/<event_uid>/export/<day_type>", methods=["GET"])
+    @require_admin
     def export_csv(event_uid, day_type):
-        secret = request.args.get("secret")
         db = database.get_db()
-        db.row_factory = sqlite3.Row
-        event = db.execute(
-            "SELECT * FROM events WHERE uid = ?", (event_uid,)
-        ).fetchone()
-        if event is None:
-            return "Event not found", 404
-        if not secret or not hmac.compare_digest(event["admin_secret"], secret):
-            return "Forbidden", 403
+        event = g.event
 
         # Fetch locked assignments joined with submissions to get player name
         assignments = db.execute(
@@ -931,16 +904,14 @@ def create_app():
         output = io.StringIO()
         writer = csv.writer(output)
         writer.writerow(["Event Type", "Player ID", "Player Name", "Appointment Slot"])
-
         for a in assignments:
-            writer.writerow(
-                [
-                    a["day_type"],
-                    a["player_id"],
-                    a["player_name"],
-                    slot_labels[a["slot_index"]],
-                ]
+            slot_idx = a["slot_index"]
+            slot_lbl = (
+                slot_labels[slot_idx]
+                if slot_idx is not None and 0 <= slot_idx < len(slot_labels)
+                else ""
             )
+            writer.writerow([a["day_type"], a["player_id"], a["player_name"], slot_lbl])
 
         output.seek(0)
         return Response(
@@ -952,17 +923,9 @@ def create_app():
         )
 
     @app.route("/admin/<event_uid>/export_submissions", methods=["GET"])
+    @require_admin
     def export_submissions(event_uid):
-        secret = request.args.get("secret")
         db = database.get_db()
-        db.row_factory = sqlite3.Row
-        event = db.execute(
-            "SELECT * FROM events WHERE uid = ?", (event_uid,)
-        ).fetchone()
-        if event is None:
-            return "Event not found", 404
-        if not secret or not hmac.compare_digest(event["admin_secret"], secret):
-            return "Forbidden", 403
 
         submissions = db.execute(
             """
@@ -1006,17 +969,10 @@ def create_app():
         )
 
     @app.route("/admin/<event_uid>/import_submissions", methods=["POST"])
+    @require_admin
     def import_submissions(event_uid):
-        secret = request.form.get("secret")
         db = database.get_db()
-        db.row_factory = sqlite3.Row
-        event = db.execute(
-            "SELECT * FROM events WHERE uid = ?", (event_uid,)
-        ).fetchone()
-        if event is None:
-            return "Event not found", 404
-        if not secret or not hmac.compare_digest(event["admin_secret"], secret):
-            return "Forbidden", 403
+        secret = g.admin_secret
 
         file = request.files.get("submissions_file")
         if not file or file.filename == "":
@@ -1181,17 +1137,10 @@ def create_app():
         return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
 
     @app.route("/admin/<event_uid>/refresh_players", methods=["POST"])
+    @require_admin
     def refresh_players(event_uid):
-        secret = request.form.get("secret")
         db = database.get_db()
-        db.row_factory = sqlite3.Row
-        event = db.execute(
-            "SELECT * FROM events WHERE uid = ?", (event_uid,)
-        ).fetchone()
-        if event is None:
-            return "Event not found", 404
-        if not secret or not hmac.compare_digest(event["admin_secret"], secret):
-            return "Forbidden", 403
+        secret = g.admin_secret
 
         app.audit_logger.info(
             f"ADMIN: Refresh player data triggered for event {event_uid}"
@@ -1221,17 +1170,10 @@ def create_app():
         return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
 
     @app.route("/admin/<event_uid>/confirm", methods=["POST"])
+    @require_admin
     def confirm(event_uid):
-        secret = request.form.get("secret")
         db = database.get_db()
-        db.row_factory = sqlite3.Row
-        event = db.execute(
-            "SELECT * FROM events WHERE uid = ?", (event_uid,)
-        ).fetchone()
-        if event is None:
-            return "Event not found", 404
-        if not secret or not hmac.compare_digest(event["admin_secret"], secret):
-            return "Forbidden", 403
+        secret = g.admin_secret
 
         slot_index = request.form.get("slot_index")
         day_type = request.form.get("day_type")
@@ -1262,17 +1204,10 @@ def create_app():
         return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
 
     @app.route("/admin/<event_uid>/unlock", methods=["POST"])
+    @require_admin
     def unlock(event_uid):
-        secret = request.form.get("secret")
         db = database.get_db()
-        db.row_factory = sqlite3.Row
-        event = db.execute(
-            "SELECT * FROM events WHERE uid = ?", (event_uid,)
-        ).fetchone()
-        if event is None:
-            return "Event not found", 404
-        if not secret or not hmac.compare_digest(event["admin_secret"], secret):
-            return "Forbidden", 403
+        secret = g.admin_secret
 
         slot_index = request.form.get("slot_index")
         day_type = request.form.get("day_type")
@@ -1303,17 +1238,10 @@ def create_app():
         return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
 
     @app.route("/admin/<event_uid>/delete", methods=["POST"])
+    @require_admin
     def delete(event_uid):
-        secret = request.form.get("secret")
         db = database.get_db()
-        db.row_factory = sqlite3.Row
-        event = db.execute(
-            "SELECT * FROM events WHERE uid = ?", (event_uid,)
-        ).fetchone()
-        if event is None:
-            return "Event not found", 404
-        if not secret or not hmac.compare_digest(event["admin_secret"], secret):
-            return "Forbidden", 403
+        secret = g.admin_secret
 
         submission_id = request.form.get("submission_id")
 
@@ -1338,17 +1266,25 @@ def create_app():
         return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
 
     @app.route("/admin/<event_uid>/update_alliance", methods=["POST"])
+    @require_admin
     def update_alliance(event_uid):
-        secret = request.form.get("secret")
         db = database.get_db()
-        db.row_factory = sqlite3.Row
-        event = db.execute(
-            "SELECT * FROM events WHERE uid = ?", (event_uid,)
-        ).fetchone()
-        if event is None:
-            return "Event not found", 404
-        if not secret or not hmac.compare_digest(event["admin_secret"], secret):
-            return "Forbidden", 403
+        secret = g.admin_secret
+
+        submission_id = request.form.get("submission_id")
+        new_alliance_name = request.form.get("alliance_name").strip()
+
+        app.audit_logger.info(
+            f"ADMIN: Update alliance for submission {submission_id} to {new_alliance_name} in event {event_uid}"
+        )
+
+        db.execute(
+            "UPDATE submissions SET alliance_name = ? WHERE id = ? AND event_uid = ?",
+            (new_alliance_name, submission_id, event_uid),
+        )
+        db.commit()
+
+        return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
 
         submission_id = request.form.get("submission_id")
         new_alliance_name = request.form.get("alliance_name").strip()
@@ -1366,17 +1302,10 @@ def create_app():
         return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
 
     @app.route("/admin/<event_uid>/override_resources", methods=["POST"])
+    @require_admin
     def override_resources(event_uid):
-        secret = request.form.get("secret")
         db = database.get_db()
-        db.row_factory = sqlite3.Row
-        event = db.execute(
-            "SELECT * FROM events WHERE uid = ?", (event_uid,)
-        ).fetchone()
-        if event is None:
-            return "Event not found", 404
-        if not secret or not hmac.compare_digest(event["admin_secret"], secret):
-            return "Forbidden", 403
+        secret = g.admin_secret
 
         submission_id = request.form.get("submission_id")
         submission = db.execute(
@@ -1427,17 +1356,10 @@ def create_app():
         return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
 
     @app.route("/admin/<event_uid>/unset", methods=["POST"])
+    @require_admin
     def unset_assignment(event_uid):
-        secret = request.form.get("secret")
         db = database.get_db()
-        db.row_factory = sqlite3.Row
-        event = db.execute(
-            "SELECT * FROM events WHERE uid = ?", (event_uid,)
-        ).fetchone()
-        if event is None:
-            return "Event not found", 404
-        if not secret or not hmac.compare_digest(event["admin_secret"], secret):
-            return "Forbidden", 403
+        secret = g.admin_secret
 
         submission_id = request.form.get("submission_id")
         if not submission_id:
@@ -1468,18 +1390,8 @@ def create_app():
         return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
 
     @app.route("/admin/<event_uid>/logs")
+    @require_admin
     def view_logs(event_uid):
-        secret = request.args.get("secret")
-        db = database.get_db()
-        db.row_factory = sqlite3.Row
-        event = db.execute(
-            "SELECT * FROM events WHERE uid = ?", (event_uid,)
-        ).fetchone()
-        if event is None:
-            return "Event not found", 404
-        if not secret or not hmac.compare_digest(event["admin_secret"], secret):
-            return "Forbidden", 403
-
         log_path = os.path.join(app.root_path, "..", "logs", "audit.log")
         if not os.path.exists(log_path):
             return "Log file not found", 404
@@ -1519,6 +1431,7 @@ def create_app():
         return "Forbidden", 403
 
     @app.route("/superadmin/logout")
+    @require_superadmin
     def superadmin_logout():
         session.pop("is_superadmin", None)
         return redirect(url_for("index"))
