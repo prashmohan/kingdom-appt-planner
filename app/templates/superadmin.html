@@ -41,26 +41,26 @@
             <div class="flex items-center flex-wrap gap-3">
                 <!-- Time Range Filter Buttons -->
                 <nav class="inline-flex bg-kvk-gray-900/90 p-1 rounded-xl border border-kvk-gray-700 shadow-inner" aria-label="Time range selector">
-                    <a href="{{ url_for('superadmin', range='1w') }}" 
+                    <a href="{{ url_for('superadmin.superadmin', range='1w') }}" 
                        class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all {% if current_range == '1w' %}bg-kvk-gold text-kvk-gray-900 shadow-md{% else %}text-gray-400 hover:text-gray-200 hover:bg-kvk-gray-800{% endif %}">
                         1 Week
                     </a>
-                    <a href="{{ url_for('superadmin', range='2w') }}" 
+                    <a href="{{ url_for('superadmin.superadmin', range='2w') }}" 
                        class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all {% if current_range == '2w' %}bg-kvk-gold text-kvk-gray-900 shadow-md{% else %}text-gray-400 hover:text-gray-200 hover:bg-kvk-gray-800{% endif %}">
                         2 Weeks
                     </a>
-                    <a href="{{ url_for('superadmin', range='4w') }}" 
+                    <a href="{{ url_for('superadmin.superadmin', range='4w') }}" 
                        class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all {% if current_range == '4w' %}bg-kvk-gold text-kvk-gray-900 shadow-md{% else %}text-gray-400 hover:text-gray-200 hover:bg-kvk-gray-800{% endif %}">
                         4 Weeks
                     </a>
-                    <a href="{{ url_for('superadmin', range='all') }}" 
+                    <a href="{{ url_for('superadmin.superadmin', range='all') }}" 
                        class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all {% if current_range == 'all' or not current_range %}bg-kvk-gold text-kvk-gray-900 shadow-md{% else %}text-gray-400 hover:text-gray-200 hover:bg-kvk-gray-800{% endif %}">
                         All Time
                     </a>
                 </nav>
 
                 <!-- Logout Button -->
-                <a href="{{ url_for('superadmin_logout') }}" 
+                <a href="{{ url_for('superadmin.superadmin_logout') }}" 
                    class="inline-flex items-center gap-1.5 bg-red-900/30 hover:bg-red-800/50 text-red-300 border border-red-700/50 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors shadow-sm"
                    title="End superadmin session">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

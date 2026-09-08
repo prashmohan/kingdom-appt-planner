@@ -1,8 +1,75 @@
 """Service layer for database operations and data access."""
 
 import json
+import logging
 import sqlite3
 from typing import Any
+
+import requests
+
+from config import Config
+
+from .utils import validate_safe_url
+
+
+def fetch_player_info(fid: str) -> dict | None:
+    """Fetch player nickname, avatar_url, and alliance abbreviation from MightPulse API."""
+    if not Config.MIGHTPULSE_API_KEY:
+        logging.getLogger("audit").warning("MIGHTPULSE_API_KEY is not configured.")
+        return None
+
+    fid_str = str(fid).strip()
+    if not fid_str.isdigit():
+        return None
+
+    base_url = (Config.MIGHTPULSE_BASE_URL or "https://api.mightpulse.com/v1").rstrip(
+        "/"
+    )
+    url = f"{base_url}/players/{fid_str}"
+    headers = {"Authorization": f"Bearer {Config.MIGHTPULSE_API_KEY}"}
+
+    try:
+        resp = requests.get(url, headers=headers, timeout=5)
+        if resp.status_code == 200:
+            data = resp.json()
+            if data.get("ok"):
+                player = data.get("player") or {}
+                nickname = player.get("nick_name")
+                avatar_url = player.get("avatar_url")
+                if avatar_url:
+                    if avatar_url.startswith("/"):
+                        avatar_url = f"https://mightpulse.com{avatar_url}"
+                    avatar_url = validate_safe_url(avatar_url)
+
+                alliance_data = player.get("alliance")
+                alliance_abbr = (
+                    alliance_data.get("abbr", "")
+                    if isinstance(alliance_data, dict)
+                    else ""
+                )
+
+                return {
+                    "nickname": nickname,
+                    "avatar_url": avatar_url,
+                    "alliance": alliance_abbr,
+                }
+        elif resp.status_code == 404:
+            logging.getLogger("audit").info(
+                f"MightPulse API: Player {fid_str} not found (404)."
+            )
+        else:
+            logging.getLogger("audit").warning(
+                f"MightPulse API returned status {resp.status_code} for player {fid_str}."
+            )
+    except requests.RequestException as e:
+        logging.getLogger("audit").warning(
+            f"MightPulse API request failed for player {fid_str}: {e}"
+        )
+    except Exception as e:  # noqa: BLE001
+        logging.getLogger("audit").error(
+            f"Unexpected error in fetch_player_info for player {fid_str}: {e}"
+        )
+    return None
 
 
 def get_event_by_uid(db: sqlite3.Connection, event_uid: str) -> sqlite3.Row | None:
