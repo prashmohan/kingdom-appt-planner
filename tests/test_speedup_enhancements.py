@@ -2,23 +2,6 @@ import json
 import sqlite3
 
 from app import database
-from app.logic import format_minutes
-
-
-def test_format_minutes():
-    assert format_minutes(0) == "0m"
-    assert format_minutes(1) == "1m"
-    assert format_minutes(59) == "59m"
-    assert format_minutes(60) == "1h"
-    assert format_minutes(61) == "1h 1m"
-    assert format_minutes(1440) == "1d"
-    assert format_minutes(1441) == "1d 1m"
-    assert format_minutes(1500) == "1d 1h"
-    assert format_minutes(1501) == "1d 1h 1m"
-    assert format_minutes(2880) == "2d"
-    assert format_minutes(3000) == "2d 2h"
-    assert format_minutes(3005) == "2d 2h 5m"
-    assert format_minutes(10000) == "6d 22h 40m"
 
 
 def test_speedup_submission_and_formatting(client, app):

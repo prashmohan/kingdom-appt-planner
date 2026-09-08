@@ -113,7 +113,8 @@ The Kingdom Appointment Planner is a functional, deployed Flask application that
   ```python
   # app/auth.py
   from functools import wraps
-  
+
+
   def require_admin(f):
       @wraps(f)
       def decorated(event_uid, *args, **kwargs):
@@ -131,6 +132,7 @@ The Kingdom Appointment Planner is a functional, deployed Flask application that
           g.event = event
           g.admin_secret = secret
           return f(event_uid, *args, **kwargs)
+
       return decorated
   ```
 
@@ -197,7 +199,11 @@ The Kingdom Appointment Planner is a functional, deployed Flask application that
   DAY_TYPE_CONFIG = {
       "construction": {
           "fields": ["speedups-construction", "truegold", "tempered_truegold"],
-          "multipliers": {"speedups-construction": 30, "truegold": 2000, "tempered_truegold": 30000},
+          "multipliers": {
+              "speedups-construction": 30,
+              "truegold": 2000,
+              "tempered_truegold": 30000,
+          },
       },
       # ... training, research
   }
@@ -205,7 +211,9 @@ The Kingdom Appointment Planner is a functional, deployed Flask application that
       values = {f: int(request.form.get(f) or 0) for f in config["fields"]}
       score = sum(v * config["multipliers"][k] for k, v in values.items())
       if score > 0 and feasible_slots != "[]":
-          _insert_submission(db, event_uid, day_type, player_data, score, values, feasible_slots)
+          _insert_submission(
+              db, event_uid, day_type, player_data, score, values, feasible_slots
+          )
   ```
 
 #### ARCH-011: Silent Exception Swallowing in Context Processor
@@ -232,15 +240,17 @@ The Kingdom Appointment Planner is a functional, deployed Flask application that
       db.row_factory = sqlite3.Row
       row = db.execute("SELECT * FROM events WHERE uid = ?", (event_uid,)).fetchone()
       return dict(row) if row else None
-  
-  def get_submissions_for_event(db, event_uid, day_type=None) -> list[dict]:
-      ...
-  
-  def create_submission(db, event_uid, day_type, player_data, score, raw_data, feasible_slots) -> str:
-      ...
-  
-  def delete_player_submissions(db, event_uid, player_id) -> None:
-      ...
+
+
+  def get_submissions_for_event(db, event_uid, day_type=None) -> list[dict]: ...
+
+
+  def create_submission(
+      db, event_uid, day_type, player_data, score, raw_data, feasible_slots
+  ) -> str: ...
+
+
+  def delete_player_submissions(db, event_uid, player_id) -> None: ...
   ```
 
 #### ARCH-013: `get_superadmin_metrics` is 300 Lines with In-Memory Joins
@@ -267,9 +277,9 @@ The Kingdom Appointment Planner is a functional, deployed Flask application that
           return result if isinstance(result, list) else default or []
       except (json.JSONDecodeError, TypeError):
           return default or []
-  
-  def parse_json_dict(raw: str | None, default: dict | None = None) -> dict:
-      ...
+
+
+  def parse_json_dict(raw: str | None, default: dict | None = None) -> dict: ...
   ```
 
 ---
@@ -420,13 +430,15 @@ import hmac
 import sqlite3
 from . import database
 
+
 def require_admin(f):
     """Decorator that authenticates admin access for an event.
-    
+
     Expects: route parameter `event_uid`.
     Sets: g.event (sqlite3.Row), g.admin_secret (str), g.db (sqlite3.Connection).
     Returns: 403/404 on auth failure.
     """
+
     @wraps(f)
     def decorated(event_uid, *args, **kwargs):
         secret = request.form.get("secret") or request.args.get("secret")
@@ -443,15 +455,18 @@ def require_admin(f):
         g.admin_secret = secret
         g.db = db
         return f(event_uid, *args, **kwargs)
+
     return decorated
 ```
 
 ```python
 # app/services.py — Data Access Contract (Key Functions)
 
+
 def get_event_by_uid(db: sqlite3.Connection, event_uid: str) -> dict | None:
     """Fetch a single event by its UID. Returns dict or None."""
     ...
+
 
 def get_submissions_for_event(
     db: sqlite3.Connection, event_uid: str, day_type: str | None = None
@@ -460,11 +475,13 @@ def get_submissions_for_event(
     Returns list of dicts with parsed feasible_slots and raw_data."""
     ...
 
+
 def get_assignments_for_event(
     db: sqlite3.Connection, event_uid: str, day_type: str | None = None
 ) -> list[dict]:
     """Fetch all assignments for an event, optionally filtered by day_type."""
     ...
+
 
 def create_submission(
     db: sqlite3.Connection,
@@ -482,11 +499,11 @@ def create_submission(
     """Insert a new submission. Returns submission_id."""
     ...
 
-def delete_player_data(
-    db: sqlite3.Connection, event_uid: str, player_id: str
-) -> None:
+
+def delete_player_data(db: sqlite3.Connection, event_uid: str, player_id: str) -> None:
     """Delete all submissions and assignments for a player in an event."""
     ...
+
 
 def compute_score(day_type: str, raw_data: dict) -> float:
     """Compute the resource score for a submission using SCORING_MULTIPLIERS."""
@@ -496,13 +513,16 @@ def compute_score(day_type: str, raw_data: dict) -> float:
 ```python
 # app/utils.py — Utility Contract
 
+
 def parse_json_list(raw: str | None, default: list | None = None) -> list:
     """Safely parse a JSON string expected to be a list. Returns default on failure."""
     ...
 
+
 def parse_json_dict(raw: str | None, default: dict | None = None) -> dict:
     """Safely parse a JSON string expected to be a dict. Returns default on failure."""
     ...
+
 
 def validate_safe_url(url: str | None) -> str | None:
     """Validate URL uses only safe HTTP(S) or /static/ schemes. Returns cleaned URL or None."""
@@ -521,10 +541,24 @@ SCORING_MULTIPLIERS: dict[str, dict[str, int]] = {
 }
 
 RESERVED_SLUGS: set[str] = {
-    "admin", "create", "distribute", "event", "export_csv", "guide",
-    "static", "success", "confirm", "unlock", "delete", "manual_assign",
-    "unset", "override_resources", "update_alliance", "submission-success",
-    "favicon.ico", "superadmin",
+    "admin",
+    "create",
+    "distribute",
+    "event",
+    "export_csv",
+    "guide",
+    "static",
+    "success",
+    "confirm",
+    "unlock",
+    "delete",
+    "manual_assign",
+    "unset",
+    "override_resources",
+    "update_alliance",
+    "submission-success",
+    "favicon.ico",
+    "superadmin",
 }
 ```
 
@@ -692,6 +726,7 @@ grep -rn "db.execute" app/routes/ | wc -l
      ```python
      from dataclasses import dataclass, field
 
+
      @dataclass
      class _EventContext:
          event_uid: str
@@ -764,6 +799,7 @@ grep -rn "db.execute" app/routes/ | wc -l
      ```python
      if not app.testing and app.config["SECRET_KEY"] == "dev-key-for-internal-use-only-123":
          import warnings
+
          warnings.warn(
              "SECRET_KEY is using the insecure default. Set SECRET_KEY environment variable.",
              stacklevel=2,

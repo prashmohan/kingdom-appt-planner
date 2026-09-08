@@ -2976,3 +2976,96 @@ def test_refresh_players_route(client, app):
             assert (
                 row["avatar_url"] == "https://mightpulse.com/cdn/avatar/refreshed.png"
             )
+
+
+def test_unset_assignment_malformed_input(client, app):
+    with app.app_context():
+        db = database.get_db()
+        db.execute(
+            "INSERT INTO events (uid, name, active_days, admin_secret) VALUES (?, ?, ?, ?)",
+            ("evt_unset", "Unset Test", '{"construction":true}', "sec123"),
+        )
+        db.commit()
+
+    # Missing submission_id
+    res = client.post("/admin/evt_unset/unset", data={"secret": "sec123"})
+    assert res.status_code == 400
+    assert b"Missing submission_id" in res.data
+
+    # Malformed submission_id (no underscores)
+    res = client.post(
+        "/admin/evt_unset/unset",
+        data={"secret": "sec123", "submission_id": "malformed"},
+    )
+    assert res.status_code == 400
+    assert b"Invalid submission_id format" in res.data
+
+    # Malformed submission_id (only 1 underscore)
+    res = client.post(
+        "/admin/evt_unset/unset",
+        data={"secret": "sec123", "submission_id": "mal_formed"},
+    )
+    assert res.status_code == 400
+    assert b"Invalid submission_id format" in res.data
+
+
+def test_resubmission_frictionless_overwrite(client, app):
+    """Verify ARCH-002 intentional design: frictionless overwrite by player_id without session locks."""
+    with app.app_context():
+        db = database.get_db()
+        db.execute(
+            "INSERT INTO events (uid, name, active_days, admin_secret) VALUES (?, ?, ?, ?)",
+            ("evt_resub", "Resubmission Test", '{"construction":true}', "sec123"),
+        )
+        db.commit()
+
+    # 1. Initial submission
+    res1 = client.post(
+        "/event/evt_resub/submit",
+        data={
+            "player_id": "88888888",
+            "player_name": "OriginalHero",
+            "alliance_name": "ALL1",
+            "speedups-construction": "60",
+            "slots-construction": "[0]",
+        },
+    )
+    assert res1.status_code == 302
+
+    with app.app_context():
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        rows = db.execute(
+            "SELECT * FROM submissions WHERE event_uid = 'evt_resub' AND player_id = '88888888'"
+        ).fetchall()
+        assert len(rows) == 1
+        assert rows[0]["player_name"] == "OriginalHero"
+        assert rows[0]["resources"] == 60 * 30  # construction multiplier is 30
+        assert rows[0]["feasible_slots"] == "[0]"
+
+    # 2. Resubmission with updated stats & slots from a different client session
+    new_client = app.test_client()  # simulate another device / no session cookies
+    res2 = new_client.post(
+        "/event/evt_resub/submit",
+        data={
+            "player_id": "88888888",
+            "player_name": "UpdatedHero",
+            "alliance_name": "ALL2",
+            "speedups-construction": "120",
+            "slots-construction": "[0, 1]",
+        },
+    )
+    assert res2.status_code == 302
+
+    with app.app_context():
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        rows = db.execute(
+            "SELECT * FROM submissions WHERE event_uid = 'evt_resub' AND player_id = '88888888'"
+        ).fetchall()
+        # Exactly one record exists (overwritten, not duplicated)
+        assert len(rows) == 1
+        assert rows[0]["player_name"] == "UpdatedHero"
+        assert rows[0]["alliance_name"] == "ALL2"
+        assert rows[0]["resources"] == 120 * 30
+        assert rows[0]["feasible_slots"] == "[0, 1]"

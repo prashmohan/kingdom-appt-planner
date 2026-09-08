@@ -1,7 +1,10 @@
+import logging
 import os
 import sqlite3
 
 from flask import g
+
+logger = logging.getLogger(__name__)
 
 DATABASE_PATH = os.environ.get("DATABASE_PATH", "data/planner.db")
 
@@ -115,14 +118,14 @@ def init_db():
 
     # We need day_type to be in the columns AND in the primary key
     if "day_type" not in columns or "day_type" not in pk_columns:
-        print("DEBUG: Migrating assignments table to new primary key...")
+        logger.info("Migrating assignments table to new primary key...")
         try:
             # 0. Drop any old indexes that might be enforcing the old unique constraint
             cursor.execute("DROP INDEX IF EXISTS idx_assignments_unique")
 
             # 1. Rename existing table
             cursor.execute("ALTER TABLE assignments RENAME TO assignments_old")
-            print("DEBUG: Renamed assignments to assignments_old")
+            logger.info("Renamed assignments to assignments_old")
 
             # 2. Create new table with correct PK
             cursor.execute("""
@@ -136,7 +139,7 @@ def init_db():
                     FOREIGN KEY (event_uid) REFERENCES events (uid)
                 )
             """)
-            print("DEBUG: Created new assignments table with composite primary key")
+            logger.info("Created new assignments table with composite primary key")
 
             # 3. Copy data
             if "day_type" in columns:
@@ -148,25 +151,25 @@ def init_db():
                 cursor.execute(
                     "INSERT INTO assignments (event_uid, day_type, slot_index, player_id, is_locked) SELECT event_uid, 'construction', slot_index, player_id, is_locked FROM assignments_old"
                 )
-            print("DEBUG: Copied data from assignments_old to assignments")
+            logger.info("Copied data from assignments_old to assignments")
 
             # 4. Drop old table
             cursor.execute("DROP TABLE assignments_old")
-            print("DEBUG: Dropped assignments_old table")
+            logger.info("Dropped assignments_old table")
         except sqlite3.OperationalError as e:
-            print(f"DEBUG: Migration error: {e}")
+            logger.warning(f"Migration error: {e}")
             # Handle concurrency (another worker might be doing this)
             if "already exists" in str(e) or "duplicate column name" in str(e):
                 # Check if the new table is actually correct now
                 cursor.execute("PRAGMA table_info(assignments)")
                 new_cols = cursor.fetchall()
                 if any(c[1] == "day_type" and c[5] > 0 for c in new_cols):
-                    print("DEBUG: Migration already completed by another worker.")
+                    logger.info("Migration already completed by another worker.")
                 else:
                     raise
             elif "no such table" in str(e) and "assignments_old" in str(e):
-                print(
-                    "DEBUG: assignments_old already dropped, migration likely finished."
+                logger.info(
+                    "assignments_old already dropped, migration likely finished."
                 )
             else:
                 raise
