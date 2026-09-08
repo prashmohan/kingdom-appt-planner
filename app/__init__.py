@@ -150,8 +150,10 @@ def create_app():
                 ).fetchone()
                 if row and row[0] is not None:
                     slot_count = row[0]
-        except (RuntimeError, Exception):  # noqa: BLE001, S110
-            pass
+        except (sqlite3.Error, RuntimeError) as e:
+            logging.getLogger("audit").warning(
+                f"Context processor slot lookup failed for event {event_uid}: {e}"
+            )
 
         return {
             "slot_labels": generate_slot_labels(slot_count),
