@@ -34,6 +34,7 @@ from .logic import (
     compute_event_insights,
     format_minutes,
     generate_short_uid,
+    generate_slot_labels,
     get_ordered_active_days,
     get_superadmin_metrics,
     validate_custom_slug,
@@ -51,30 +52,6 @@ def validate_safe_url(url: str | None) -> str | None:
     if cleaned.startswith(("http://", "https://", "/static/")):
         return cleaned
     return None
-
-
-def generate_slot_labels(slot_count=49):
-    labels = []
-    for i in range(slot_count):
-        if slot_count == 48:
-            start_total_minutes = i * 30
-        else:
-            start_total_minutes = (i * 30) - 15
-
-        if start_total_minutes < 0:
-            start_total_minutes += 24 * 60
-
-        start_hour = start_total_minutes // 60
-        start_min = start_total_minutes % 60
-
-        end_total_minutes = start_total_minutes + 30
-        end_hour = (end_total_minutes // 60) % 24
-        end_min = end_total_minutes % 60
-
-        labels.append(
-            f"{start_hour:02d}:{start_min:02d}-\u200b{end_hour:02d}:{end_min:02d}"
-        )
-    return labels
 
 
 def fetch_player_info(fid: str) -> dict | None:
