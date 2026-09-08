@@ -3007,4 +3007,3 @@ def test_unset_assignment_malformed_input(client, app):
     )
     assert res.status_code == 400
     assert b"Invalid submission_id format" in res.data
-
