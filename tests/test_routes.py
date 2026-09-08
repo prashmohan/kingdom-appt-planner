@@ -2976,3 +2976,35 @@ def test_refresh_players_route(client, app):
             assert (
                 row["avatar_url"] == "https://mightpulse.com/cdn/avatar/refreshed.png"
             )
+
+
+def test_unset_assignment_malformed_input(client, app):
+    with app.app_context():
+        db = database.get_db()
+        db.execute(
+            "INSERT INTO events (uid, name, active_days, admin_secret) VALUES (?, ?, ?, ?)",
+            ("evt_unset", "Unset Test", '{"construction":true}', "sec123"),
+        )
+        db.commit()
+
+    # Missing submission_id
+    res = client.post("/admin/evt_unset/unset", data={"secret": "sec123"})
+    assert res.status_code == 400
+    assert b"Missing submission_id" in res.data
+
+    # Malformed submission_id (no underscores)
+    res = client.post(
+        "/admin/evt_unset/unset",
+        data={"secret": "sec123", "submission_id": "malformed"},
+    )
+    assert res.status_code == 400
+    assert b"Invalid submission_id format" in res.data
+
+    # Malformed submission_id (only 1 underscore)
+    res = client.post(
+        "/admin/evt_unset/unset",
+        data={"secret": "sec123", "submission_id": "mal_formed"},
+    )
+    assert res.status_code == 400
+    assert b"Invalid submission_id format" in res.data
+

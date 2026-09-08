@@ -1475,7 +1475,12 @@ def create_app():
             return "Forbidden", 403
 
         submission_id = request.form.get("submission_id")
-        _, player_id, day_type = submission_id.split("_", 2)
+        if not submission_id:
+            return "Missing submission_id", 400
+        try:
+            _, player_id, day_type = submission_id.split("_", 2)
+        except (ValueError, AttributeError):
+            return "Invalid submission_id format", 400
 
         app.audit_logger.info(
             f"ADMIN: Unset assignment for Player {player_id} on day {day_type} in event {event_uid}"
