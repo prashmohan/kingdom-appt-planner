@@ -1,14 +1,16 @@
 """Authentication and authorization decorators."""
 
 import hmac
+from collections.abc import Callable
 from functools import wraps
+from typing import Any
 
 from flask import g, request, session
 
 from . import database, services
 
 
-def require_admin(f):
+def require_admin(f: Callable[..., Any]) -> Callable[..., Any]:
     """Decorator verifying event existence and admin secret via capability URL or form body.
 
     Populates g.event and g.admin_secret upon successful verification.
@@ -32,7 +34,7 @@ def require_admin(f):
     return decorated
 
 
-def require_superadmin(f):
+def require_superadmin(f: Callable[..., Any]) -> Callable[..., Any]:
     """Decorator enforcing authenticated superadmin session."""
 
     @wraps(f)

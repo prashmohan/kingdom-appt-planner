@@ -48,7 +48,7 @@ def validate_custom_slug(
     return True, None
 
 
-def run_distribution_algorithm(event_uid, day_type=None):
+def run_distribution_algorithm(event_uid: str, day_type: str | None = None) -> None:
     db = database.get_db()
     db.row_factory = sqlite3.Row
 
@@ -187,7 +187,9 @@ def run_distribution_algorithm(event_uid, day_type=None):
     db.commit()
 
 
-def get_ordered_active_days(active_days_config):
+def get_ordered_active_days(
+    active_days_config: dict[str, Any] | list[str] | str,
+) -> list[str]:
     """
     Returns active days sorted chronologically by day number.
     Supports active_days_config as a dict, list, or JSON string.
