@@ -7,27 +7,7 @@ from collections import Counter, defaultdict
 from typing import Any
 
 from . import database
-
-RESERVED_SLUGS = {
-    "admin",
-    "create",
-    "distribute",
-    "event",
-    "export_csv",
-    "guide",
-    "static",
-    "success",
-    "confirm",
-    "unlock",
-    "delete",
-    "manual_assign",
-    "unset",
-    "override_resources",
-    "update_alliance",
-    "submission-success",
-    "favicon.ico",
-    "superadmin",
-}
+from .constants import DEFAULT_SLOT_COUNT, RESERVED_SLUGS
 
 
 def generate_short_uid(length: int = 8) -> str:
@@ -575,7 +555,7 @@ def get_superadmin_metrics(
     }
 
 
-def generate_slot_labels(slot_count: int = 49) -> list[str]:
+def generate_slot_labels(slot_count: int = DEFAULT_SLOT_COUNT) -> list[str]:
     labels = []
     for i in range(slot_count):
         if slot_count == 48:
@@ -622,7 +602,11 @@ def compute_event_insights(
     if not event_row:
         return None
 
-    slot_count = event_row["slot_count"] if event_row["slot_count"] is not None else 49
+    slot_count = (
+        event_row["slot_count"]
+        if event_row["slot_count"] is not None
+        else DEFAULT_SLOT_COUNT
+    )
     active_days = get_ordered_active_days(event_row["active_days"])
     slot_labels = generate_slot_labels(slot_count)
 

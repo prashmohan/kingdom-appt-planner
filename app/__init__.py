@@ -30,6 +30,7 @@ from werkzeug.utils import secure_filename
 from config import Config
 
 from . import database, logic
+from .constants import DEFAULT_SLOT_COUNT, compute_score
 from .logic import (
     compute_event_insights,
     format_minutes,
@@ -138,7 +139,7 @@ def create_app():
     # Make the label generator available to all templates
     @app.context_processor
     def inject_global_config():
-        slot_count = 49
+        slot_count = DEFAULT_SLOT_COUNT
         try:
             event_uid = (
                 request.view_args.get("event_uid") if request.view_args else None
@@ -507,16 +508,12 @@ def create_app():
             construction_speedups > 0 or truegold > 0 or tempered_truegold > 0
         ) and feasible_slots != "[]":
             day_type = "construction"
-            score = (
-                (construction_speedups * 30)
-                + (truegold * 2000)
-                + (tempered_truegold * 30000)
-            )
             raw_data = {
                 "speedups": construction_speedups,
                 "truegold": truegold,
                 "tempered_truegold": tempered_truegold,
             }
+            score = compute_score(day_type, raw_data)
             submission_id = f"{event_uid}_{player_id}_{day_type}"
             db.execute(
                 "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, avatar_url, backpack_url, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
@@ -540,8 +537,8 @@ def create_app():
         feasible_slots = request.form.get("slots-training", "[]")
         if training_speedups > 0 and feasible_slots != "[]":
             day_type = "training"
-            score = training_speedups * 90
             raw_data = {"speedups": training_speedups}
+            score = compute_score(day_type, raw_data)
             submission_id = f"{event_uid}_{player_id}_{day_type}"
             db.execute(
                 "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, avatar_url, backpack_url, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
@@ -566,8 +563,8 @@ def create_app():
         feasible_slots = request.form.get("slots-research", "[]")
         if (research_speedups > 0 or truegold_dust > 0) and feasible_slots != "[]":
             day_type = "research"
-            score = (research_speedups * 30) + (truegold_dust * 1000)
             raw_data = {"speedups": research_speedups, "truegold_dust": truegold_dust}
+            score = compute_score(day_type, raw_data)
             submission_id = f"{event_uid}_{player_id}_{day_type}"
             db.execute(
                 "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, avatar_url, backpack_url, alliance_name, resources, raw_data, feasible_slots) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
@@ -1406,23 +1403,21 @@ def create_app():
                 speedups = int(request.form.get("speedups") or 0)
                 truegold = int(request.form.get("truegold") or 0)
                 tempered_truegold = int(request.form.get("tempered_truegold") or 0)
-                score = (
-                    (speedups * 30) + (truegold * 2000) + (tempered_truegold * 30000)
-                )
                 raw_data = {
                     "speedups": speedups,
                     "truegold": truegold,
                     "tempered_truegold": tempered_truegold,
                 }
+                score = compute_score(day_type, raw_data)
             elif day_type == "training":
                 speedups = int(request.form.get("speedups") or 0)
-                score = speedups * 90
                 raw_data = {"speedups": speedups}
+                score = compute_score(day_type, raw_data)
             elif day_type == "research":
                 speedups = int(request.form.get("speedups") or 0)
                 truegold_dust = int(request.form.get("truegold_dust") or 0)
-                score = (speedups * 30) + (truegold_dust * 1000)
                 raw_data = {"speedups": speedups, "truegold_dust": truegold_dust}
+                score = compute_score(day_type, raw_data)
             else:
                 return "Invalid day type", 400
         except ValueError:
