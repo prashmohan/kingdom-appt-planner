@@ -2,7 +2,9 @@ import io
 import json
 import os
 import sqlite3
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
+
+import requests
 
 from app import database
 
@@ -172,24 +174,6 @@ def test_player_form_page(client, app):
 
     # Test 404
     assert client.get("/event/nonexistent").status_code == 404
-
-
-def test_proxy_player_deleted(client):
-    response = client.post("/api/proxy/player", json={"fid": "123"})
-    assert response.status_code == 404
-
-
-def test_refresh_players_deleted(client, app):
-    with app.app_context():
-        db = database.get_db()
-        db.execute(
-            "INSERT INTO events (uid, name, active_days, admin_secret) VALUES (?, ?, ?, ?)",
-            ("ref123", "Refresh Test", '{"construction":true}', "secret"),
-        )
-        db.commit()
-
-    response = client.post("/admin/ref123/refresh_players", data={"secret": "secret"})
-    assert response.status_code == 404
 
 
 def test_submit_valid(client, app):
@@ -2777,3 +2761,218 @@ def test_admin_dashboard_rigid_whales_slider(client, app):
     assert "rigid-whale-card" in html
     assert 'data-slots="2"' in html
     assert "RigidWhale" in html
+
+
+def test_fetch_player_info_success(app):
+    from app import fetch_player_info
+
+    with patch("requests.get") as mock_get:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "ok": True,
+            "player": {
+                "nick_name": "TestHero",
+                "avatar_url": "/cdn/avatar/test.png",
+                "alliance": {"abbr": "ALLI"},
+            },
+        }
+        mock_get.return_value = mock_resp
+
+        res = fetch_player_info("12345678")
+        assert res is not None
+        assert res["nickname"] == "TestHero"
+        assert res["avatar_url"] == "https://mightpulse.com/cdn/avatar/test.png"
+        assert res["alliance"] == "ALLI"
+
+
+def test_fetch_player_info_full_avatar_url(app):
+    from app import fetch_player_info
+
+    with patch("requests.get") as mock_get:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "ok": True,
+            "player": {
+                "nick_name": "TestHero",
+                "avatar_url": "https://custom-cdn.com/avatar/test.png",
+                "alliance": None,
+            },
+        }
+        mock_get.return_value = mock_resp
+
+        res = fetch_player_info("12345678")
+        assert res is not None
+        assert res["nickname"] == "TestHero"
+        assert res["avatar_url"] == "https://custom-cdn.com/avatar/test.png"
+        assert res["alliance"] == ""
+
+
+def test_fetch_player_info_not_found(app):
+    from app import fetch_player_info
+
+    with patch("requests.get") as mock_get:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 404
+        mock_resp.json.return_value = {"ok": False, "error": "player_not_found"}
+        mock_get.return_value = mock_resp
+
+        res = fetch_player_info("99999999")
+        assert res is None
+
+
+def test_fetch_player_info_network_error(app):
+    from app import fetch_player_info
+
+    with patch("requests.get", side_effect=requests.RequestException("Timeout")):
+        res = fetch_player_info("12345678")
+        assert res is None
+
+
+def test_fetch_player_info_missing_api_key(app, monkeypatch):
+    from app import fetch_player_info
+    from config import Config
+
+    monkeypatch.setattr(Config, "MIGHTPULSE_API_KEY", None)
+    res = fetch_player_info("12345678")
+    assert res is None
+
+
+def test_proxy_player_route_success(client):
+    with patch("app.fetch_player_info") as mock_fetch:
+        mock_fetch.return_value = {
+            "nickname": "TestHero",
+            "avatar_url": "https://mightpulse.com/cdn/avatar/test.png",
+            "alliance": "ALLI",
+        }
+
+        response = client.post("/api/proxy/player", json={"fid": "123456"})
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data["nickname"] == "TestHero"
+        assert data["avatar_url"] == "https://mightpulse.com/cdn/avatar/test.png"
+        assert data["alliance"] == "ALLI"
+
+
+def test_proxy_player_route_invalid_inputs(client):
+    # Missing JSON / empty payload
+    assert client.post("/api/proxy/player").status_code == 400
+    assert client.post("/api/proxy/player", json={}).status_code == 400
+
+    # Non-numeric fid
+    assert client.post("/api/proxy/player", json={"fid": "abc"}).status_code == 400
+
+
+def test_proxy_player_route_not_found(client):
+    with patch("app.fetch_player_info", return_value=None):
+        response = client.post("/api/proxy/player", json={"fid": "999999"})
+        assert response.status_code == 404
+        assert b"Player not found" in response.data
+
+
+def test_proxy_player_route_internal_error(client):
+    with patch("app.fetch_player_info", side_effect=Exception("Database down")):
+        response = client.post("/api/proxy/player", json={"fid": "123456"})
+        assert response.status_code == 500
+
+
+def test_submit_with_avatar_url(client, app):
+    with app.app_context():
+        db = database.get_db()
+        db.execute(
+            "INSERT INTO events (uid, name, active_days, admin_secret) VALUES (?, ?, ?, ?)",
+            ("evt_avatar", "Avatar Submit Test", '{"construction":true}', "sec123"),
+        )
+        db.commit()
+
+    response = client.post(
+        "/event/evt_avatar/submit",
+        data={
+            "player_id": "123456",
+            "player_name": "AvatarHero",
+            "alliance_name": "AVT",
+            "avatar_url": "https://mightpulse.com/cdn/avatar/avatar.png",
+            "speedups-construction": "60",
+            "slots-construction": "[0]",
+        },
+    )
+    assert response.status_code == 302
+
+    with app.app_context():
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        row = db.execute(
+            "SELECT player_name, avatar_url, alliance_name FROM submissions WHERE event_uid = 'evt_avatar' AND player_id = '123456'"
+        ).fetchone()
+        assert row["player_name"] == "AvatarHero"
+        assert row["avatar_url"] == "https://mightpulse.com/cdn/avatar/avatar.png"
+        assert row["alliance_name"] == "AVT"
+
+
+def test_refresh_players_route(client, app):
+    with app.app_context():
+        db = database.get_db()
+        db.execute(
+            "INSERT INTO events (uid, name, active_days, admin_secret) VALUES (?, ?, ?, ?)",
+            ("evt_refresh", "Refresh Test", '{"construction":true}', "good_secret"),
+        )
+        db.execute(
+            "INSERT INTO submissions (id, event_uid, day_type, player_name, player_id, alliance_name, resources, raw_data, feasible_slots, status, avatar_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                "evt_refresh_p1_construction",
+                "evt_refresh",
+                "construction",
+                "OldName",
+                "12345678",
+                "OLD",
+                10.0,
+                "{}",
+                "[0]",
+                "Pending",
+                None,
+            ),
+        )
+        db.commit()
+
+    # 1. Non-existent event
+    assert (
+        client.post(
+            "/admin/no_event/refresh_players", data={"secret": "good_secret"}
+        ).status_code
+        == 404
+    )
+
+    # 2. Invalid secret
+    assert (
+        client.post(
+            "/admin/evt_refresh/refresh_players", data={"secret": "wrong_secret"}
+        ).status_code
+        == 403
+    )
+
+    # 3. Successful refresh
+    with patch("app.fetch_player_info") as mock_fetch:
+        mock_fetch.return_value = {
+            "nickname": "RefreshedName",
+            "avatar_url": "https://mightpulse.com/cdn/avatar/refreshed.png",
+            "alliance": "NEW",
+        }
+
+        resp = client.post(
+            "/admin/evt_refresh/refresh_players",
+            data={"secret": "good_secret"},
+            follow_redirects=True,
+        )
+        assert resp.status_code == 200
+
+        with app.app_context():
+            db = database.get_db()
+            db.row_factory = sqlite3.Row
+            row = db.execute(
+                "SELECT player_name, avatar_url FROM submissions WHERE event_uid = 'evt_refresh' AND player_id = '12345678'"
+            ).fetchone()
+            assert row["player_name"] == "RefreshedName"
+            assert (
+                row["avatar_url"] == "https://mightpulse.com/cdn/avatar/refreshed.png"
+            )

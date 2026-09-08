@@ -134,23 +134,33 @@
             
             <div class="p-4 border-b border-kvk-gray-700">
                 <h2 class="text-2xl font-bold text-gray-100 mb-4">Your Information</h2>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
-                    <div>
-                        <label for="player_id" class="block text-sm font-medium text-gray-300 mb-1">Player ID (Numeric)</label>
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
+                    <div class="md:col-span-4">
+                        <label for="player_id" class="block text-sm font-medium text-gray-300 mb-1">
+                            Player ID (Numeric)
+                            <span id="fetch-status" class="ml-2 text-xs font-normal"></span>
+                        </label>
                         <input type="text" name="player_id" id="player_id" required 
                                pattern="\d*" inputmode="numeric" placeholder="e.g. 12345678"
                                class="block w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md shadow-sm text-gray-200 focus:border-kvk-gold focus:ring focus:ring-kvk-gold focus:ring-opacity-50">
                     </div>
-                    <div>
-                        <label for="player_name" class="block text-sm font-medium text-gray-300 mb-1">Player Name</label>
-                        <input type="text" name="player_name" id="player_name" required placeholder="e.g. KingArthur"
-                               class="block w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md shadow-sm text-gray-200 focus:border-kvk-gold focus:ring focus:ring-kvk-gold focus:ring-opacity-50">
+                    <div class="md:col-span-5 flex items-center gap-3">
+                        <div id="avatar-container" class="w-12 h-12 rounded-full bg-kvk-gray-900 border border-kvk-gray-700 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                            <img id="player-avatar" src="" alt="Avatar" class="w-full h-full object-cover hidden">
+                            <span id="avatar-placeholder" class="text-gray-500 text-xs font-semibold">?</span>
+                        </div>
+                        <div class="flex-grow">
+                            <label for="player_name" class="block text-sm font-medium text-gray-300 mb-1">Player Name</label>
+                            <input type="text" name="player_name" id="player_name" required placeholder="e.g. KingArthur"
+                                   class="block w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md shadow-sm text-gray-200 focus:border-kvk-gold focus:ring focus:ring-kvk-gold focus:ring-opacity-50">
+                        </div>
                     </div>
-                    <div>
+                    <div class="md:col-span-3">
                         <label for="alliance_name" class="block text-sm font-medium text-gray-300 mb-1">Alliance</label>
                         <input type="text" name="alliance_name" id="alliance_name" placeholder="e.g. KVK" class="block w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md shadow-sm text-gray-200 focus:border-kvk-gold focus:ring focus:ring-kvk-gold focus:ring-opacity-50">
                     </div>
                 </div>
+                <input type="hidden" name="avatar_url" id="avatar_url_input">
                 
                 {% if enable_screenshot_upload %}
                 <div class="mt-6 border-t border-kvk-gray-700 pt-6">
@@ -566,6 +576,80 @@
                     });
                 });
             });
+
+            // Player Info Fetching Logic
+            const idInput = document.getElementById('player_id');
+            const nameInput = document.getElementById('player_name');
+            const allianceInput = document.getElementById('alliance_name');
+            const statusSpan = document.getElementById('fetch-status');
+            const avatarImg = document.getElementById('player-avatar');
+            const avatarPlaceholder = document.getElementById('avatar-placeholder');
+            const avatarUrlInput = document.getElementById('avatar_url_input');
+            let lastFetchedId = '';
+
+            async function fetchPlayerDetails() {
+                const fid = idInput.value.trim();
+                if (!fid || !/^\d+$/.test(fid)) {
+                    statusSpan.innerText = '';
+                    avatarImg.classList.add('hidden');
+                    if (avatarPlaceholder) avatarPlaceholder.classList.remove('hidden');
+                    return;
+                }
+
+                if (fid === lastFetchedId) return;
+
+                statusSpan.innerText = 'Fetching...';
+                statusSpan.className = 'ml-2 text-xs font-normal text-kvk-blue';
+
+                try {
+                    const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+                    const response = await fetch('/api/proxy/player', {
+                        method: 'POST',
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken
+                        },
+                        body: JSON.stringify({ fid })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        lastFetchedId = fid;
+                        if (data.nickname) {
+                            nameInput.value = data.nickname;
+                        }
+                        if (data.alliance && !allianceInput.value.trim()) {
+                            allianceInput.value = data.alliance;
+                        }
+                        if (data.avatar_url) {
+                            avatarUrlInput.value = data.avatar_url;
+                            avatarImg.src = data.avatar_url;
+                            avatarImg.classList.remove('hidden');
+                            if (avatarPlaceholder) avatarPlaceholder.classList.add('hidden');
+                        } else {
+                            avatarUrlInput.value = '';
+                            avatarImg.classList.add('hidden');
+                            if (avatarPlaceholder) avatarPlaceholder.classList.remove('hidden');
+                        }
+                        
+                        statusSpan.innerText = 'Found!';
+                        statusSpan.className = 'ml-2 text-xs font-normal text-green-400';
+                    } else {
+                        statusSpan.innerText = 'Not found (manual entry enabled)';
+                        statusSpan.className = 'ml-2 text-xs font-normal text-amber-400';
+                        avatarImg.classList.add('hidden');
+                        if (avatarPlaceholder) avatarPlaceholder.classList.remove('hidden');
+                    }
+                } catch (err) {
+                    console.error('Player lookup error:', err);
+                    statusSpan.innerText = 'Lookup unavailable (manual entry enabled)';
+                    statusSpan.className = 'ml-2 text-xs font-normal text-amber-400';
+                }
+            }
+
+            idInput.addEventListener('blur', fetchPlayerDetails);
+            idInput.addEventListener('change', fetchPlayerDetails);
 
             // Form Validation
             const form = document.querySelector('form');

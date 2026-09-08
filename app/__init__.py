@@ -11,10 +11,12 @@ import time
 from logging.handlers import RotatingFileHandler
 
 import markdown
+import requests
 from flask import (
     Flask,
     Response,
     flash,
+    jsonify,
     redirect,
     render_template,
     request,
@@ -73,6 +75,66 @@ def generate_slot_labels(slot_count=49):
             f"{start_hour:02d}:{start_min:02d}-\u200b{end_hour:02d}:{end_min:02d}"
         )
     return labels
+
+
+def fetch_player_info(fid: str) -> dict | None:
+    """Fetch player nickname, avatar_url, and alliance abbreviation from MightPulse API."""
+    if not Config.MIGHTPULSE_API_KEY:
+        logging.getLogger("audit").warning("MIGHTPULSE_API_KEY is not configured.")
+        return None
+
+    fid_str = str(fid).strip()
+    if not fid_str.isdigit():
+        return None
+
+    base_url = (Config.MIGHTPULSE_BASE_URL or "https://api.mightpulse.com/v1").rstrip(
+        "/"
+    )
+    url = f"{base_url}/players/{fid_str}"
+    headers = {"Authorization": f"Bearer {Config.MIGHTPULSE_API_KEY}"}
+
+    try:
+        resp = requests.get(url, headers=headers, timeout=5)
+        if resp.status_code == 200:
+            data = resp.json()
+            if data.get("ok"):
+                player = data.get("player") or {}
+                nickname = player.get("nick_name")
+                avatar_url = player.get("avatar_url")
+                if avatar_url:
+                    if avatar_url.startswith("/"):
+                        avatar_url = f"https://mightpulse.com{avatar_url}"
+                    avatar_url = validate_safe_url(avatar_url)
+
+                alliance_data = player.get("alliance")
+                alliance_abbr = (
+                    alliance_data.get("abbr", "")
+                    if isinstance(alliance_data, dict)
+                    else ""
+                )
+
+                return {
+                    "nickname": nickname,
+                    "avatar_url": avatar_url,
+                    "alliance": alliance_abbr,
+                }
+        elif resp.status_code == 404:
+            logging.getLogger("audit").info(
+                f"MightPulse API: Player {fid_str} not found (404)."
+            )
+        else:
+            logging.getLogger("audit").warning(
+                f"MightPulse API returned status {resp.status_code} for player {fid_str}."
+            )
+    except requests.RequestException as e:
+        logging.getLogger("audit").warning(
+            f"MightPulse API request failed for player {fid_str}: {e}"
+        )
+    except Exception as e:  # noqa: BLE001
+        logging.getLogger("audit").error(
+            f"Unexpected error in fetch_player_info for player {fid_str}: {e}"
+        )
+    return None
 
 
 def create_app():
@@ -170,6 +232,31 @@ def create_app():
             "favicon.svg",
             mimetype="image/svg+xml",
         )
+
+    @app.route("/api/proxy/player", methods=["POST"])
+    def proxy_player():
+        data = request.get_json(silent=True)
+        if not data or not isinstance(data, dict):
+            return jsonify({"error": "Missing or invalid JSON payload"}), 400
+
+        fid = data.get("fid")
+        if not fid:
+            return jsonify({"error": "Missing fid"}), 400
+
+        fid_str = str(fid).strip()
+        if not fid_str.isdigit():
+            return jsonify({"error": "Invalid fid: must be numeric"}), 400
+
+        try:
+            player_info = fetch_player_info(fid_str)
+        except Exception as e:  # noqa: BLE001
+            app.audit_logger.error(f"Error fetching player info for {fid_str}: {e}")
+            return jsonify({"error": "Internal error"}), 500
+
+        if player_info:
+            return jsonify(player_info)
+        else:
+            return jsonify({"error": "Player not found or API error"}), 404
 
     @app.route("/create", methods=["POST"])
     def create_event():
@@ -1124,6 +1211,46 @@ def create_app():
             "success",
         )
 
+        return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
+
+    @app.route("/admin/<event_uid>/refresh_players", methods=["POST"])
+    def refresh_players(event_uid):
+        secret = request.form.get("secret")
+        db = database.get_db()
+        db.row_factory = sqlite3.Row
+        event = db.execute(
+            "SELECT * FROM events WHERE uid = ?", (event_uid,)
+        ).fetchone()
+        if event is None:
+            return "Event not found", 404
+        if not secret or not hmac.compare_digest(event["admin_secret"], secret):
+            return "Forbidden", 403
+
+        app.audit_logger.info(
+            f"ADMIN: Refresh player data triggered for event {event_uid}"
+        )
+
+        players = db.execute(
+            "SELECT DISTINCT player_id FROM submissions WHERE event_uid = ?",
+            (event_uid,),
+        ).fetchall()
+
+        refreshed_count = 0
+        for p in players:
+            fid = p["player_id"]
+            info = fetch_player_info(fid)
+            if info and info.get("nickname"):
+                db.execute(
+                    "UPDATE submissions SET player_name = ?, avatar_url = ? WHERE event_uid = ? AND player_id = ?",
+                    (info["nickname"], info.get("avatar_url"), event_uid, fid),
+                )
+                refreshed_count += 1
+
+        db.commit()
+        flash(
+            f"Refreshed player details for {refreshed_count} player(s).",
+            "success",
+        )
         return redirect(url_for("admin_dashboard", event_uid=event_uid, secret=secret))
 
     @app.route("/admin/<event_uid>/confirm", methods=["POST"])
