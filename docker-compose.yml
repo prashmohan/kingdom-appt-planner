@@ -13,6 +13,7 @@ services:
       - DATABASE_PATH=/app/data/planner.db
       - SUPERADMIN_SECRET=${SUPERADMIN_SECRET}
       - SECRET_KEY=${SECRET_KEY}
+      - MIGHTPULSE_API_KEY=${MIGHTPULSE_API_KEY}
     dns:
       - 8.8.8.8
       - 1.1.1.1
