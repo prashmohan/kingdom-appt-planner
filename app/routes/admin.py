@@ -368,7 +368,7 @@ def export_submissions(event_uid):
             }
         )
 
-    timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.datetime.now(datetime.UTC).strftime("%Y%m%d_%H%M%S")
     filename = f"submissions_{event_uid}_{timestamp}.json"
 
     return Response(
