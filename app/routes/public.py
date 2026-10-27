@@ -103,6 +103,7 @@ def locked_appointments(event_uid):
         "name": event["name"],
         "active_days": active_days_config,
         "server_id": event["server_id"],
+        "created_at": event["created_at"],
     }
 
     # Fetch all assignments
@@ -159,6 +160,7 @@ def player_form(event_uid):
         "active_days": active_days_config,
         "server_id": event["server_id"],
         "slot_count": event["slot_count"] if event["slot_count"] is not None else 49,
+        "created_at": event["created_at"],
     }
 
     slot_count = event_dict["slot_count"]
@@ -297,6 +299,7 @@ def public_schedule(event_uid):
         "name": event["name"],
         "active_days": active_days_config,
         "server_id": event["server_id"],
+        "created_at": event["created_at"],
     }
 
     assignments_raw = db.execute(

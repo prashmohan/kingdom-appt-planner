@@ -255,10 +255,20 @@
             const timeEls = document.querySelectorAll('.slot-time');
             if (!timeEls.length) return;
 
-            const now = new Date();
-            const utcYear = now.getUTCFullYear();
-            const utcMonth = now.getUTCMonth();
-            const utcDay = now.getUTCDate();
+            const rawCreatedAt = {{ (event.created_at or '')|tojson }};
+            const parsedCreated = rawCreatedAt
+                ? new Date(rawCreatedAt.replace(' ', 'T') + (rawCreatedAt.includes('Z') ? '' : 'Z'))
+                : new Date();
+            const baseDate = isNaN(parsedCreated.getTime()) ? new Date() : parsedCreated;
+            const daysToNextMonday = (8 - baseDate.getUTCDay()) % 7 || 7;
+            const refDate = new Date(Date.UTC(
+                baseDate.getUTCFullYear(),
+                baseDate.getUTCMonth(),
+                baseDate.getUTCDate() + daysToNextMonday
+            ));
+            const utcYear = refDate.getUTCFullYear();
+            const utcMonth = refDate.getUTCMonth();
+            const utcDay = refDate.getUTCDate();
             const refUtcMidnight = Date.UTC(utcYear, utcMonth, utcDay);
             const totalSlots = {{ slot_labels|length }};
 

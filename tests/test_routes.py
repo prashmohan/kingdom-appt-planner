@@ -2646,12 +2646,12 @@ def test_player_form_contention_and_timezone_toggle(client, app):
     assert resp.status_code == 200
     html = resp.get_data(as_text=True)
 
-    # Timezone toggle present and uses dynamic UTC date for DST accuracy
+    # Timezone toggle present and anchors to the upcoming KvK Monday from event creation
     assert "tz-toggle" in html or "data-tz" in html
     assert "UTC" in html
     assert "Local Time" in html
     assert "Date.UTC(2026, 5, 15" not in html
-    assert "now.getUTCFullYear()" in html
+    assert "daysToNextMonday" in html
     assert "Date.UTC(utcYear, utcMonth, utcDay" in html
 
     # Contention indicators present
@@ -2689,7 +2689,7 @@ def test_public_and_finalized_timezone_toggle(client, app):
     assert "UTC" in html
     assert "Local Time" in html
     assert "Date.UTC(2026, 5, 15" not in html
-    assert "now.getUTCFullYear()" in html
+    assert "daysToNextMonday" in html
     assert "Date.UTC(utcYear, utcMonth, utcDay" in html
 
     # Finalized schedule
@@ -2700,7 +2700,7 @@ def test_public_and_finalized_timezone_toggle(client, app):
     assert "UTC" in html2
     assert "Local Time" in html2
     assert "Date.UTC(2026, 5, 15" not in html2
-    assert "now.getUTCFullYear()" in html2
+    assert "daysToNextMonday" in html2
     assert "Date.UTC(utcYear, utcMonth, utcDay" in html2
 
 
