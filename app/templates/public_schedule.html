@@ -159,8 +159,11 @@
             const timeEls = document.querySelectorAll('.slot-time');
             if (!timeEls.length) return;
 
-            const refEventNoon = new Date(Date.UTC(2026, 5, 15, 12, 0, 0));
-            const refLocalDay = refEventNoon.getDate();
+            const now = new Date();
+            const utcYear = now.getUTCFullYear();
+            const utcMonth = now.getUTCMonth();
+            const utcDay = now.getUTCDate();
+            const refUtcMidnight = Date.UTC(utcYear, utcMonth, utcDay);
             const totalSlots = {{ slot_labels|length }};
 
             timeEls.forEach(el => {
@@ -175,17 +178,19 @@
                     if (shiftEl) shiftEl.remove();
                 } else {
                     const startMins = (totalSlots === 48) ? (index * 30) : ((index * 30) - 15);
-                    const slotStartDate = new Date(Date.UTC(2026, 5, 15, 0, startMins, 0));
-                    const slotEndDate = new Date(Date.UTC(2026, 5, 15, 0, startMins + 30, 0));
+                    const slotStartDate = new Date(Date.UTC(utcYear, utcMonth, utcDay, 0, startMins, 0));
+                    const slotEndDate = new Date(Date.UTC(utcYear, utcMonth, utcDay, 0, startMins + 30, 0));
 
                     const pad = n => String(n).padStart(2, '0');
                     const startStr = `${pad(slotStartDate.getHours())}:${pad(slotStartDate.getMinutes())}`;
                     const endStr = `${pad(slotEndDate.getHours())}:${pad(slotEndDate.getMinutes())}`;
 
-                    const slotLocalDay = slotStartDate.getDate();
-                    let diffDays = slotLocalDay - refLocalDay;
-                    if (diffDays > 15) diffDays -= 30;
-                    if (diffDays < -15) diffDays += 30;
+                    const slotLocalMidnight = Date.UTC(
+                        slotStartDate.getFullYear(),
+                        slotStartDate.getMonth(),
+                        slotStartDate.getDate()
+                    );
+                    const diffDays = Math.round((slotLocalMidnight - refUtcMidnight) / 86400000);
 
                     textEl.textContent = `${startStr}-\u200b${endStr}`;
                     const shiftText = diffDays > 0 ? '+1d' : (diffDays < 0 ? '-1d' : '');

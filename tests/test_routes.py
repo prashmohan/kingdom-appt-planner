@@ -2646,10 +2646,13 @@ def test_player_form_contention_and_timezone_toggle(client, app):
     assert resp.status_code == 200
     html = resp.get_data(as_text=True)
 
-    # Timezone toggle present
+    # Timezone toggle present and uses dynamic UTC date for DST accuracy
     assert "tz-toggle" in html or "data-tz" in html
     assert "UTC" in html
     assert "Local Time" in html
+    assert "Date.UTC(2026, 5, 15" not in html
+    assert "now.getUTCFullYear()" in html
+    assert "Date.UTC(utcYear, utcMonth, utcDay" in html
 
     # Contention indicators present
     assert "contention" in html or "demand" in html.lower()
@@ -2685,6 +2688,9 @@ def test_public_and_finalized_timezone_toggle(client, app):
     assert "tz-toggle" in html or "data-tz" in html
     assert "UTC" in html
     assert "Local Time" in html
+    assert "Date.UTC(2026, 5, 15" not in html
+    assert "now.getUTCFullYear()" in html
+    assert "Date.UTC(utcYear, utcMonth, utcDay" in html
 
     # Finalized schedule
     resp2 = client.get(f"/event/{event_uid}/finalized")
@@ -2693,6 +2699,9 @@ def test_public_and_finalized_timezone_toggle(client, app):
     assert "tz-toggle" in html2 or "data-tz" in html2
     assert "UTC" in html2
     assert "Local Time" in html2
+    assert "Date.UTC(2026, 5, 15" not in html2
+    assert "now.getUTCFullYear()" in html2
+    assert "Date.UTC(utcYear, utcMonth, utcDay" in html2
 
 
 def test_admin_dashboard_rigid_whales_slider(client, app):
