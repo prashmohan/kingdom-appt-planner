@@ -3,11 +3,11 @@
      data-slot-players="{{ slot_players[day]|tojson|forceescape }}"
      data-current-assignments="{{ assignments[day]|tojson|forceescape }}">
     <div class="flex justify-between items-center mb-3">
-        <h3 id="drawer-title-{{ day }}" class="text-lg font-bold text-gray-100 flex items-center gap-2">Slot Details</h3>
-        <span id="drawer-count-{{ day }}" class="text-xs bg-kvk-gold/20 text-kvk-gold px-2.5 py-1 rounded font-bold">Select a slot</span>
+        <h3 id="drawer-title-{{ day }}" class="text-lg font-bold text-gray-100 flex items-center gap-2">{{ t('drawer_title') }}</h3>
+        <span id="drawer-count-{{ day }}" class="text-xs bg-kvk-gold/20 text-kvk-gold px-2.5 py-1 rounded font-bold">{{ t('drawer_select_slot') }}</span>
     </div>
-    <p class="text-xs text-gray-400 mb-3">Click any slot in the heatmap to inspect applicants and manually assign appointments.</p>
+    <p class="text-xs text-gray-400 mb-3">{{ t('drawer_instructions') }}</p>
     <div id="drawer-content-{{ day }}" class="space-y-2 flex-1 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar text-sm text-gray-500 italic">
-        Tap a slot in the heatmap to see potential players and their points.
+        {{ t('drawer_empty_prompt') }}
     </div>
 </div>

@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="{{ current_lang }}" dir="{{ text_dir }}" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Finalized Schedule - {{ event.name }}</title>
+    <title>{{ t('pub_schedule_page_title', event_name=event.name) }}</title>
     {% include 'analytics.html' %}
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
     <script src="{{ url_for('static', filename='tailwind.js') }}"></script>
@@ -49,13 +49,14 @@
 </head>
 <body class="bg-kvk-gray-900 text-gray-200 antialiased">
     <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+        {% include 'partials/_i18n_bar.html' %}
         <header class="text-center mb-10">
             <h1 class="text-4xl md:text-5xl font-bold text-kvk-gold">{{ event.name }}</h1>
             <p class="text-lg text-gray-400 mt-2 flex items-center justify-center gap-2">
-                <span>Public Schedule</span>
+                <span>{{ t('pub_schedule_subheading') }}</span>
                 {% if event.server_id %}
                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-kvk-gray-800 text-kvk-gold border border-kvk-gold/40">
-                        Kingdom #{{ event.server_id }}
+                        {{ t('common_kingdom_num', server_id=event.server_id) }}
                     </span>
                 {% endif %}
             </p>
@@ -63,51 +64,47 @@
         
         <div class="mb-6 p-4 bg-kvk-gray-800 rounded-lg shadow-md border border-kvk-gray-700 flex flex-wrap items-center justify-between gap-4" data-tz-container>
             <div class="flex items-center gap-3">
-                <span class="text-xs font-semibold text-gray-300 uppercase tracking-wider">Timezone Display:</span>
+                <span class="text-xs font-semibold text-gray-300 uppercase tracking-wider">{{ t('common_timezone_display') }}</span>
                 <div class="inline-flex rounded-lg shadow-sm border border-kvk-gray-600 p-0.5 bg-kvk-gray-900" role="group" id="tz-toggle-group">
                     <button type="button" id="tz-toggle-utc" onclick="setTimezoneMode('utc')" 
                             class="tz-toggle-btn px-3 py-1 text-xs font-bold rounded-md bg-kvk-gold text-kvk-gray-900 transition-all shadow-sm">
-                        🌐 UTC
+                        {{ t('common_utc') }}
                     </button>
                     <button type="button" id="tz-toggle-local" onclick="setTimezoneMode('local')" 
                             class="tz-toggle-btn px-3 py-1 text-xs font-medium rounded-md text-gray-300 hover:text-white transition-all">
-                        🕒 Local Time (<span id="detected-tz-name">Local</span>)
+                        {{ t('common_local_time') }} (<span id="detected-tz-name" translate="no">{{ t('common_local') }}</span>)
                     </button>
                 </div>
             </div>
-            <div class="flex items-center space-x-6 text-sm">
-                <div class="flex items-center">
-                    <div class="w-4 h-4 mr-2 rounded" style="background-color: #1e3a8a;"></div>
-                    <span class="text-gray-300">Confirmed</span>
+            <div class="flex items-center gap-6 text-sm">
+                <div class="flex items-center gap-2">
+                    <div class="w-4 h-4 rounded" style="background-color: #1e3a8a;"></div>
+                    <span class="text-gray-300">{{ t('pub_schedule_confirmed') }}</span>
                 </div>
-                <div class="flex items-center">
-                    <div class="w-4 h-4 mr-2 rounded" style="background-color: #45331d;"></div>
-                    <span class="text-gray-300">Pending</span>
+                <div class="flex items-center gap-2">
+                    <div class="w-4 h-4 rounded" style="background-color: #45331d;"></div>
+                    <span class="text-gray-300">{{ t('pub_schedule_pending') }}</span>
                 </div>
             </div>
         </div>
 
         <div class="space-y-8">
             {% for day in active_days %}
-            <div class="bg-kvk-gray-800 p-6 rounded-xl shadow-lg border border-kvk-gray-700">
+            {% set day_display = t('day_research_with_num', day=(event.active_days.research_day if event.active_days.research_day else '5')) if day == 'research' else t('day_' ~ day) %}
+            <div class="bg-kvk-gray-800 p-6 rounded-xl shadow-lg border border-kvk-gray-700" data-day="{{ day }}">
                 <h2 class="text-2xl font-bold mb-4 capitalize text-gray-100">
-                    {% if day == 'research' %}
-                        Research (Day {{ event.active_days.research_day if event.active_days.research_day else '5' }})
-                    {% else %}
-                        {{ day }}
-                    {% endif %}
-                    Schedule
+                    {{ t('pub_schedule_day_heading', day=day_display) }}
                 </h2>
-                <div class="grid grid-cols-7 gap-1">
+                <div class="grid grid-cols-7 gap-1" dir="ltr">
                     {% for i in range(slot_labels|length) %}
                     {% set day_assignments = assignments.get(day, {}) %}
                     {% set current_assignment = day_assignments.get(i) %}
                     <div class="slot rounded {% if current_assignment %}{% if current_assignment.is_locked %}slot-locked{% else %}slot-pending{% endif %}{% endif %}">
-                        <div class="slot-time rounded-t" data-index="{{ i }}" data-utc-label="{{ slot_labels[i] }}">
+                        <div class="slot-time rounded-t notranslate" translate="no" data-index="{{ i }}" data-utc-label="{{ slot_labels[i] }}">
                             <span class="slot-time-text">{{ slot_labels[i] }}</span>
                         </div>
                         {% if current_assignment %}
-                            <div class="p-1">
+                            <div class="p-1" translate="no">
                                 <p class="font-bold text-center text-gray-100">{{ current_assignment.player_id }}</p>
                             </div>
                         {% endif %}
@@ -119,7 +116,7 @@
         </div>
 
         <div class="text-center mt-8">
-             <a href="{{ url_for('public.index') }}" class="text-kvk-gold hover:underline">Create a new event</a>
+             <a href="{{ url_for('public.index') }}" class="text-kvk-gold hover:underline">{{ t('pub_schedule_create_new') }}</a>
         </div>
 
         <footer class="mt-12 pb-8 text-center border-t border-kvk-gray-700 pt-8">

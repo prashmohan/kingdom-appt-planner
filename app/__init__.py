@@ -6,13 +6,20 @@ import os
 import sqlite3
 from logging.handlers import RotatingFileHandler
 
-from flask import Flask, request
+from flask import Flask, g, request
 from flask_wtf.csrf import CSRFProtect
 
 from config import Config
 
 from . import database
 from .constants import DEFAULT_SLOT_COUNT
+from .i18n import (
+    LANG_COOKIE_NAME,
+    SUPPORTED_LANGUAGES,
+    get_locale,
+    get_text_dir,
+    translate,
+)
 from .logic import generate_slot_labels
 from .routes import admin_bp, api_bp, public_bp, superadmin_bp
 from .services import fetch_player_info
@@ -70,14 +77,28 @@ def create_app() -> Flask:
                 f"Context processor slot lookup failed for event {event_uid}: {e}"
             )
 
+        current_lang = get_locale()
         return {
             "slot_labels": generate_slot_labels(slot_count),
             "enable_screenshot_upload": Config.ENABLE_SCREENSHOT_UPLOAD,
             "ga_measurement_id": Config.GA_MEASUREMENT_ID,
+            "t": translate,
+            "current_lang": current_lang,
+            "text_dir": get_text_dir(current_lang),
+            "supported_languages": SUPPORTED_LANGUAGES,
         }
 
     @app.after_request
     def add_security_headers(response):
+        lang_cookie = getattr(g, "_set_lang_cookie", None)
+        if lang_cookie:
+            response.set_cookie(
+                LANG_COOKIE_NAME,
+                lang_cookie,
+                max_age=365 * 24 * 3600,
+                samesite="Lax",
+                path="/",
+            )
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "no-referrer"

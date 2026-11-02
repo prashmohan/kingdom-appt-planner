@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="{{ current_lang }}" dir="{{ text_dir }}" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Submit for {{ event.name }}</title>
+    <title>{{ t('player_form_page_title', event_name=event.name) }}</title>
     {% include 'analytics.html' %}
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
     <script src="{{ url_for('static', filename='tailwind.js') }}"></script>
@@ -117,13 +117,14 @@
 </head>
 <body class="bg-kvk-gray-900 text-gray-200 antialiased">
     <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+        {% include 'partials/_i18n_bar.html' %}
         <header class="text-center mb-10">
-            <h1 class="text-4xl md:text-5xl font-bold text-kvk-gold">Submission Form</h1>
+            <h1 class="text-4xl md:text-5xl font-bold text-kvk-gold">{{ t('player_form_heading') }}</h1>
             <p class="text-lg text-gray-400 mt-2 flex items-center justify-center gap-2">
                 <span>{{ event.name }}</span>
                 {% if event.server_id %}
                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-kvk-gray-800 text-kvk-gold border border-kvk-gold/40">
-                        Kingdom #{{ event.server_id }}
+                        {{ t('common_kingdom_num', server_id=event.server_id) }}
                     </span>
                 {% endif %}
             </p>
@@ -133,15 +134,15 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             
             <div class="p-4 border-b border-kvk-gray-700">
-                <h2 class="text-2xl font-bold text-gray-100 mb-4">Your Information</h2>
+                <h2 class="text-2xl font-bold text-gray-100 mb-4">{{ t('player_form_your_info') }}</h2>
                 <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
                     <div class="md:col-span-4">
                         <label for="player_id" class="block text-sm font-medium text-gray-300 mb-1">
-                            Player ID (Numeric)
+                            {{ t('player_form_id_label') }}
                             <span id="fetch-status" class="ml-2 text-xs font-normal"></span>
                         </label>
                         <input type="text" name="player_id" id="player_id" required 
-                               pattern="\d*" inputmode="numeric" placeholder="e.g. 12345678"
+                               pattern="\d*" inputmode="numeric" placeholder="{{ t('player_form_id_placeholder') }}"
                                class="block w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md shadow-sm text-gray-200 focus:border-kvk-gold focus:ring focus:ring-kvk-gold focus:ring-opacity-50">
                     </div>
                     <div class="md:col-span-5 flex items-center gap-3">
@@ -150,21 +151,21 @@
                             <span id="avatar-placeholder" class="text-gray-500 text-xs font-semibold">?</span>
                         </div>
                         <div class="flex-grow">
-                            <label for="player_name" class="block text-sm font-medium text-gray-300 mb-1">Player Name</label>
-                            <input type="text" name="player_name" id="player_name" required placeholder="e.g. KingArthur"
+                            <label for="player_name" class="block text-sm font-medium text-gray-300 mb-1">{{ t('player_form_name_label') }}</label>
+                            <input type="text" name="player_name" id="player_name" required placeholder="{{ t('player_form_name_placeholder') }}"
                                    class="block w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md shadow-sm text-gray-200 focus:border-kvk-gold focus:ring focus:ring-kvk-gold focus:ring-opacity-50">
                         </div>
                     </div>
                     <div class="md:col-span-3">
-                        <label for="alliance_name" class="block text-sm font-medium text-gray-300 mb-1">Alliance</label>
-                        <input type="text" name="alliance_name" id="alliance_name" placeholder="e.g. KVK" class="block w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md shadow-sm text-gray-200 focus:border-kvk-gold focus:ring focus:ring-kvk-gold focus:ring-opacity-50">
+                        <label for="alliance_name" class="block text-sm font-medium text-gray-300 mb-1">{{ t('player_form_alliance_label') }}</label>
+                        <input type="text" name="alliance_name" id="alliance_name" placeholder="{{ t('player_form_alliance_placeholder') }}" class="block w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md shadow-sm text-gray-200 focus:border-kvk-gold focus:ring focus:ring-kvk-gold focus:ring-opacity-50">
                     </div>
                 </div>
                 <input type="hidden" name="avatar_url" id="avatar_url_input">
                 
                 {% if enable_screenshot_upload %}
                 <div class="mt-6 border-t border-kvk-gray-700 pt-6">
-                    <label for="backpack_screenshot" class="block text-sm font-medium text-gray-300 mb-2">Backpack Screenshot (Optional)</label>
+                    <label for="backpack_screenshot" class="block text-sm font-medium text-gray-300 mb-2">{{ t('player_form_screenshot_label') }}</label>
                     <div class="flex items-center gap-4">
                         <input type="file" name="backpack_screenshot" id="backpack_screenshot" accept="image/*" class="block w-full text-sm text-gray-400
                             file:mr-4 file:py-2 file:px-4
@@ -172,7 +173,7 @@
                             file:text-sm file:font-semibold
                             file:bg-kvk-gray-700 file:text-kvk-gold
                             hover:file:bg-kvk-gray-600 transition">
-                        <p class="text-xs text-gray-500 italic">Upload a screenshot of your backpack to help verify your resources.</p>
+                        <p class="text-xs text-gray-500 italic">{{ t('player_form_screenshot_help') }}</p>
                     </div>
                 </div>
                 {% endif %}
@@ -181,30 +182,30 @@
             <!-- Time Display & Slot Contention Guidance Bar -->
             <div class="p-4 border-b border-kvk-gray-700 bg-kvk-gray-800/80 flex flex-wrap items-center justify-between gap-4" data-tz-container>
                 <div class="flex items-center gap-3">
-                    <span class="text-xs font-semibold text-gray-300 uppercase tracking-wider">Timezone Display:</span>
+                    <span class="text-xs font-semibold text-gray-300 uppercase tracking-wider">{{ t('common_timezone_display') }}</span>
                     <div class="inline-flex rounded-lg shadow-sm border border-kvk-gray-600 p-0.5 bg-kvk-gray-900" role="group" id="tz-toggle-group">
                         <button type="button" id="tz-toggle-utc" onclick="setTimezoneMode('utc')" 
                                 class="tz-toggle-btn px-3 py-1 text-xs font-bold rounded-md bg-kvk-gold text-kvk-gray-900 transition-all shadow-sm">
-                            🌐 UTC
+                            {{ t('common_utc') }}
                         </button>
                         <button type="button" id="tz-toggle-local" onclick="setTimezoneMode('local')" 
                                 class="tz-toggle-btn px-3 py-1 text-xs font-medium rounded-md text-gray-300 hover:text-white transition-all">
-                            🕒 Local Time (<span id="detected-tz-name">Local</span>)
+                            {{ t('common_local_time') }} (<span id="detected-tz-name" translate="no">{{ t('common_local') }}</span>)
                         </button>
                     </div>
                 </div>
 
                 <!-- Slot Demand Guidance Legend -->
                 <div class="flex items-center gap-3 text-xs text-gray-400 bg-kvk-gray-900/80 px-3 py-1.5 rounded-lg border border-kvk-gray-700">
-                    <span class="font-semibold text-gray-300">Slot Demand:</span>
-                    <span class="inline-flex items-center gap-1.5" title="0 to 10 applicants (great chance of assignment)">
-                        <span class="w-2 h-2 rounded-full bg-green-400 shadow-[0_0_4px_rgba(74,222,128,0.8)]"></span> Low (0-10)
+                    <span class="font-semibold text-gray-300">{{ t('player_form_slot_demand') }}</span>
+                    <span class="inline-flex items-center gap-1.5" title="{{ t('player_form_demand_low_title') }}">
+                        <span class="w-2 h-2 rounded-full bg-green-400 shadow-[0_0_4px_rgba(74,222,128,0.8)]"></span> {{ t('player_form_demand_low') }}
                     </span>
-                    <span class="inline-flex items-center gap-1.5" title="11 to 20 applicants (moderate competition)">
-                        <span class="w-2 h-2 rounded-full bg-yellow-400 shadow-[0_0_4px_rgba(250,204,21,0.8)]"></span> Moderate (11-20)
+                    <span class="inline-flex items-center gap-1.5" title="{{ t('player_form_demand_mod_title') }}">
+                        <span class="w-2 h-2 rounded-full bg-yellow-400 shadow-[0_0_4px_rgba(250,204,21,0.8)]"></span> {{ t('player_form_demand_mod') }}
                     </span>
-                    <span class="inline-flex items-center gap-1.5" title="21+ applicants (peak competition)">
-                        <span class="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_4px_rgba(239,68,68,0.8)]"></span> High (21+)
+                    <span class="inline-flex items-center gap-1.5" title="{{ t('player_form_demand_high_title') }}">
+                        <span class="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_4px_rgba(239,68,68,0.8)]"></span> {{ t('player_form_demand_high') }}
                     </span>
                 </div>
             </div>
@@ -213,46 +214,46 @@
                 {% for day in active_days %}
                     {% if day == 'construction' %}
                     <div class="p-4 rounded-lg bg-kvk-gray-900 border border-kvk-gray-700">
-                        <h3 class="font-bold text-xl mb-2 text-amber-400">Day 1: Construction</h3>
-                        <p class="text-xs text-gray-400 mb-4 italic">Enter resources and select <strong>all feasible</strong> time slots. More slots give the system more flexibility to match you.</p>
+                        <h3 class="font-bold text-xl mb-2 text-amber-400">{{ t('day_1_construction') }}</h3>
+                        <p class="text-xs text-gray-400 mb-4 italic">{{ t('player_form_day_instructions') }}</p>
                         <div class="space-y-4 mb-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-300 mb-2">Speedups</label>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">{{ t('common_speedups') }}</label>
                                 <div class="flex gap-2 mb-2">
-                                    <button type="button" data-unit="days" data-section="construction" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gray-700 bg-kvk-gray-700 text-gray-400 hover:bg-kvk-gray-600 transition">Days</button>
-                                    <button type="button" data-unit="hours" data-section="construction" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gray-700 bg-kvk-gray-700 text-gray-400 hover:bg-kvk-gray-600 transition">Hours</button>
-                                    <button type="button" data-unit="minutes" data-section="construction" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gold bg-kvk-gold text-kvk-gray-900 font-bold transition">Minutes</button>
+                                    <button type="button" data-unit="days" data-section="construction" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gray-700 bg-kvk-gray-700 text-gray-400 hover:bg-kvk-gray-600 transition">{{ t('common_days') }}</button>
+                                    <button type="button" data-unit="hours" data-section="construction" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gray-700 bg-kvk-gray-700 text-gray-400 hover:bg-kvk-gray-600 transition">{{ t('common_hours') }}</button>
+                                    <button type="button" data-unit="minutes" data-section="construction" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gold bg-kvk-gold text-kvk-gray-900 font-bold transition">{{ t('common_minutes') }}</button>
                                 </div>
                                 <div id="input-group-construction" class="grid grid-cols-3 gap-2">
                                     <div class="hidden" id="days-container-construction">
-                                        <label class="block text-[10px] uppercase text-gray-500 mb-1">Days</label>
+                                        <label class="block text-[10px] uppercase text-gray-500 mb-1">{{ t('common_days') }}</label>
                                         <input type="number" id="days-construction" min="0" placeholder="0" class="dynamic-input w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200 text-sm">
                                     </div>
                                     <div class="hidden" id="hours-container-construction">
-                                        <label class="block text-[10px] uppercase text-gray-500 mb-1">Hours</label>
+                                        <label class="block text-[10px] uppercase text-gray-500 mb-1">{{ t('common_hours') }}</label>
                                         <input type="number" id="hours-construction" min="0" max="23" placeholder="0" class="dynamic-input w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200 text-sm">
                                     </div>
                                     <div id="minutes-container-construction">
-                                        <label class="block text-[10px] uppercase text-gray-500 mb-1">Minutes</label>
+                                        <label class="block text-[10px] uppercase text-gray-500 mb-1">{{ t('common_minutes') }}</label>
                                         <input type="number" id="mins-construction" min="0" placeholder="0" class="dynamic-input w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200 text-sm">
                                     </div>
                                 </div>
                                 <input type="hidden" name="speedups-construction" id="speedups-construction" value="0">
                             </div>
                             <div>
-                                <label for="truegold" class="block text-sm font-medium text-gray-300">TrueGold</label>
+                                <label for="truegold" class="block text-sm font-medium text-gray-300">{{ t('common_truegold') }}</label>
                                 <input type="number" name="truegold" id="truegold" min="0" class="mt-1 block w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200">
                             </div>
                             <div>
-                                <label for="tempered_truegold" class="block text-sm font-medium text-gray-300">Tempered TrueGold</label>
+                                <label for="tempered_truegold" class="block text-sm font-medium text-gray-300">{{ t('common_tempered_truegold') }}</label>
                                 <input type="number" name="tempered_truegold" id="tempered_truegold" min="0" class="mt-1 block w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200">
                             </div>
                         </div>
-                        <div id="slot-grid-construction" class="grid grid-cols-7 gap-1 mb-4" data-day="construction">
+                        <div id="slot-grid-construction" class="grid grid-cols-7 gap-1 mb-4" data-day="construction" dir="ltr" translate="no">
                             {% for i in range(slot_labels|length) %}
                                 {% set count = slot_density.get('construction', [])[i] if slot_density and 'construction' in slot_density and i < slot_density['construction']|length else 0 %}
                                 {% set contention = 'low' if count <= 10 else ('medium' if count <= 20 else 'high') %}
-                                <div class="slot slot-traffic-{{ contention }}" data-index="{{ i }}" data-count="{{ count }}" data-contention="{{ contention }}" data-utc-label="{{ slot_labels[i] }}" title="{{ slot_labels[i] }} UTC ({{ count }} applicant{% if count != 1 %}s{% endif %} - {{ contention|capitalize }} demand)">
+                                <div class="slot slot-traffic-{{ contention }} notranslate" translate="no" data-index="{{ i }}" data-count="{{ count }}" data-contention="{{ contention }}" data-utc-label="{{ slot_labels[i] }}" title="{{ slot_labels[i] }} UTC ({{ count }} applicant{% if count != 1 %}s{% endif %} - {{ contention|capitalize }} demand)">
                                     <div class="slot-content">
                                         <span class="slot-time-text">{{ slot_labels[i] }}</span>
                                         <span class="contention-indicator dot-{{ contention }}" title="{{ count }} applicant{% if count != 1 %}s{% endif %} ({{ contention|capitalize }})"></span>
@@ -264,42 +265,42 @@
                     </div>
                     {% elif day == 'research' %}
                     <div class="p-4 rounded-lg bg-kvk-gray-900 border border-kvk-gray-700">
-                        <h3 class="font-bold text-xl mb-2 text-blue-500">Day {{ event.active_days.research_day if event.active_days.research_day else '5' }}: Research</h3>
-                        <p class="text-xs text-gray-400 mb-4 italic">Enter resources and select <strong>all feasible</strong> time slots. More slots give the system more flexibility to match you.</p>
+                        <h3 class="font-bold text-xl mb-2 text-blue-500">{{ t('day_n_research', day=(event.active_days.research_day if event.active_days.research_day else '5')) }}</h3>
+                        <p class="text-xs text-gray-400 mb-4 italic">{{ t('player_form_day_instructions') }}</p>
                          <div class="space-y-4 mb-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-300 mb-2">Speedups</label>
+                                <label class="block text-sm font-medium text-gray-300 mb-2">{{ t('common_speedups') }}</label>
                                 <div class="flex gap-2 mb-2">
-                                    <button type="button" data-unit="days" data-section="research" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gray-700 bg-kvk-gray-700 text-gray-400 hover:bg-kvk-gray-600 transition">Days</button>
-                                    <button type="button" data-unit="hours" data-section="research" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gray-700 bg-kvk-gray-700 text-gray-400 hover:bg-kvk-gray-600 transition">Hours</button>
-                                    <button type="button" data-unit="minutes" data-section="research" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gold bg-kvk-gold text-kvk-gray-900 font-bold transition">Minutes</button>
+                                    <button type="button" data-unit="days" data-section="research" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gray-700 bg-kvk-gray-700 text-gray-400 hover:bg-kvk-gray-600 transition">{{ t('common_days') }}</button>
+                                    <button type="button" data-unit="hours" data-section="research" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gray-700 bg-kvk-gray-700 text-gray-400 hover:bg-kvk-gray-600 transition">{{ t('common_hours') }}</button>
+                                    <button type="button" data-unit="minutes" data-section="research" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gold bg-kvk-gold text-kvk-gray-900 font-bold transition">{{ t('common_minutes') }}</button>
                                 </div>
                                 <div id="input-group-research" class="grid grid-cols-3 gap-2">
                                     <div class="hidden" id="days-container-research">
-                                        <label class="block text-[10px] uppercase text-gray-500 mb-1">Days</label>
+                                        <label class="block text-[10px] uppercase text-gray-500 mb-1">{{ t('common_days') }}</label>
                                         <input type="number" id="days-research" min="0" placeholder="0" class="dynamic-input w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200 text-sm">
                                     </div>
                                     <div class="hidden" id="hours-container-research">
-                                        <label class="block text-[10px] uppercase text-gray-500 mb-1">Hours</label>
+                                        <label class="block text-[10px] uppercase text-gray-500 mb-1">{{ t('common_hours') }}</label>
                                         <input type="number" id="hours-research" min="0" max="23" placeholder="0" class="dynamic-input w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200 text-sm">
                                     </div>
                                     <div id="minutes-container-research">
-                                        <label class="block text-[10px] uppercase text-gray-500 mb-1">Minutes</label>
+                                        <label class="block text-[10px] uppercase text-gray-500 mb-1">{{ t('common_minutes') }}</label>
                                         <input type="number" id="mins-research" min="0" placeholder="0" class="dynamic-input w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200 text-sm">
                                     </div>
                                 </div>
                                 <input type="hidden" name="speedups-research" id="speedups-research" value="0">
                             </div>
                             <div>
-                                <label for="truegold_dust" class="block text-sm font-medium text-gray-300">TrueGold Dust</label>
+                                <label for="truegold_dust" class="block text-sm font-medium text-gray-300">{{ t('common_truegold_dust') }}</label>
                                 <input type="number" name="truegold_dust" id="truegold_dust" min="0" class="mt-1 block w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200">
                             </div>
                         </div>
-                        <div id="slot-grid-research" class="grid grid-cols-7 gap-1 mb-4" data-day="research">
+                        <div id="slot-grid-research" class="grid grid-cols-7 gap-1 mb-4" data-day="research" dir="ltr" translate="no">
                             {% for i in range(slot_labels|length) %}
                                 {% set count = slot_density.get('research', [])[i] if slot_density and 'research' in slot_density and i < slot_density['research']|length else 0 %}
                                 {% set contention = 'low' if count <= 10 else ('medium' if count <= 20 else 'high') %}
-                                <div class="slot slot-traffic-{{ contention }}" data-index="{{ i }}" data-count="{{ count }}" data-contention="{{ contention }}" data-utc-label="{{ slot_labels[i] }}" title="{{ slot_labels[i] }} UTC ({{ count }} applicant{% if count != 1 %}s{% endif %} - {{ contention|capitalize }} demand)">
+                                <div class="slot slot-traffic-{{ contention }} notranslate" translate="no" data-index="{{ i }}" data-count="{{ count }}" data-contention="{{ contention }}" data-utc-label="{{ slot_labels[i] }}" title="{{ slot_labels[i] }} UTC ({{ count }} applicant{% if count != 1 %}s{% endif %} - {{ contention|capitalize }} demand)">
                                     <div class="slot-content">
                                         <span class="slot-time-text">{{ slot_labels[i] }}</span>
                                         <span class="contention-indicator dot-{{ contention }}" title="{{ count }} applicant{% if count != 1 %}s{% endif %} ({{ contention|capitalize }})"></span>
@@ -311,36 +312,36 @@
                     </div>
                     {% elif day == 'training' %}
                     <div class="p-4 rounded-lg bg-kvk-gray-900 border border-kvk-gray-700">
-                        <h3 class="font-bold text-xl mb-2 text-red-500">Day 4: Troop Training</h3>
-                        <p class="text-xs text-gray-400 mb-4 italic">Enter resources and select <strong>all feasible</strong> time slots. More slots give the system more flexibility to match you.</p>
+                        <h3 class="font-bold text-xl mb-2 text-red-500">{{ t('day_4_training') }}</h3>
+                        <p class="text-xs text-gray-400 mb-4 italic">{{ t('player_form_day_instructions') }}</p>
                         <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-300 mb-2">Speedups</label>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">{{ t('common_speedups') }}</label>
                             <div class="flex gap-2 mb-2">
-                                <button type="button" data-unit="days" data-section="training" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gray-700 bg-kvk-gray-700 text-gray-400 hover:bg-kvk-gray-600 transition">Days</button>
-                                <button type="button" data-unit="hours" data-section="training" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gray-700 bg-kvk-gray-700 text-gray-400 hover:bg-kvk-gray-600 transition">Hours</button>
-                                <button type="button" data-unit="minutes" data-section="training" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gold bg-kvk-gold text-kvk-gray-900 font-bold transition">Minutes</button>
+                                <button type="button" data-unit="days" data-section="training" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gray-700 bg-kvk-gray-700 text-gray-400 hover:bg-kvk-gray-600 transition">{{ t('common_days') }}</button>
+                                <button type="button" data-unit="hours" data-section="training" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gray-700 bg-kvk-gray-700 text-gray-400 hover:bg-kvk-gray-600 transition">{{ t('common_hours') }}</button>
+                                <button type="button" data-unit="minutes" data-section="training" class="unit-btn flex-1 py-1 px-2 text-xs rounded border border-kvk-gold bg-kvk-gold text-kvk-gray-900 font-bold transition">{{ t('common_minutes') }}</button>
                             </div>
                             <div id="input-group-training" class="grid grid-cols-3 gap-2">
                                 <div class="hidden" id="days-container-training">
-                                    <label class="block text-[10px] uppercase text-gray-500 mb-1">Days</label>
+                                    <label class="block text-[10px] uppercase text-gray-500 mb-1">{{ t('common_days') }}</label>
                                     <input type="number" id="days-training" min="0" placeholder="0" class="dynamic-input w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200 text-sm">
                                 </div>
                                 <div class="hidden" id="hours-container-training">
-                                    <label class="block text-[10px] uppercase text-gray-500 mb-1">Hours</label>
+                                    <label class="block text-[10px] uppercase text-gray-500 mb-1">{{ t('common_hours') }}</label>
                                     <input type="number" id="hours-training" min="0" max="23" placeholder="0" class="dynamic-input w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200 text-sm">
                                 </div>
                                 <div id="minutes-container-training">
-                                    <label class="block text-[10px] uppercase text-gray-500 mb-1">Minutes</label>
+                                    <label class="block text-[10px] uppercase text-gray-500 mb-1">{{ t('common_minutes') }}</label>
                                     <input type="number" id="mins-training" min="0" placeholder="0" class="dynamic-input w-full bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-gray-200 text-sm">
                                 </div>
                             </div>
                             <input type="hidden" name="speedups-training" id="speedups-training" value="0">
                         </div>
-                        <div id="slot-grid-training" class="grid grid-cols-7 gap-1 mb-4" data-day="training">
+                        <div id="slot-grid-training" class="grid grid-cols-7 gap-1 mb-4" data-day="training" dir="ltr" translate="no">
                             {% for i in range(slot_labels|length) %}
                                 {% set count = slot_density.get('training', [])[i] if slot_density and 'training' in slot_density and i < slot_density['training']|length else 0 %}
                                 {% set contention = 'low' if count <= 10 else ('medium' if count <= 20 else 'high') %}
-                                <div class="slot slot-traffic-{{ contention }}" data-index="{{ i }}" data-count="{{ count }}" data-contention="{{ contention }}" data-utc-label="{{ slot_labels[i] }}" title="{{ slot_labels[i] }} UTC ({{ count }} applicant{% if count != 1 %}s{% endif %} - {{ contention|capitalize }} demand)">
+                                <div class="slot slot-traffic-{{ contention }} notranslate" translate="no" data-index="{{ i }}" data-count="{{ count }}" data-contention="{{ contention }}" data-utc-label="{{ slot_labels[i] }}" title="{{ slot_labels[i] }} UTC ({{ count }} applicant{% if count != 1 %}s{% endif %} - {{ contention|capitalize }} demand)">
                                     <div class="slot-content">
                                         <span class="slot-time-text">{{ slot_labels[i] }}</span>
                                         <span class="contention-indicator dot-{{ contention }}" title="{{ count }} applicant{% if count != 1 %}s{% endif %} ({{ contention|capitalize }})"></span>
@@ -354,7 +355,7 @@
                 {% endfor %}
             </div>
 
-            <button type="submit" class="mt-6 w-full bg-kvk-gold text-kvk-gray-900 font-bold py-3 px-4 rounded-md hover:bg-amber-500 transition duration-300">Submit All Entries</button>
+            <button type="submit" class="mt-6 w-full bg-kvk-gold text-kvk-gray-900 font-bold py-3 px-4 rounded-md hover:bg-amber-500 transition duration-300">{{ t('player_form_submit_btn') }}</button>
         </form>
 
         <footer class="mt-12 pb-8 text-center border-t border-kvk-gray-700 pt-8">
@@ -371,6 +372,22 @@
         let currentTzMode = localStorage.getItem('kvk_tz_mode') || 'utc';
         const detectedTz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
         const cleanTzName = detectedTz.split('/').pop().replace(/_/g, ' ');
+
+        const I18N_FORM = {
+            fetching: {{ t('player_form_fetching')|tojson }},
+            found: {{ t('player_form_found')|tojson }},
+            notFound: {{ t('player_form_not_found')|tojson }},
+            lookupUnavailable: {{ t('player_form_lookup_unavailable')|tojson }},
+            errIdNumeric: {{ t('player_form_err_id_numeric')|tojson }},
+            errNameRequired: {{ t('player_form_err_name_required')|tojson }},
+            errNoResources: {{ t('player_form_err_no_resources')|tojson }},
+            errNoSlots: {{ t('player_form_err_no_slots')|tojson }},
+            dayConstruction: {{ t('day_construction')|tojson }},
+            dayTraining: {{ t('day_training')|tojson }},
+            dayResearch: {{ t('day_research')|tojson }},
+            applicantsWord: {{ t('player_form_applicants_word')|tojson }},
+            demandWord: {{ t('player_form_demand_word')|tojson }}
+        };
 
         function setTimezoneMode(mode) {
             currentTzMode = mode;
@@ -425,7 +442,7 @@
                 if (mode === 'utc') {
                     textEl.textContent = slot.dataset.utcLabel;
                     if (shiftEl) shiftEl.remove();
-                    slot.title = `${slot.dataset.utcLabel} UTC (${slot.dataset.count} applicants - ${slot.dataset.contention} demand)`;
+                    slot.title = `${slot.dataset.utcLabel} UTC (${slot.dataset.count} ${I18N_FORM.applicantsWord} - ${slot.dataset.contention} ${I18N_FORM.demandWord})`;
                 } else {
                     const startMins = (totalSlots === 48) ? (index * 30) : ((index * 30) - 15);
                     const slotStartDate = new Date(Date.UTC(utcYear, utcMonth, utcDay, 0, startMins, 0));
@@ -457,7 +474,7 @@
                     }
 
                     const dayTag = shiftText ? ` (${shiftText})` : '';
-                    slot.title = `${startStr}-${endStr}${dayTag} Local (${slot.dataset.count} applicants - ${slot.dataset.contention} demand)`;
+                    slot.title = `${startStr}-${endStr}${dayTag} Local (${slot.dataset.count} ${I18N_FORM.applicantsWord} - ${slot.dataset.contention} ${I18N_FORM.demandWord})`;
                 }
             });
         }
@@ -613,7 +630,7 @@
 
                 if (fid === lastFetchedId) return;
 
-                statusSpan.innerText = 'Fetching...';
+                statusSpan.innerText = I18N_FORM.fetching;
                 statusSpan.className = 'ml-2 text-xs font-normal text-kvk-blue';
 
                 try {
@@ -648,17 +665,17 @@
                             if (avatarPlaceholder) avatarPlaceholder.classList.remove('hidden');
                         }
                         
-                        statusSpan.innerText = 'Found!';
+                        statusSpan.innerText = I18N_FORM.found;
                         statusSpan.className = 'ml-2 text-xs font-normal text-green-400';
                     } else {
-                        statusSpan.innerText = 'Not found (manual entry enabled)';
+                        statusSpan.innerText = I18N_FORM.notFound;
                         statusSpan.className = 'ml-2 text-xs font-normal text-amber-400';
                         avatarImg.classList.add('hidden');
                         if (avatarPlaceholder) avatarPlaceholder.classList.remove('hidden');
                     }
                 } catch (err) {
                     console.error('Player lookup error:', err);
-                    statusSpan.innerText = 'Lookup unavailable (manual entry enabled)';
+                    statusSpan.innerText = I18N_FORM.lookupUnavailable;
                     statusSpan.className = 'ml-2 text-xs font-normal text-amber-400';
                 }
             }
@@ -667,7 +684,7 @@
             idInput.addEventListener('change', fetchPlayerDetails);
 
             // Form Validation
-            const form = document.querySelector('form');
+            const form = document.querySelector('form[action^="/event/"]');
             form.addEventListener('submit', function(e) {
                 // 1. Validate Player ID & Name
                 const player_id = document.getElementById('player_id').value.trim();
@@ -675,20 +692,20 @@
 
                 if (!/^\d+$/.test(player_id)) {
                     e.preventDefault();
-                    alert("Player ID must be numeric.");
+                    alert(I18N_FORM.errIdNumeric);
                     return;
                 }
 
                 if (!player_name) {
                     e.preventDefault();
-                    alert("Please enter a valid Player Name.");
+                    alert(I18N_FORM.errNameRequired);
                     return;
                 }
 
                 const days = [
-                    { id: 'construction', name: 'Construction', speedups: 'speedups-construction', gold: 'truegold', gold2: 'tempered_truegold', slots: 'slots-input-construction' },
-                    { id: 'training', name: 'Training', speedups: 'speedups-training', slots: 'slots-input-training' },
-                    { id: 'research', name: 'Research', speedups: 'speedups-research', gold: 'truegold_dust', slots: 'slots-input-research' }
+                    { id: 'construction', name: I18N_FORM.dayConstruction, speedups: 'speedups-construction', gold: 'truegold', gold2: 'tempered_truegold', slots: 'slots-input-construction' },
+                    { id: 'training', name: I18N_FORM.dayTraining, speedups: 'speedups-training', slots: 'slots-input-training' },
+                    { id: 'research', name: I18N_FORM.dayResearch, speedups: 'speedups-research', gold: 'truegold_dust', slots: 'slots-input-research' }
                 ];
 
                 let daysAttempted = 0;
@@ -714,13 +731,13 @@
 
                 if (daysAttempted === 0) {
                     e.preventDefault();
-                    alert("Please enter resource data for at least one event day.");
+                    alert(I18N_FORM.errNoResources);
                     return;
                 }
 
                 if (daysInvalid.length > 0) {
                     e.preventDefault();
-                    alert("You must select at least one time slot for: " + daysInvalid.join(", "));
+                    alert(I18N_FORM.errNoSlots + daysInvalid.join(", "));
                     return;
                 }
             });

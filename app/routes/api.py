@@ -9,6 +9,7 @@ from flask import Blueprint, jsonify, redirect, request, url_for
 import app
 
 from .. import database
+from ..i18n import SUPPORTED_LANGUAGES, get_locale, normalize_lang
 from ..logic import generate_short_uid, validate_custom_slug
 
 api_bp = Blueprint("api", __name__)
@@ -108,3 +109,57 @@ def create_event():
     db.commit()
 
     return redirect(url_for("public.success", event_uid=uid, secret=admin_secret))
+
+
+@api_bp.route("/api/translation_report", methods=["POST"])
+@api_bp.route("/api/feedback", methods=["POST"])
+def submit_translation_report():
+    """Record a user-submitted bug report, feature request, or translation issue."""
+    data = request.get_json(silent=True) if request.is_json else request.form
+
+    if not data:
+        return jsonify({"error": "Missing payload"}), 400
+
+    raw_type = str(data.get("report_type") or "translation").strip().lower()
+    report_type = (
+        raw_type if raw_type in ("bug", "feature", "translation") else "translation"
+    )
+
+    raw_lang = str(data.get("lang") or "").strip()
+    lang = normalize_lang(raw_lang) or get_locale()
+    if lang not in SUPPORTED_LANGUAGES:
+        lang = "en"
+
+    original_text = str(data.get("original_text") or data.get("title") or "").strip()[
+        :500
+    ]
+    suggested_text = str(
+        data.get("suggested_text") or data.get("description") or ""
+    ).strip()[:1000]
+    context_notes = str(data.get("context_notes") or "").strip()[:1000]
+    page_url = str(data.get("page_url") or request.referrer or "").strip()[:500]
+
+    if not original_text or not suggested_text:
+        return (
+            jsonify({"error": "Both primary fields are required"}),
+            400,
+        )
+
+    db = database.get_db()
+    cursor = db.execute(
+        """
+        INSERT INTO translation_reports (report_type, lang, page_url, original_text, suggested_text, context_notes)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (report_type, lang, page_url, original_text, suggested_text, context_notes),
+    )
+    db.commit()
+
+    audit_logger.info(
+        f"FEEDBACK: Report #{cursor.lastrowid} ({report_type}) submitted for lang={lang}"
+    )
+
+    return (
+        jsonify({"status": "ok", "id": cursor.lastrowid, "report_type": report_type}),
+        201,
+    )

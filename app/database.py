@@ -174,6 +174,32 @@ def init_db():
             else:
                 raise
 
+    # 4. Ensure 'translation_reports' table exists for user-submitted feedback/bugs/i18n
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS translation_reports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            report_type TEXT DEFAULT 'translation',
+            lang TEXT NOT NULL,
+            page_url TEXT,
+            original_text TEXT NOT NULL,
+            suggested_text TEXT NOT NULL,
+            context_notes TEXT,
+            status TEXT DEFAULT 'Open',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    cursor.execute("PRAGMA table_info(translation_reports)")
+    tr_columns = [column[1] for column in cursor.fetchall()]
+    if "report_type" not in tr_columns:
+        try:
+            cursor.execute(
+                "ALTER TABLE translation_reports ADD COLUMN report_type TEXT DEFAULT 'translation'"
+            )
+        except sqlite3.OperationalError as e:
+            if "duplicate column name" not in str(e):
+                raise
+
     db.commit()
 
 

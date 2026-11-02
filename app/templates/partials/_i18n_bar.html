@@ -1,0 +1,302 @@
+<!-- Language Switcher & Feedback / Bug Report Bar -->
+<div class="flex flex-wrap items-center justify-end gap-2 mb-4" translate="no">
+    <div class="inline-flex items-center gap-1.5 bg-kvk-gray-800 border border-kvk-gray-700 rounded-lg px-2.5 py-1 shadow-sm">
+        <label for="kvk-lang-switcher" class="text-xs text-gray-400 font-medium select-none">
+            🌐 {{ t('lang_label') }}:
+        </label>
+        <select id="kvk-lang-switcher"
+                aria-label="{{ t('lang_label') }}"
+                onchange="switchKvkLanguage(this.value)"
+                class="bg-transparent text-xs font-semibold text-kvk-gold focus:outline-none cursor-pointer pr-1">
+            {% for code, meta in supported_languages.items() %}
+                <option value="{{ code }}" class="bg-kvk-gray-800 text-gray-200" {% if code == current_lang %}selected{% endif %}>
+                    {{ meta.flag }} {{ meta.native }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <button type="button"
+            id="open-translation-report-btn"
+            onclick="openTranslationReportModal()"
+            class="inline-flex items-center gap-1.5 bg-kvk-gray-800 hover:bg-kvk-gray-700 text-gray-300 hover:text-kvk-gold border border-kvk-gray-700 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors shadow-sm">
+        <svg class="w-3.5 h-3.5 text-kvk-gold flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+        </svg>
+        <span>{{ t('report_translation_btn') }}</span>
+    </button>
+</div>
+
+<!-- Feedback, Bug Report & Translation Issue Modal -->
+<div id="translation-report-modal"
+     class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="translation-report-modal-title">
+    <div class="bg-kvk-gray-800 border border-kvk-gray-700 rounded-xl shadow-2xl w-full max-w-md p-6 relative text-left" dir="{{ text_dir }}">
+        <button type="button"
+                onclick="closeTranslationReportModal()"
+                aria-label="{{ t('report_cancel_btn') }}"
+                class="absolute top-3 right-3 text-gray-400 hover:text-gray-200 text-xl font-bold px-2">
+            &times;
+        </button>
+
+        <h3 id="translation-report-modal-title" class="text-lg font-bold text-kvk-gold mb-1">
+            {{ t('report_modal_title') }}
+        </h3>
+        <p class="text-xs text-gray-400 mb-4">
+            {{ t('report_modal_desc') }}
+        </p>
+
+        <form id="translation-report-form" data-no-ajax="true" onsubmit="submitTranslationReport(event)" class="space-y-3">
+            <input type="hidden" name="csrf_token" id="tr-csrf-token" value="{{ csrf_token() }}">
+            <input type="hidden" name="report_type" id="tr-report-type" value="bug">
+
+            <!-- Category Selector Pills -->
+            <div>
+                <label class="block text-xs font-medium text-gray-300 mb-1.5">
+                    {{ t('report_type_label') }}
+                </label>
+                <div class="grid grid-cols-3 gap-1.5" role="group" aria-label="{{ t('report_type_label') }}">
+                    <button type="button"
+                            id="tr-type-btn-bug"
+                            onclick="setFeedbackCategory('bug')"
+                            class="tr-type-btn px-2 py-1.5 rounded-lg text-xs font-bold border transition-all bg-kvk-gold text-kvk-gray-900 border-kvk-gold shadow-sm">
+                        {{ t('report_type_bug') }}
+                    </button>
+                    <button type="button"
+                            id="tr-type-btn-feature"
+                            onclick="setFeedbackCategory('feature')"
+                            class="tr-type-btn px-2 py-1.5 rounded-lg text-xs font-medium border transition-all bg-kvk-gray-900 text-gray-300 border-kvk-gray-700 hover:border-gray-500">
+                        {{ t('report_type_feature') }}
+                    </button>
+                    <button type="button"
+                            id="tr-type-btn-translation"
+                            onclick="setFeedbackCategory('translation')"
+                            class="tr-type-btn px-2 py-1.5 rounded-lg text-xs font-medium border transition-all bg-kvk-gray-900 text-gray-300 border-kvk-gray-700 hover:border-gray-500">
+                        {{ t('report_type_translation') }}
+                    </button>
+                </div>
+            </div>
+
+            <div id="tr-lang-group" class="hidden">
+                <label for="tr-lang" class="block text-xs font-medium text-gray-300 mb-1">
+                    {{ t('report_field_language') }}
+                </label>
+                <select id="tr-lang" name="lang" class="w-full bg-kvk-gray-900 border border-kvk-gray-700 rounded-md text-xs text-gray-200 px-3 py-2 focus:border-kvk-gold focus:ring-1 focus:ring-kvk-gold">
+                    {% for code, meta in supported_languages.items() %}
+                        <option value="{{ code }}" {% if code == current_lang %}selected{% endif %}>
+                            {{ meta.flag }} {{ meta.native }} ({{ meta.name }})
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label for="tr-original-text" class="block text-xs font-medium text-gray-300 mb-1">
+                    <span id="tr-label-primary">{{ t('report_bug_title_label') }}</span> *
+                </label>
+                <input type="text"
+                       id="tr-original-text"
+                       name="original_text"
+                       required
+                       maxlength="500"
+                       placeholder="{{ t('report_bug_title_placeholder') }}"
+                       class="w-full bg-kvk-gray-900 border border-kvk-gray-700 rounded-md text-xs text-gray-200 px-3 py-2 focus:border-kvk-gold focus:ring-1 focus:ring-kvk-gold">
+            </div>
+
+            <div>
+                <label for="tr-suggested-text" class="block text-xs font-medium text-gray-300 mb-1">
+                    <span id="tr-label-secondary">{{ t('report_bug_desc_label') }}</span> *
+                </label>
+                <textarea id="tr-suggested-text"
+                          name="suggested_text"
+                          rows="3"
+                          required
+                          maxlength="1000"
+                          placeholder="{{ t('report_bug_desc_placeholder') }}"
+                          class="w-full bg-kvk-gray-900 border border-kvk-gray-700 rounded-md text-xs text-gray-200 px-3 py-2 focus:border-kvk-gold focus:ring-1 focus:ring-kvk-gold"></textarea>
+            </div>
+
+            <div>
+                <label for="tr-context-notes" class="block text-xs font-medium text-gray-300 mb-1">
+                    {{ t('report_field_context') }}
+                </label>
+                <textarea id="tr-context-notes"
+                          name="context_notes"
+                          rows="2"
+                          maxlength="1000"
+                          placeholder="{{ t('report_field_context_placeholder') }}"
+                          class="w-full bg-kvk-gray-900 border border-kvk-gray-700 rounded-md text-xs text-gray-200 px-3 py-2 focus:border-kvk-gold focus:ring-1 focus:ring-kvk-gold"></textarea>
+            </div>
+
+            <div id="tr-feedback-alert" class="hidden text-xs rounded-md px-3 py-2 font-medium"></div>
+
+            <div class="flex justify-end gap-2 pt-2 border-t border-kvk-gray-700">
+                <button type="button"
+                        onclick="closeTranslationReportModal()"
+                        class="px-3 py-1.5 rounded-md text-xs font-semibold bg-kvk-gray-700 text-gray-300 hover:bg-kvk-gray-600 transition-colors">
+                    {{ t('report_cancel_btn') }}
+                </button>
+                <button type="submit"
+                        id="tr-submit-btn"
+                        class="px-4 py-1.5 rounded-md text-xs font-bold bg-kvk-gold text-kvk-gray-900 hover:bg-amber-400 transition-colors">
+                    {{ t('report_submit_btn') }}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const I18N_FEEDBACK_CONFIG = {
+        bug: {
+            primaryLabel: {{ t('report_bug_title_label')|tojson }},
+            primaryPlaceholder: {{ t('report_bug_title_placeholder')|tojson }},
+            secondaryLabel: {{ t('report_bug_desc_label')|tojson }},
+            secondaryPlaceholder: {{ t('report_bug_desc_placeholder')|tojson }}
+        },
+        feature: {
+            primaryLabel: {{ t('report_feature_title_label')|tojson }},
+            primaryPlaceholder: {{ t('report_feature_title_placeholder')|tojson }},
+            secondaryLabel: {{ t('report_feature_desc_label')|tojson }},
+            secondaryPlaceholder: {{ t('report_feature_desc_placeholder')|tojson }}
+        },
+        translation: {
+            primaryLabel: {{ t('report_field_current_text')|tojson }},
+            primaryPlaceholder: {{ t('report_field_current_placeholder')|tojson }},
+            secondaryLabel: {{ t('report_field_suggested_text')|tojson }},
+            secondaryPlaceholder: {{ t('report_field_suggested_placeholder')|tojson }}
+        }
+    };
+
+    function switchKvkLanguage(lang) {
+        document.cookie = 'kvk_lang=' + encodeURIComponent(lang) + '; path=/; max-age=31536000; SameSite=Lax';
+        const url = new URL(window.location.href);
+        if (url.searchParams.has('lang')) {
+            url.searchParams.set('lang', lang);
+        }
+        window.location.href = url.toString();
+    }
+
+    function setFeedbackCategory(category) {
+        const validCategory = ['bug', 'feature', 'translation'].includes(category) ? category : 'bug';
+        const typeInput = document.getElementById('tr-report-type');
+        if (typeInput) typeInput.value = validCategory;
+
+        ['bug', 'feature', 'translation'].forEach(cat => {
+            const btn = document.getElementById('tr-type-btn-' + cat);
+            if (!btn) return;
+            if (cat === validCategory) {
+                btn.className = 'tr-type-btn px-2 py-1.5 rounded-lg text-xs font-bold border transition-all bg-kvk-gold text-kvk-gray-900 border-kvk-gold shadow-sm';
+            } else {
+                btn.className = 'tr-type-btn px-2 py-1.5 rounded-lg text-xs font-medium border transition-all bg-kvk-gray-900 text-gray-300 border-kvk-gray-700 hover:border-gray-500';
+            }
+        });
+
+        const langGroup = document.getElementById('tr-lang-group');
+        if (langGroup) {
+            if (validCategory === 'translation') {
+                langGroup.classList.remove('hidden');
+            } else {
+                langGroup.classList.add('hidden');
+            }
+        }
+
+        const cfg = I18N_FEEDBACK_CONFIG[validCategory];
+        const primaryLabel = document.getElementById('tr-label-primary');
+        const primaryInput = document.getElementById('tr-original-text');
+        const secondaryLabel = document.getElementById('tr-label-secondary');
+        const secondaryInput = document.getElementById('tr-suggested-text');
+
+        if (cfg) {
+            if (primaryLabel) primaryLabel.textContent = cfg.primaryLabel;
+            if (primaryInput) primaryInput.placeholder = cfg.primaryPlaceholder;
+            if (secondaryLabel) secondaryLabel.textContent = cfg.secondaryLabel;
+            if (secondaryInput) secondaryInput.placeholder = cfg.secondaryPlaceholder;
+        }
+    }
+
+    function openTranslationReportModal(defaultCategory) {
+        const modal = document.getElementById('translation-report-modal');
+        const alertBox = document.getElementById('tr-feedback-alert');
+        if (alertBox) {
+            alertBox.className = 'hidden text-xs rounded-md px-3 py-2 font-medium';
+            alertBox.textContent = '';
+        }
+        setFeedbackCategory(defaultCategory || 'bug');
+        if (modal) {
+            modal.classList.remove('hidden');
+        }
+    }
+
+    function closeTranslationReportModal() {
+        const modal = document.getElementById('translation-report-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+    }
+
+    async function submitTranslationReport(e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const reportType = document.getElementById('tr-report-type').value || 'bug';
+        const lang = document.getElementById('tr-lang').value;
+        const originalText = document.getElementById('tr-original-text').value.trim();
+        const suggestedText = document.getElementById('tr-suggested-text').value.trim();
+        const contextNotes = document.getElementById('tr-context-notes').value.trim();
+        const csrfToken = document.getElementById('tr-csrf-token').value;
+        const submitBtn = document.getElementById('tr-submit-btn');
+        const alertBox = document.getElementById('tr-feedback-alert');
+
+        if (!originalText || !suggestedText) {
+            alertBox.textContent = {{ t('report_error_msg')|tojson }};
+            alertBox.className = 'text-xs rounded-md px-3 py-2 font-medium bg-red-900/40 text-red-200 border border-red-500/40';
+            return;
+        }
+
+        const origBtnText = submitBtn.textContent;
+        submitBtn.disabled = true;
+        submitBtn.textContent = {{ t('report_submitting')|tojson }};
+
+        try {
+            const resp = await fetch('/api/feedback', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    report_type: reportType,
+                    lang: lang,
+                    original_text: originalText,
+                    suggested_text: suggestedText,
+                    context_notes: contextNotes,
+                    page_url: window.location.pathname
+                })
+            });
+
+            if (resp.ok) {
+                alertBox.textContent = {{ t('report_success_msg')|tojson }};
+                alertBox.className = 'text-xs rounded-md px-3 py-2 font-medium bg-emerald-900/40 text-emerald-200 border border-emerald-500/40';
+                document.getElementById('tr-original-text').value = '';
+                document.getElementById('tr-suggested-text').value = '';
+                document.getElementById('tr-context-notes').value = '';
+                setTimeout(() => {
+                    closeTranslationReportModal();
+                }, 1400);
+            } else {
+                alertBox.textContent = {{ t('report_error_msg')|tojson }};
+                alertBox.className = 'text-xs rounded-md px-3 py-2 font-medium bg-red-900/40 text-red-200 border border-red-500/40';
+            }
+        } catch (err) {
+            console.error('Feedback report error:', err);
+            alertBox.textContent = {{ t('report_error_msg')|tojson }};
+            alertBox.className = 'text-xs rounded-md px-3 py-2 font-medium bg-red-900/40 text-red-200 border border-red-500/40';
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = origBtnText;
+        }
+    }
+</script>

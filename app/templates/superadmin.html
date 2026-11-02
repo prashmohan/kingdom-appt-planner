@@ -552,6 +552,138 @@
                 </table>
             </div>
         </section>
+
+        <!-- 4. User Feedback, Bug Reports & Translation Issues Directory -->
+        <section aria-label="User Feedback and Bug Reports" class="bg-kvk-gray-800 border border-kvk-gray-700 rounded-xl shadow-lg p-6">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-100 flex items-center gap-2">
+                        <span>📬</span> User Feedback, Bug Reports &amp; Translation Issues
+                        <span class="bg-kvk-gray-700 text-gray-300 text-xs px-2.5 py-0.5 rounded-full font-semibold border border-kvk-gray-600">
+                            {{ translation_reports|length if translation_reports is defined else 0 }}
+                        </span>
+                        {% if open_reports_count is defined and open_reports_count > 0 %}
+                            <span class="bg-amber-500/20 text-kvk-gold text-xs px-2.5 py-0.5 rounded-full font-semibold border border-amber-500/40">
+                                {{ open_reports_count }} Open
+                            </span>
+                        {% endif %}
+                    </h2>
+                    <p class="text-xs text-gray-400 mt-0.5">Player and admin bug reports, feature requests, and localization feedback</p>
+                </div>
+
+                <!-- Category Filter Pills -->
+                <div class="inline-flex bg-kvk-gray-900/90 p-1 rounded-xl border border-kvk-gray-700 shadow-inner" role="group" aria-label="Feedback category filter">
+                    <button type="button" onclick="filterFeedbackRows('all', this)" class="fb-filter-btn px-2.5 py-1 rounded-lg text-xs font-semibold transition-all bg-kvk-gold text-kvk-gray-900 shadow-sm">
+                        All
+                    </button>
+                    <button type="button" onclick="filterFeedbackRows('bug', this)" class="fb-filter-btn px-2.5 py-1 rounded-lg text-xs font-semibold transition-all text-gray-400 hover:text-gray-200">
+                        🐛 Bugs
+                    </button>
+                    <button type="button" onclick="filterFeedbackRows('feature', this)" class="fb-filter-btn px-2.5 py-1 rounded-lg text-xs font-semibold transition-all text-gray-400 hover:text-gray-200">
+                        💡 Features
+                    </button>
+                    <button type="button" onclick="filterFeedbackRows('translation', this)" class="fb-filter-btn px-2.5 py-1 rounded-lg text-xs font-semibold transition-all text-gray-400 hover:text-gray-200">
+                        🌐 Translations
+                    </button>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto rounded-lg border border-kvk-gray-700">
+                <table id="translation-reports-table" class="w-full divide-y divide-kvk-gray-700 text-sm text-left">
+                    <thead class="bg-kvk-gray-900/90 text-xs font-semibold uppercase tracking-wider text-gray-400 select-none">
+                        <tr>
+                            <th scope="col" class="py-3 px-4 w-36">Type / Lang</th>
+                            <th scope="col" class="py-3 px-4">Summary / Current Text</th>
+                            <th scope="col" class="py-3 px-4">Details / Suggested Correction</th>
+                            <th scope="col" class="py-3 px-4">Notes / Page</th>
+                            <th scope="col" class="py-3 px-3 w-28">Status</th>
+                            <th scope="col" class="py-3 px-3 w-36">Submitted (UTC)</th>
+                            <th scope="col" class="py-3 px-4 w-36 text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-kvk-gray-700/60 text-gray-300">
+                        {% if translation_reports %}
+                            {% for rep in translation_reports %}
+                                {% set rtype = rep.report_type or 'translation' %}
+                                <tr class="feedback-report-row hover:bg-kvk-gray-700/40 transition-colors {% if rep.status == 'Resolved' %}opacity-60{% endif %}"
+                                    data-report-type="{{ rtype }}">
+                                    <td class="py-3 px-4 whitespace-nowrap">
+                                        <div class="flex items-center gap-1.5">
+                                            {% if rtype == 'bug' %}
+                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-rose-900/40 text-rose-300 border border-rose-700/40">
+                                                    🐛 Bug
+                                                </span>
+                                            {% elif rtype == 'feature' %}
+                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-blue-900/40 text-blue-300 border border-blue-700/40">
+                                                    💡 Feature
+                                                </span>
+                                            {% else %}
+                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-purple-900/40 text-purple-300 border border-purple-700/40">
+                                                    🌐 i18n
+                                                </span>
+                                            {% endif %}
+                                            <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-bold uppercase bg-kvk-gray-900 text-kvk-gold border border-kvk-gray-700">
+                                                {{ supported_languages[rep.lang].flag if rep.lang in supported_languages else '🌐' }} {{ rep.lang }}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td class="py-3 px-4 font-medium text-gray-200 max-w-xs break-words">
+                                        {{ rep.original_text }}
+                                    </td>
+                                    <td class="py-3 px-4 font-semibold text-emerald-300 max-w-xs break-words">
+                                        {{ rep.suggested_text }}
+                                    </td>
+                                    <td class="py-3 px-4 text-xs text-gray-400 max-w-xs break-words">
+                                        {% if rep.context_notes %}
+                                            <div class="text-gray-300 mb-0.5">{{ rep.context_notes }}</div>
+                                        {% endif %}
+                                        {% if rep.page_url %}
+                                            <div class="font-mono text-[11px] text-gray-500 truncate" title="{{ rep.page_url }}">{{ rep.page_url }}</div>
+                                        {% endif %}
+                                    </td>
+                                    <td class="py-3 px-3 whitespace-nowrap">
+                                        {% if rep.status == 'Open' %}
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-amber-900/40 text-amber-300 border border-amber-700/40">
+                                                Open
+                                            </span>
+                                        {% else %}
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-emerald-900/40 text-emerald-300 border border-emerald-700/40">
+                                                Resolved
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="py-3 px-3 text-xs text-gray-400 whitespace-nowrap">
+                                        {{ rep.created_at }}
+                                    </td>
+                                    <td class="py-3 px-4 text-center whitespace-nowrap">
+                                        <div class="flex items-center justify-center gap-1.5">
+                                            <form action="{{ url_for('superadmin.resolve_translation_report', report_id=rep.id, range=current_range) }}" method="POST" class="inline">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <button type="submit" class="px-2.5 py-1 rounded text-xs font-semibold transition-colors {% if rep.status == 'Open' %}bg-emerald-700 hover:bg-emerald-600 text-white{% else %}bg-kvk-gray-700 hover:bg-kvk-gray-600 text-gray-300{% endif %}">
+                                                    {% if rep.status == 'Open' %}Resolve{% else %}Reopen{% endif %}
+                                                </button>
+                                            </form>
+                                            <form action="{{ url_for('superadmin.delete_translation_report', report_id=rep.id, range=current_range) }}" method="POST" class="inline" onsubmit="return confirm('Delete this translation report?');">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <button type="submit" class="px-2 py-1 rounded text-xs font-semibold bg-red-900/40 hover:bg-red-800/60 text-red-300 border border-red-700/40 transition-colors">
+                                                    Delete
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center py-8 text-gray-500 text-sm italic">
+                                    No translation bug reports submitted yet.
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
     </main>
 
     <!-- Toast Notification (Fixed Floating UI) -->
@@ -725,6 +857,24 @@
             });
 
             rows.forEach(row => tbody.appendChild(row));
+        }
+
+        // 5. Filter Feedback / Bug / Translation Report Rows
+        function filterFeedbackRows(typeFilter, btnEl) {
+            document.querySelectorAll('.fb-filter-btn').forEach(btn => {
+                btn.className = 'fb-filter-btn px-2.5 py-1 rounded-lg text-xs font-semibold transition-all text-gray-400 hover:text-gray-200';
+            });
+            if (btnEl) {
+                btnEl.className = 'fb-filter-btn px-2.5 py-1 rounded-lg text-xs font-semibold transition-all bg-kvk-gold text-kvk-gray-900 shadow-sm';
+            }
+            document.querySelectorAll('tr.feedback-report-row').forEach(row => {
+                const rowType = row.getAttribute('data-report-type') || 'translation';
+                if (typeFilter === 'all' || rowType === typeFilter) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
         }
     </script>
 </body>

@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="{{ current_lang }}" dir="{{ text_dir }}" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Locked Appointments - {{ event.name }}</title>
+    <title>{{ t('locked_page_title', event_name=event.name) }}</title>
     {% include 'analytics.html' %}
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
     <script src="{{ url_for('static', filename='tailwind.js') }}"></script>
@@ -73,13 +73,14 @@
 </head>
 <body class="bg-kvk-gray-900 text-gray-200 antialiased">
     <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+        {% include 'partials/_i18n_bar.html' %}
         <header class="text-center mb-10">
-            <h1 class="text-4xl md:text-5xl font-bold text-kvk-gold">Finalized Schedule</h1>
+            <h1 class="text-4xl md:text-5xl font-bold text-kvk-gold">{{ t('locked_heading') }}</h1>
             <p class="text-lg text-gray-400 mt-2 flex items-center justify-center gap-2">
                 <span>{{ event.name }}</span>
                 {% if event.server_id %}
                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-kvk-gray-800 text-kvk-gold border border-kvk-gold/40">
-                        Kingdom #{{ event.server_id }}
+                        {{ t('common_kingdom_num', server_id=event.server_id) }}
                     </span>
                 {% endif %}
             </p>
@@ -88,32 +89,32 @@
         <!-- Time Display Toggle Bar -->
         <div class="mb-6 p-4 bg-kvk-gray-800 rounded-lg shadow-md border border-kvk-gray-700 flex flex-wrap items-center justify-between gap-4" data-tz-container>
             <div class="flex items-center gap-3">
-                <span class="text-xs font-semibold text-gray-300 uppercase tracking-wider">Timezone Display:</span>
+                <span class="text-xs font-semibold text-gray-300 uppercase tracking-wider">{{ t('common_timezone_display') }}</span>
                 <div class="inline-flex rounded-lg shadow-sm border border-kvk-gray-600 p-0.5 bg-kvk-gray-900" role="group" id="tz-toggle-group">
                     <button type="button" id="tz-toggle-utc" onclick="setTimezoneMode('utc')" 
                             class="tz-toggle-btn px-3 py-1 text-xs font-bold rounded-md bg-kvk-gold text-kvk-gray-900 transition-all shadow-sm">
-                        🌐 UTC
+                        {{ t('common_utc') }}
                     </button>
                     <button type="button" id="tz-toggle-local" onclick="setTimezoneMode('local')" 
                             class="tz-toggle-btn px-3 py-1 text-xs font-medium rounded-md text-gray-300 hover:text-white transition-all">
-                        🕒 Local Time (<span id="detected-tz-name">Local</span>)
+                        {{ t('common_local_time') }} (<span id="detected-tz-name" translate="no">{{ t('common_local') }}</span>)
                     </button>
                 </div>
             </div>
             <div class="text-xs text-gray-400">
-                Click any scheduled player card to copy their Player ID to clipboard.
+                {{ t('locked_copy_hint') }}
             </div>
         </div>
 
         <!-- Tab Buttons -->
         <div class="mb-6 border-b border-kvk-gray-700">
-            <nav class="-mb-px flex justify-center space-x-8" aria-label="Tabs">
+            <nav class="-mb-px flex justify-center gap-8" aria-label="Tabs">
                 {% for day in active_days %}
                 <button class="tab-button whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200" data-target="tab-{{day}}">
                     {% if day == 'research' %}
-                        Research (Day {{ event.active_days.research_day if event.active_days.research_day else '5' }})
+                        {{ t('day_research_with_num', day=(event.active_days.research_day if event.active_days.research_day else '5')) }}
                     {% else %}
-                        {{ day|capitalize }}
+                        {{ t('day_' ~ day) }}
                     {% endif %}
                 </button>
                 {% endfor %}
@@ -123,39 +124,35 @@
         <!-- Tab Content -->
         <div class="space-y-8">
             {% for day in active_days %}
+            {% set day_display = t('day_research_with_num', day=(event.active_days.research_day if event.active_days.research_day else '5')) if day == 'research' else t('day_' ~ day) %}
             <div id="tab-{{day}}" class="tab-content hidden animate-fade-in">
                 <div class="bg-kvk-gray-800 p-6 rounded-xl shadow-lg border border-kvk-gray-700">
                     <h2 class="text-2xl font-bold mb-6 text-center text-gray-100 capitalize">
-                        {% if day == 'research' %}
-                            Research (Day {{ event.active_days.research_day if event.active_days.research_day else '5' }})
-                        {% else %}
-                            {{ day }}
-                        {% endif %} 
-                        Final Schedule
+                        {{ t('locked_day_heading', day=day_display) }}
                     </h2>
                     
-                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2">
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2" dir="ltr">
                         {% for i in range(slot_labels|length) %}
                         {% set assignment = assignments.get(day, {}).get(i) %}
                         <div class="slot rounded-lg overflow-hidden {% if assignment %}{% if assignment.is_locked %}slot-locked shadow-lg border-blue-500/50{% else %}slot-tentative shadow-lg border-amber-500/50{% endif %} cursor-copy hover:border-kvk-gold transition-all duration-200{% else %}slot-empty{% endif %}"
-                             {% if assignment %}onclick="copyToClipboard('{{ assignment.player_id }}', this)" title="Click to copy Player ID"{% endif %}>
-                            <div class="slot-time" data-index="{{ i }}" data-utc-label="{{ slot_labels[i] }}">
+                             {% if assignment %}onclick="copyToClipboard('{{ assignment.player_id }}', this)" title="{{ t('locked_click_to_copy') }}"{% endif %}>
+                            <div class="slot-time notranslate" translate="no" data-index="{{ i }}" data-utc-label="{{ slot_labels[i] }}">
                                 <span class="slot-time-text">{{ slot_labels[i] }}</span>
                             </div>
                             <div class="slot-content">
                                 {% if assignment %}
                                     <p class="font-bold text-kvk-gold text-[0.7rem] mb-1">
                                         {% if assignment.is_locked %}
-                                            <span class="text-blue-300">● CONFIRMED</span>
+                                            <span class="text-blue-300">{{ t('locked_badge_confirmed') }}</span>
                                         {% else %}
-                                            <span class="text-amber-400 italic">○ TENTATIVE</span>
+                                            <span class="text-amber-400 italic">{{ t('locked_badge_tentative') }}</span>
                                         {% endif %}
                                     </p>
-                                    <p class="font-bold text-gray-100 text-xs">[{{ assignment.alliance_name }}]</p>
-                                    <p class="text-gray-100 font-medium break-words px-1">{{ assignment.player_name }}</p>
-                                    <div class="copy-feedback hidden absolute inset-0 bg-green-600/90 flex items-center justify-center font-bold text-white text-xs rounded-lg">Copied!</div>
+                                    <p class="font-bold text-gray-100 text-xs notranslate" translate="no">[{{ assignment.alliance_name }}]</p>
+                                    <p class="text-gray-100 font-medium break-words px-1 notranslate" translate="no">{{ assignment.player_name }}</p>
+                                    <div class="copy-feedback hidden absolute inset-0 bg-green-600/90 flex items-center justify-center font-bold text-white text-xs rounded-lg">{{ t('locked_copied') }}</div>
                                 {% else %}
-                                    <span class="text-gray-600 text-[0.6rem] uppercase tracking-wider">Unassigned</span>
+                                    <span class="text-gray-600 text-[0.6rem] uppercase tracking-wider">{{ t('locked_unassigned') }}</span>
                                 {% endif %}
                             </div>
                         </div>
@@ -167,7 +164,7 @@
         </div>
 
         <div class="text-center mt-12">
-             <a href="{{ url_for('public.index') }}" class="text-kvk-gold hover:text-amber-300 transition-colors duration-200 font-medium border border-kvk-gold/30 px-6 py-2 rounded-full hover:border-kvk-gold">Return to Home</a>
+             <a href="{{ url_for('public.index') }}" class="text-kvk-gold hover:text-amber-300 transition-colors duration-200 font-medium border border-kvk-gold/30 px-6 py-2 rounded-full hover:border-kvk-gold">{{ t('locked_return_home') }}</a>
         </div>
 
         <footer class="mt-12 pb-8 text-center border-t border-kvk-gray-700 pt-8">

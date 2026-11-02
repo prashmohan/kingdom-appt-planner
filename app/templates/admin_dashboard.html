@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="{{ current_lang }}" dir="{{ text_dir }}" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - KingShot Planner</title>
+    <title>{{ t('admin_page_title') }}</title>
     {% include 'analytics.html' %}
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
     <script src="{{ url_for('static', filename='tailwind.js') }}"></script>
@@ -57,19 +57,20 @@
     <!-- Feedback Banner -->
     <div class="bg-blue-900/40 border-b border-blue-500/30 py-3 px-4 text-center">
         <p class="text-sm text-gray-300">
-            👋 **How is it working for your kingdom?** We’d love to hear your feedback or feature requests over on 
+            {{ t('admin_feedback_banner') }}
             <a href="https://www.reddit.com/r/KingShot/comments/1t8z6p7/comment/okycwj8" target="_blank" class="text-kvk-gold hover:text-amber-300 font-bold underline transition-colors">Reddit</a>.
         </p>
     </div>
 
     <div class="container mx-auto p-4 md:p-8">
+        {% include 'partials/_i18n_bar.html' %}
         <header class="text-center mb-10">
-            <h1 class="text-4xl md:text-5xl font-bold text-kvk-gold">Admin Dashboard</h1>
+            <h1 class="text-4xl md:text-5xl font-bold text-kvk-gold">{{ t('admin_heading') }}</h1>
             <p class="text-lg text-gray-400 mt-2 flex items-center justify-center gap-2">
                 <span>{{ event.name }}</span>
                 {% if event.server_id %}
                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-kvk-gray-800 text-kvk-gold border border-kvk-gold/40">
-                        Kingdom #{{ event.server_id }}
+                        {{ t('common_kingdom_num', server_id=event.server_id) }}
                     </span>
                 {% endif %}
             </p>
@@ -94,7 +95,7 @@
         <div class="bg-kvk-gray-800 border border-kvk-gray-700 p-4 rounded-xl shadow-md mb-6 flex flex-wrap items-center justify-between gap-4">
             <div class="flex flex-wrap gap-4">
                 <div>
-                    <h2 class="text-xl font-bold mb-2 text-gray-100">Global Actions</h2>
+                    <h2 class="text-xl font-bold mb-2 text-gray-100">{{ t('admin_global_actions') }}</h2>
                     <div class="flex flex-wrap gap-2 items-center">
                         <form action="{{ url_for('admin.refresh_players', event_uid=event.uid) }}" method="POST" class="inline">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -103,7 +104,7 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                 </svg>
-                                Refresh Player Data
+                                {{ t('admin_refresh_players') }}
                             </button>
                         </form>
 
@@ -112,7 +113,7 @@
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-kvk-gold" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                             </svg>
-                            Export Submissions
+                            {{ t('admin_export_subs') }}
                         </a>
 
                         <form action="{{ url_for('admin.import_submissions', event_uid=event.uid) }}" 
@@ -125,29 +126,29 @@
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-kvk-gold" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                                 </svg>
-                                <span>Import Submissions</span>
+                                <span>{{ t('admin_import_subs') }}</span>
                                 <input type="file" name="submissions_file" accept=".json" class="hidden" onchange="this.form.submit()">
                             </label>
                         </form>
                     </div>
                 </div>
             </div>
-            <div class="flex space-x-4">
-                <a href="{{ player_url }}" target="_blank" class="bg-kvk-gray-700 text-white font-bold py-2 px-4 rounded-md hover:bg-kvk-gray-600 transition duration-300">Player Form</a>
+            <div class="flex gap-4">
+                <a href="{{ player_url }}" target="_blank" class="bg-kvk-gray-700 text-white font-bold py-2 px-4 rounded-md hover:bg-kvk-gray-600 transition duration-300">{{ t('admin_player_form_btn') }}</a>
 
-                <a href="{{ finalized_url }}" target="_blank" class="bg-green-600 text-white font-bold py-2 px-4 rounded-md hover:bg-green-700 transition duration-300">Finalized Schedule</a>
+                <a href="{{ finalized_url }}" target="_blank" class="bg-green-600 text-white font-bold py-2 px-4 rounded-md hover:bg-green-700 transition duration-300">{{ t('admin_finalized_btn') }}</a>
             </div>
         </div>
 
         <!-- Tab Buttons -->
         <div class="mb-4 border-b border-kvk-gray-700">
-            <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+            <nav class="-mb-px flex gap-8" aria-label="Tabs">
                 {% for day in active_days %}
                 <button class="tab-button whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-target="tab-{{day}}">
                     {% if day == 'research' %}
-                        Research (Day {{ event.active_days.research_day if event.active_days.research_day else '5' }})
+                        {{ t('day_research_with_num', day=(event.active_days.research_day if event.active_days.research_day else '5')) }}
                     {% else %}
-                        {{ day|capitalize }}
+                        {{ t('day_' ~ day) }}
                     {% endif %}
                 </button>
                 {% endfor %}
@@ -155,7 +156,7 @@
                     <svg class="w-4 h-4 text-kvk-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                     </svg>
-                    <span>Insights</span>
+                    <span>{{ t('admin_tab_insights') }}</span>
                 </button>
             </nav>
         </div>
@@ -168,12 +169,12 @@
                 <div class="lg:col-span-2 bg-kvk-gray-800 p-6 rounded-xl shadow-md border border-kvk-gray-700">
                     <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
                         <h2 class="text-2xl font-bold text-gray-100">
-                            Schedule Heatmap: 
+                            {{ t('admin_heatmap_title') }} 
                             <span class="capitalize">
                                 {% if day == 'research' %}
-                                    Research (Day {{ event.active_days.research_day if event.active_days.research_day else '5' }})
+                                    {{ t('day_research_with_num', day=(event.active_days.research_day if event.active_days.research_day else '5')) }}
                                 {% else %}
-                                    {{ day }}
+                                    {{ t('day_' ~ day) }}
                                 {% endif %}
                             </span>
                         </h2>
@@ -183,17 +184,17 @@
                                 <input type="hidden" name="secret" value="{{ secret }}">
 
                                 <input type="hidden" name="day_type" value="{{ day }}">
-                                <button type="submit" class="bg-kvk-gold text-kvk-gray-900 font-bold py-1.5 px-4 rounded-md text-sm hover:bg-amber-500 transition duration-300 shadow-sm">Assign Appointments</button>
+                                <button type="submit" class="bg-kvk-gold text-kvk-gray-900 font-bold py-1.5 px-4 rounded-md text-sm hover:bg-amber-500 transition duration-300 shadow-sm">{{ t('admin_assign_btn') }}</button>
                             </form>
                             <a href="{{ url_for('admin.export_csv', event_uid=event.uid, day_type=day, secret=secret) }}" class="bg-kvk-gray-700 text-kvk-gold font-bold py-1.5 px-4 rounded-md text-sm hover:bg-kvk-gray-600 transition duration-300 shadow-sm flex items-center gap-1 border border-kvk-gold/20">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
-                                Export CSV
+                                {{ t('admin_export_csv') }}
                             </a>
                         </div>
                     </div>
-                    <div class="grid grid-cols-7 gap-1">
+                    <div class="grid grid-cols-7 gap-1" dir="ltr">
                         {% for i in range(slot_labels|length) %}
                             {% set current_assignment = assignments.get(day, {}).get(i) %}
                             {% set day_slot_density = slot_density.get(day, []) %}
@@ -203,11 +204,11 @@
                             <div class="slot rounded cursor-help heatmap-slot-{{ day }}-{{ i }} {% if current_assignment %}{% if current_assignment.is_locked %}slot-locked{% else %}slot-pending{% endif %}{% endif %}" 
                                  style="background-color: rgba(30, 64, 175, {{ density }});"
                                  onclick="selectSlot('{{ day }}', {{ i }})"
-                                 title="Potential Players: {% for p in potential_players %}[{{ p.alliance_name }}] {{ p.player_name }} ({{ '%.0f'|format(p.resources) }} pts){{ ', ' if not loop.last }}{% else %}None{% endfor %}">
-                                <div class="slot-time rounded-t">{{ slot_labels[i] }}</div>
+                                 title="{{ t('admin_potential_players') }}: {% for p in potential_players %}[{{ p.alliance_name }}] {{ p.player_name }} ({{ '%.0f'|format(p.resources) }} pts){{ ', ' if not loop.last }}{% else %}{{ t('admin_none') }}{% endfor %}">
+                                <div class="slot-time rounded-t notranslate" translate="no">{{ slot_labels[i] }}</div>
                                 {% if current_assignment %}
                                     <div class="slot-content">
-                                        <p class="font-bold text-xs">[{{ current_assignment.alliance_name }}] {{ current_assignment.player_name }}</p>
+                                        <p class="font-bold text-xs notranslate" translate="no">[{{ current_assignment.alliance_name }}] {{ current_assignment.player_name }}</p>
                                         <div class="flex items-center justify-center">
                                             {% if current_assignment.is_locked %}
                                                 <form action="{{ url_for('admin.unlock', event_uid=event.uid) }}" method="POST" class="inline">
@@ -215,7 +216,7 @@
                                                     <input type="hidden" name="secret" value="{{ secret }}">
                                                     <input type="hidden" name="day_type" value="{{ day }}">
                                                     <input type="hidden" name="slot_index" value="{{ i }}">
-                                                    <button type="submit" class="text-xs bg-yellow-600 text-white px-2 py-1 rounded mt-1">Unlock</button>
+                                                    <button type="submit" class="text-xs bg-yellow-600 text-white px-2 py-1 rounded mt-1">{{ t('admin_unlock') }}</button>
                                                 </form>
                                             {% else %}
                                                 <form action="{{ url_for('admin.confirm', event_uid=event.uid) }}" method="POST" class="inline">
@@ -223,7 +224,7 @@
                                                     <input type="hidden" name="secret" value="{{ secret }}">
                                                     <input type="hidden" name="day_type" value="{{ day }}">
                                                     <input type="hidden" name="slot_index" value="{{ i }}">
-                                                    <button type="submit" class="text-xs bg-blue-600 text-white px-2 py-1 rounded mt-1">Lock</button>
+                                                    <button type="submit" class="text-xs bg-blue-600 text-white px-2 py-1 rounded mt-1">{{ t('admin_lock') }}</button>
                                                 </form>
                                             {% endif %}
                                         </div>
@@ -243,27 +244,27 @@
             <div class="bg-kvk-gray-800 p-6 rounded-xl shadow-md border border-kvk-gray-700">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-2xl font-bold text-gray-100">
-                        Submissions: 
+                        {{ t('admin_submissions_title') }} 
                         <span class="capitalize">
                             {% if day == 'research' %}
-                                Research (Day {{ event.active_days.research_day if event.active_days.research_day else '5' }})
+                                {{ t('day_research_with_num', day=(event.active_days.research_day if event.active_days.research_day else '5')) }}
                             {% else %}
-                                {{ day }}
+                                {{ t('day_' ~ day) }}
                             {% endif %}
                         </span>
                     </h2>
-                    <input type="text" placeholder="Search submissions..." class="bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-sm text-gray-200 px-3 py-1 focus:ring-kvk-gold focus:border-kvk-gold" oninput="filterTable(this, 'submissions-table-{{day}}')">
+                    <input type="text" placeholder="{{ t('admin_search_placeholder') }}" class="bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-sm text-gray-200 px-3 py-1 focus:ring-kvk-gold focus:border-kvk-gold" oninput="filterTable(this, 'submissions-table-{{day}}')">
                 </div>
                 <div class="overflow-x-auto">
                     <table class="min-w-full" id="submissions-table-{{day}}">
                         <thead class="border-b border-kvk-gray-700">
                             <tr>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-kvk-gold transition-colors" onclick="sortTable('submissions-table-{{day}}', 0)">Player ↕</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-kvk-gold transition-colors" onclick="sortTable('submissions-table-{{day}}', 1)">Alliance ↕</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-kvk-gold transition-colors" onclick="sortTable('submissions-table-{{day}}', 2, true)">Score ↕</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-kvk-gold transition-colors" onclick="sortTable('submissions-table-{{day}}', 3)">Status ↕</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Assigned Slot / Manual Set</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Actions</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-kvk-gold transition-colors" onclick="sortTable('submissions-table-{{day}}', 0)">{{ t('admin_col_player') }}</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-kvk-gold transition-colors" onclick="sortTable('submissions-table-{{day}}', 1)">{{ t('admin_col_alliance') }}</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-kvk-gold transition-colors" onclick="sortTable('submissions-table-{{day}}', 2, true)">{{ t('admin_col_score') }}</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase cursor-pointer hover:text-kvk-gold transition-colors" onclick="sortTable('submissions-table-{{day}}', 3)">{{ t('admin_col_status') }}</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">{{ t('admin_col_assigned_slot') }}</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">{{ t('admin_col_actions') }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -279,11 +280,11 @@
                                                     <div class="w-full h-full flex items-center justify-center text-xs text-gray-500">?</div>
                                                 {% endif %}
                                             </div>
-                                            <span class="cursor-help border-b border-dashed border-gray-500" title="Requested Slots: {{ sub.requested_slots_text }}">
+                                            <span class="cursor-help border-b border-dashed border-gray-500 notranslate" translate="no" title="{{ t('admin_requested_slots') }}: {{ sub.requested_slots_text }}">
                                                 {{ sub.player_name }} ({{ sub.player_id }})
                                             </span>
                                             {% if enable_screenshot_upload and sub.backpack_url %}
-                                                <a href="{{ sub.backpack_url }}" target="_blank" class="text-kvk-gold hover:text-amber-500 transition-colors" title="View Backpack Screenshot">
+                                                <a href="{{ sub.backpack_url }}" target="_blank" class="text-kvk-gold hover:text-amber-500 transition-colors" title="{{ t('admin_view_screenshot') }}">
                                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                                     </svg>
@@ -298,51 +299,51 @@
                                             <input type="hidden" name="submission_id" value="{{ sub.id }}">
                                             <input type="text" name="alliance_name" value="{{ sub.alliance_name }}" 
                                                    class="bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-xs text-gray-200 px-2 py-1 w-24 focus:ring-kvk-gold focus:border-kvk-gold">
-                                            <button type="submit" class="text-xs bg-kvk-gray-600 text-white px-1.5 py-1 rounded hover:bg-kvk-gray-500" title="Save Alliance">
+                                            <button type="submit" class="text-xs bg-kvk-gray-600 text-white px-1.5 py-1 rounded hover:bg-kvk-gray-500" title="{{ t('admin_save_alliance') }}">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
                                                     <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
                                                 </svg>
                                             </button>
                                         </form>
                                     </td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-gray-300">
+                                    <td class="px-4 py-3 whitespace-nowrap text-gray-300" data-value="{{ sub.resources }}">
                                         <span class="cursor-help border-b border-dashed border-gray-500" title="{{ sub.resources_text }}">
                                             {{ "%.0f"|format(sub.resources) }}
                                         </span>
                                     </td>
-                                    <td class="px-4 py-3 whitespace-nowrap text-gray-300">{{ sub.status }}</td>
+                                    <td class="px-4 py-3 whitespace-nowrap text-gray-300">{{ t('status_' ~ sub.status) }}</td>
                                     <td class="px-4 py-3 whitespace-nowrap">
                                         {% if assignment %}
                                             <div class="flex items-center gap-2">
-                                                <span class="font-bold text-gray-200">{{ slot_labels[assignment.slot_index] }}</span>
+                                                <span class="font-bold text-gray-200 notranslate" translate="no">{{ slot_labels[assignment.slot_index] }}</span>
                                                 <form action="{{ url_for('admin.unset_assignment', event_uid=event.uid) }}" method="POST" class="inline">
                                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                     <input type="hidden" name="secret" value="{{ secret }}">
                                                     <input type="hidden" name="submission_id" value="{{ sub.id }}">
-                                                    <button type="submit" class="text-xs bg-red-600/30 text-red-400 px-2 py-0.5 rounded hover:bg-red-600/50 transition duration-200" title="Unset Appointment">Unset</button>
+                                                    <button type="submit" class="text-xs bg-red-600/30 text-red-400 px-2 py-0.5 rounded hover:bg-red-600/50 transition duration-200" title="{{ t('admin_unset_title') }}">{{ t('admin_unset') }}</button>
                                                 </form>
                                             </div>
                                         {% else %}
-                                            <form action="{{ url_for('admin.manual_assign', event_uid=event.uid) }}" method="POST" class="flex items-center">
+                                            <form action="{{ url_for('admin.manual_assign', event_uid=event.uid) }}" method="POST" class="flex items-center gap-2">
                                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                 <input type="hidden" name="secret" value="{{ secret }}">
                                                 <input type="hidden" name="submission_id" value="{{ sub.id }}">
-                                                <select name="slot_index" class="w-36 bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-sm text-gray-200 focus:border-kvk-gold focus:ring-kvk-gold">
-                                                    <option value="">Select slot...</option>
+                                                <select name="slot_index" class="w-36 bg-kvk-gray-700 border-kvk-gray-700 rounded-md text-sm text-gray-200 focus:border-kvk-gold focus:ring-kvk-gold" translate="no">
+                                                    <option value="">{{ t('admin_select_slot') }}</option>
                                                     {% for slot_index in available_slots[day] %}
                                                         <option value="{{ slot_index }}">{{ slot_labels[slot_index] }}</option>
                                                     {% endfor %}
                                                 </select>
-                                                <button type="submit" class="ml-2 text-xs bg-kvk-gray-600 text-white px-2 py-1 rounded hover:bg-kvk-gray-500">Set</button>
+                                                <button type="submit" class="text-xs bg-kvk-gray-600 text-white px-2 py-1 rounded hover:bg-kvk-gray-500">{{ t('admin_set') }}</button>
                                             </form>
                                         {% endif %}
                                     </td>
                                     <td class="px-4 py-3 whitespace-nowrap">
-                                        <form action="{{ url_for('admin.delete', event_uid=event.uid) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this submission?');">
+                                        <form action="{{ url_for('admin.delete', event_uid=event.uid) }}" method="POST" onsubmit="return confirm({{ t('admin_confirm_delete')|tojson|forceescape }});">
                                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <input type="hidden" name="secret" value="{{ secret }}">
                                             <input type="hidden" name="submission_id" value="{{ sub.id }}">
-                                            <button type="submit" class="text-red-500 hover:text-red-400">Delete</button>
+                                            <button type="submit" class="text-red-500 hover:text-red-400">{{ t('common_delete') }}</button>
                                         </form>
                                     </td>
                                 </tr>
@@ -357,8 +358,6 @@
 
         <!-- Insights Tab Content -->
         {% include "partials/_insights_tab.html" %}
-
-
 
         <form id="hidden-assign-form" action="{{ url_for('admin.manual_assign', event_uid=event.uid) }}" method="POST" style="display: none;">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -378,6 +377,18 @@
         </footer>
     </div>
 <script>
+    const I18N_ADMIN = {
+        drawerDetailPrefix: {{ t('drawer_detail_prefix')|tojson }},
+        drawerPotentialSuffix: {{ t('drawer_potential_suffix')|tojson }},
+        drawerNoPlayers: {{ t('drawer_no_players')|tojson }},
+        drawerAllianceMember: {{ t('drawer_alliance_member')|tojson }},
+        drawerAssignBtn: {{ t('drawer_assign_btn')|tojson }},
+        drawerPointsLabel: {{ t('drawer_points_label')|tojson }},
+        drawerConfirmReplace: {{ t('drawer_confirm_replace')|tojson }},
+        orFewerTemplate: {{ t('insights_or_fewer')|tojson }},
+        showingTopTemplate: {{ t('insights_showing_top')|tojson }}
+    };
+
     function updateRigidWhales(day, maxSlots) {
         maxSlots = parseInt(maxSlots, 10);
         const valEl = document.getElementById(`rigid-val-${day}`);
@@ -388,7 +399,11 @@
         const grid = document.getElementById(`rigid-grid-${day}`);
 
         if (valEl) valEl.textContent = maxSlots;
-        if (descValEl) descValEl.textContent = maxSlots === 1 ? '1' : `${maxSlots} or fewer`;
+        if (descValEl) {
+            descValEl.textContent = maxSlots === 1
+                ? '1'
+                : I18N_ADMIN.orFewerTemplate.replace('{count}', maxSlots);
+        }
         if (emptyValEl) emptyValEl.textContent = maxSlots;
 
         if (!grid) return;
@@ -406,7 +421,7 @@
         });
 
         if (badgeEl) {
-            badgeEl.textContent = `Showing top ${visibleCount}`;
+            badgeEl.textContent = I18N_ADMIN.showingTopTemplate.replace('{count}', visibleCount);
         }
         if (emptyEl) {
             if (visibleCount === 0) {
@@ -550,7 +565,6 @@
         event.preventDefault();
         const formData = new FormData(form);
         const submitButton = form.querySelector('button[type="submit"]');
-        const originalHtml = submitButton ? submitButton.innerHTML : '';
 
         if (submitButton) {
             submitButton.disabled = true;
@@ -629,15 +643,15 @@
         const contentEl = document.getElementById(`drawer-content-${day}`);
 
         // Update Header
-        titleEl.textContent = `DETAIL: ${slotLabels[index]}`;
-        countEl.textContent = `${players.length} Potential`;
+        titleEl.textContent = `${I18N_ADMIN.drawerDetailPrefix} ${slotLabels[index]}`;
+        countEl.textContent = `${players.length} ${I18N_ADMIN.drawerPotentialSuffix}`;
         countEl.className = players.length > 0 
             ? "text-[10px] bg-kvk-gold/20 text-kvk-gold px-2 py-0.5 rounded font-bold"
             : "text-[10px] bg-gray-700 text-gray-400 px-2 py-0.5 rounded font-bold";
 
         // Update Content
         if (players.length === 0) {
-            contentEl.innerHTML = '<p class="text-gray-500 italic py-2">No players selected this slot as a fit.</p>';
+            contentEl.innerHTML = `<p class="text-gray-500 italic py-2">${escapeHtml(I18N_ADMIN.drawerNoPlayers)}</p>`;
         } else {
             // Sort by points descending
             const sorted = [...players].sort((a, b) => b.resources - a.resources);
@@ -649,8 +663,8 @@
                 return `
                     <div class="flex justify-between items-center p-2 bg-kvk-gray-800 rounded border border-kvk-gray-700 hover:border-kvk-gold/50 transition-colors">
                         <div class="flex flex-col">
-                            <span class="font-bold text-gray-200">[${safeAlliance}] ${safePlayerName}</span>
-                            <span class="text-[10px] text-gray-400 uppercase tracking-tighter">Alliance Member</span>
+                            <span class="font-bold text-gray-200 notranslate" translate="no">[${safeAlliance}] ${safePlayerName}</span>
+                            <span class="text-[10px] text-gray-400 uppercase tracking-tighter">${escapeHtml(I18N_ADMIN.drawerAllianceMember)}</span>
                         </div>
                         <div class="flex items-center gap-2">
                             <button 
@@ -661,11 +675,11 @@
                                 data-player-name="${escapeHtml(p.player_name)}"
                                 class="bg-blue-600 text-white px-2 py-1 rounded text-[10px]"
                             >
-                                Assign
+                                ${escapeHtml(I18N_ADMIN.drawerAssignBtn)}
                             </button>
                             <div class="text-right">
                                 <span class="text-kvk-gold font-mono font-bold">${safePoints}</span>
-                                <span class="text-[9px] text-gray-500 block -mt-1">POINTS</span>
+                                <span class="text-[9px] text-gray-500 block -mt-1">${escapeHtml(I18N_ADMIN.drawerPointsLabel)}</span>
                             </div>
                         </div>
                     </div>
@@ -694,7 +708,10 @@
         const currentAssignment = data.currentAssignments[slotIndex];
         if (currentAssignment) {
             const currentName = currentAssignment.player_name;
-            if (!confirm(`This slot is already assigned to ${currentName}. Replace with ${playerName}?`)) {
+            const confirmMsg = I18N_ADMIN.drawerConfirmReplace
+                .replace('{current}', currentName)
+                .replace('{player}', playerName);
+            if (!confirm(confirmMsg)) {
                 return;
             }
         }
