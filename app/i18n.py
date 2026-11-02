@@ -41,6 +41,27 @@ SUPPORTED_LANGUAGES: dict[str, dict[str, str]] = {
         "dir": "rtl",
         "flag": "🇸🇦",
     },
+    "ko": {
+        "code": "ko",
+        "name": "Korean",
+        "native": "한국어",
+        "dir": "ltr",
+        "flag": "🇰🇷",
+    },
+    "pt": {
+        "code": "pt",
+        "name": "Portuguese",
+        "native": "Português",
+        "dir": "ltr",
+        "flag": "🇧🇷",
+    },
+    "tr": {
+        "code": "tr",
+        "name": "Turkish",
+        "native": "Türkçe",
+        "dir": "ltr",
+        "flag": "🇹🇷",
+    },
 }
 
 _CATALOGS: dict[str, dict[str, str]] = {}

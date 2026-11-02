@@ -40,6 +40,10 @@ def test_normalize_lang_variants():
     assert normalize_lang("zh_Hans") == "zh"
     assert normalize_lang("ar-SA") == "ar"
     assert normalize_lang("AR") == "ar"
+    assert normalize_lang("ko-KR") == "ko"
+    assert normalize_lang("pt-BR") == "pt"
+    assert normalize_lang("pt_PT") == "pt"
+    assert normalize_lang("tr-TR") == "tr"
     assert normalize_lang("fr-FR") is None
     assert normalize_lang("") is None
     assert normalize_lang(None) is None
@@ -55,10 +59,18 @@ def test_translate_helper_and_fallbacks():
     assert translate("index_heading", lang="es") == "Planificador de Turnos del Reino"
     assert translate("index_heading", lang="zh") == "王国官职预约规划器"
     assert translate("index_heading", lang="ar") == "مخطط مواعيد المملكة"
+    assert translate("index_heading", lang="ko") == "왕국 관직 예약 플래너"
+    assert (
+        translate("index_heading", lang="pt") == "Planejador de Agendamentos do Reino"
+    )
+    assert translate("index_heading", lang="tr") == "Krallık Randevu Planlayıcı"
 
     # Format placeholders
     assert translate("common_kingdom_num", lang="es", server_id=1052) == "Reino #1052"
     assert translate("common_kingdom_num", lang="zh", server_id=1052) == "王国 #1052"
+    assert translate("common_kingdom_num", lang="ko", server_id=1052) == "왕국 #1052"
+    assert translate("common_kingdom_num", lang="pt", server_id=1052) == "Reino #1052"
+    assert translate("common_kingdom_num", lang="tr", server_id=1052) == "Krallık #1052"
 
     # Missing format arg gracefully returns unformatted template
     assert "{server_id}" in translate("common_kingdom_num", lang="en", wrong_arg=1)
@@ -109,6 +121,9 @@ def test_localized_event_and_admin_pages(client, test_event):
         ("es", "Formulario de Inscripción", "Panel de Administración"),
         ("zh", "玩家预约报名表", "管理员控制台"),
         ("ar", "نموذج التسجيل", "لوحة تحكم المسؤول"),
+        ("ko", "관직 예약 신청서", "관리자 대시보드"),
+        ("pt", "Formulário de Inscrição", "Painel do Administrador"),
+        ("tr", "Başvuru Formu", "Yönetici Paneli"),
     ]:
         # Player Form
         pf = client.get(f"/event/{uid}?lang={lang}")
